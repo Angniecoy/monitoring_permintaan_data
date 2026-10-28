@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Manajemen Dokumen Teknis WBP",
+  "description": "Portal registrasi dokumen teknis, disposisi tugas engineering, pelacakan tiket, eksekusi staf, dan analitik workload PT Waskita Beton Precast Tbk.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

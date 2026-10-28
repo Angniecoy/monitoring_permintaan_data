@@ -1,0 +1,667 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import urllib.parse
+import re
+import matplotlib.pyplot as plt
+import io
+import json
+import requests
+import base64
+
+# --- GOOGLE CLOUD LIBRARIES ---
+import gspread
+from google.oauth2.service_account import Credentials
+
+# ==========================================
+# KONFIGURASI STRUKTUR ORGANISASI & WA
+# ==========================================
+STRUKTUR_ORG = {
+    "Engineering Precast": {
+        "Manager": "Aryo BK", "WA_Manager": "628562568659",
+        "Staff": {"Fikri R": "6281267044965", "Ikhsan": "6282285299441", "Nisa": "6281267670706"}
+    },
+    "Engineering Readymix": {
+        "Manager": "Choerul SB", "WA_Manager": "628562568659",
+        "Staff": {"Fani": "6281321804321", "Rafi": "6281259666040", "Enuh": "6281586000110"}
+    },
+    "Engineering Konstruksi": {
+        "Manager": "Simon", "WA_Manager": "628562568659",
+        "Staff": {"Ricky": "6282233669400", "Edu": "6287788783536", "Nova": "6285277700763"}
+    }
+}
+
+# ==========================================
+# SESSION STATE INISIALISASI
+# ==========================================
+if 'app_logged_in' not in st.session_state:
+    st.session_state['app_logged_in'] = False
+if 'last_action_tiket' not in st.session_state:
+    st.session_state['last_action_tiket'] = None
+if 'active_menu' not in st.session_state:
+    st.session_state['active_menu'] = "1. Pemberi Tugas (Sales/ Proyek)"
+
+st.set_page_config(page_title="Form Registrasi Dokumen Teknis", layout="wide", initial_sidebar_state="expanded")
+
+# ==========================================
+# KONFIGURASI GOOGLE CLOUD & APPS SCRIPT
+# ==========================================
+SHEET_ID = "1-UuXGc8zw6R_6zyX1Fgob0jqCooGoxZzBtHsdjhpd4c"
+FOLDER_PENDUKUNG = "1To0dQP0bco7s7czx48B9BlxLsT8FYXNY"
+FOLDER_HASIL = "1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby5YyFhIN8Zfl37Q_rhDagviRZZOoobQIMwzaAMVrYLyZeivdF1e6WGswk1CkACUqNZhA/exec"
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+
+try:
+    creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+    gc = gspread.authorize(creds)
+except Exception as e:
+    st.error("⚠️ Gagal terhubung ke Google Sheets. Pastikan file 'credentials.json' ada di repository.")
+    st.stop()
+
+# ==========================================
+# FUNGSI DATABASE (GOOGLE SHEETS)
+# ==========================================
+EXPECTED_COLS = [
+    "ID_Tiket", "Waktu_Request", "Peminta", "WA_Peminta", "SO",
+    "Pemasukan_Penawaran", "Tujuan_Permintaan", "Kode_Proyek", "Proyek", "Lokasi",
+    "Jenis_Produk", "Dimensi", "Dokumen", "Departemen_Tujuan", "Manager_Tujuan", "WA_Manager",
+    "Staff_Tujuan", "WA_Staff", "Target_Selesai", "Status_Pengerjaan", 
+    "Keterangan_Penerima", "File_Pendukung", "File_Hasil", "Aktual_Selesai"
+]
+
+def load_data():
+    try:
+        sh = gc.open_by_key(SHEET_ID)
+        ws = sh.sheet1
+        data = ws.get_all_records()
+        if not data:
+            return pd.DataFrame(columns=EXPECTED_COLS)
+        df = pd.DataFrame(data)
+        df = df.reindex(columns=EXPECTED_COLS, fill_value="-")
+        return df
+    except Exception as e:
+        st.error(f"Gagal membaca Google Sheets: {e}")
+        return pd.DataFrame(columns=EXPECTED_COLS)
+
+def save_data(df):
+    try:
+        sh = gc.open_by_key(SHEET_ID)
+        ws = sh.sheet1
+        df = df.fillna("-").astype(str)
+        df.replace(["nan", "None", ""], "-", inplace=True)
+        data_to_write = [EXPECTED_COLS] + df[EXPECTED_COLS].values.tolist()
+        ws.clear()
+        ws.update(values=data_to_write, range_name="A1")
+    except Exception as e:
+        st.error(f"Gagal menyimpan ke Google Sheets: {e}")
+
+# ==========================================
+# FUNGSI UPLOAD VIA APPS SCRIPT WEB APP
+# ==========================================
+def upload_to_drive(file_obj, filename, folder_id):
+    try:
+        file_bytes = file_obj.getvalue()
+        encoded_file = base64.b64encode(file_bytes).decode('utf-8')
+        payload = {"fileData": encoded_file, "filename": filename, "mimeType": file_obj.type, "folderId": folder_id}
+        response = requests.post(APPS_SCRIPT_URL, json=payload, timeout=60)
+        res_json = response.json()
+        if res_json.get("status") == "success":
+            return res_json.get("fileId")
+        else:
+            st.error(f"Gagal upload {filename}: {res_json.get('message')}")
+            return None
+    except Exception as e:
+        st.error(f"Error koneksi upload {filename}: {e}")
+        return None
+
+def clean_wa_number(phone_str):
+    if not phone_str or pd.isna(phone_str) or str(phone_str).strip() == "-" or str(phone_str).strip() == "":
+        return ""
+    clean_num = re.sub(r'\D', '', str(phone_str))
+    if clean_num.startswith('0'): clean_num = '62' + clean_num[1:]
+    elif not clean_num.startswith('62') and clean_num != "": clean_num = '62' + clean_num
+    return clean_num
+
+# ==========================================
+# TAMPILAN CSS: ELEGANT DARK GLASSMORPHISM
+# ==========================================
+bg_image_url = "https://lh3.googleusercontent.com/d/1mkooZT7p3RmHFbpv7vUxkX8ep4KvBUuO=s1600"
+
+custom_css = """
+<style>
+    .stApp {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(30, 41, 59, 0.4) 100%), url('""" + bg_image_url + """') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
+    }
+    
+    [data-testid="stHeader"] { background: transparent !important; }
+    [data-testid="stSidebar"] { display: none !important; }
+
+    [data-testid="stForm"], .stTabs [data-baseweb="tab-list"], [data-testid="stMainBlockContainer"] h1 {
+        background: rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.4) !important;
+        padding: 25px !important;
+    }
+    
+    [data-testid="stMainBlockContainer"] h1 {
+        color: #ffffff !important;
+        text-align: center;
+        margin-bottom: 20px !important;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.6);
+    }
+
+    h2, h3, p, label, .stMarkdown, span {
+        color: #ffffff !important;
+        font-weight: 500 !important;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    div[data-baseweb="input"], div[data-baseweb="select"] > div, ul[data-baseweb="menu"], .stTextArea textarea {
+        background-color: rgba(30, 41, 59, 0.9) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(71, 85, 105, 0.8) !important;
+        color: #ffffff !important;
+    }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"] > div:focus-within {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 1px #3b82f6 !important;
+    }
+    div[data-baseweb="input"] input, div[data-baseweb="select"] *, .stTextArea textarea {
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        background-color: transparent !important;
+    }
+    div[data-baseweb="input"] input::placeholder, .stTextArea textarea::placeholder {
+        color: rgba(255, 255, 255, 0.5) !important;
+    }
+    div[data-baseweb="input"] button { background-color: transparent !important; }
+    div[data-baseweb="input"] svg, div[data-baseweb="select"] svg { fill: #cbd5e1 !important; }
+
+    ul[data-baseweb="menu"] { padding: 10px !important; border-radius: 12px !important; }
+    ul[data-baseweb="menu"] li { color: #ffffff !important; }
+    ul[data-baseweb="menu"] li:hover { background-color: rgba(59, 130, 246, 0.3) !important; }
+
+    .stTabs [data-baseweb="tab"] { background: transparent !important; color: #cbd5e1 !important; }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(240,240,240,0.8) 100%) !important;
+        border-radius: 10px !important; color: #0f172a !important; font-weight: bold !important; text-shadow: none !important;
+    }
+
+    [data-testid="stCheckbox"] {
+        background: rgba(30, 41, 59, 0.6); padding: 8px 15px; border-radius: 10px; border: 1px solid rgba(71, 85, 105, 0.8); margin-bottom: 5px;
+    }
+
+    [data-testid="stForm"] button, .stButton>button, [data-testid="stFileUploader"] button {
+        background: #2563eb !important; color: white !important; font-weight: 600 !important;
+        border-radius: 12px !important; border: none !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        padding: 8px 20px !important; text-shadow: none !important;
+    }
+    [data-testid="stForm"] button:hover, .stButton>button:hover {
+        background: #1d4ed8 !important; transform: translateY(-2px);
+    }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
+
+# Pilihan Menu Utama
+menu_options = [
+    "1. Pemberi Tugas (Sales/ Proyek)", 
+    "2. Manager Engineering (Disposisi)",
+    "3. Staff Engineering (Eksekutor)",
+    "4. Dashboard Workload & Analitik"
+]
+
+# ==========================================
+# HALAMAN DEPAN (LOGIN & PILIH ROLE)
+# ==========================================
+if not st.session_state['app_logged_in']:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col_l1, col_l2, col_l3 = st.columns([1.2, 1, 1.2])
+    with col_l2:
+        st.markdown("<h2 style='text-align: center;'>🔐 LOGIN APLIKASI</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #cbd5e1 !important;'>Silakan pilih akses dan lakukan login.</p>", unsafe_allow_html=True)
+        
+        with st.form("form_app_login"):
+            menu_awal = st.selectbox("Masuk Sebagai:", menu_options)
+            
+            u_input = st.text_input("Username")
+            p_input = st.text_input("Password", type="password")
+            login_btn = st.form_submit_button("Masuk Aplikasi", type="primary")
+            
+            if login_btn:
+                auth_success = False
+                if u_input == "WBP":
+                    if menu_awal == "1. Pemberi Tugas (Sales/ Proyek)" and p_input == "WBP456": auth_success = True
+                    elif menu_awal == "2. Manager Engineering (Disposisi)" and p_input == "WBPMGR": auth_success = True
+                    elif menu_awal == "3. Staff Engineering (Eksekutor)" and p_input == "WBP123": auth_success = True
+                    elif menu_awal == "4. Dashboard Workload & Analitik" and p_input == "WBPVIEW": auth_success = True
+
+                if auth_success:
+                    st.session_state['app_logged_in'] = True
+                    st.session_state['active_menu'] = menu_awal
+                    st.rerun()
+                else:
+                    st.error(f"❌ Username atau Password salah untuk {menu_awal}!")
+        
+        st.markdown("<p style='text-align: center; font-size: 12px; color: #94a3b8 !important; margin-top: 15px;'>PT. Waskita Beton Precast, Tbk - 2026</p>", unsafe_allow_html=True)
+    st.stop()
+
+# ==========================================
+# TOMBOL LOGOUT GLOBAL
+# ==========================================
+col_header1, col_header2 = st.columns([8, 1])
+with col_header2:
+    if st.button("🚪 Logout"):
+        st.session_state['app_logged_in'] = False
+        st.rerun()
+
+# ==========================================
+# NOTIFIKASI WHATSAPP GENERATOR
+# ==========================================
+if st.session_state.get('last_action_tiket'):
+    action = st.session_state['last_action_tiket']
+    st.divider()
+    with st.container():
+        st.success(f"✅ Sistem Berhasil Diupdate! ID Tiket: **{action['id']}**")
+        if action['wa']:
+            link_wa = f"https://wa.me/{action['wa']}?text={urllib.parse.quote(action['pesan'])}"
+            st.info(f"💡 **Klik tombol di bawah ini untuk mengirim notifikasi WhatsApp kepada {action['target_role']}:**")
+            st.markdown(f"📲 **[Kirim WhatsApp ke {action['target_name']}]({link_wa})**")
+        if st.button("Tutup Pemberitahuan", type="primary"):
+            st.session_state['last_action_tiket'] = None
+            st.rerun()
+
+# ==========================================
+# 1. PEMBERI TUGAS (SALES / PROYEK)
+# ==========================================
+if st.session_state['active_menu'] == "1. Pemberi Tugas (Sales/ Proyek)":
+    st.markdown("<h1>📝 FORM PEMBERI TUGAS</h1>", unsafe_allow_html=True)
+    tab_baru, tab_status, tab_edit = st.tabs(["➕ Buat Permintaan Baru", "🔍 Lacak Status & Unduh Hasil", "✏️ Edit Permintaan (OPEN)"])
+    
+    with tab_baru:
+        with st.form("form_peminta"):
+            col1, col2 = st.columns(2)
+            with col1:
+                peminta = st.text_input("Nama Pemberi Tugas", placeholder="Nama Anda...")
+                wa_peminta = st.text_input("No. WhatsApp Anda", placeholder="Contoh: 08123456789")
+                so_number = st.text_input("SO (Sales Order) / No. Surat")
+                pemasukan_penawaran = st.date_input("Pemasukan Penawaran")
+                tujuan_permintaan = st.text_input("Tujuan Permintaan")
+                kode_proyek = st.text_input("Kode Proyek")
+                nama_proyek = st.text_input("Nama Proyek")
+                lokasi = st.text_input("Lokasi")
+                
+            with col2:
+                jenis_produk = st.text_input("Jenis Produk")
+                dimensi = st.text_input("Dimensi")
+                
+                departemen_tujuan = st.selectbox("Departemen Engineering Tujuan", list(STRUKTUR_ORG.keys()))
+                manager_tujuan = STRUKTUR_ORG[departemen_tujuan]["Manager"]
+                wa_manager = STRUKTUR_ORG[departemen_tujuan]["WA_Manager"]
+                st.info(f"👨‍💼 **Manager Tujuan:** {manager_tujuan}")
+                
+                tgl_target = st.date_input("Target Selesai")
+                
+                st.write("**Dokumen yang Dibutuhkan:**")
+                doc_analisis = st.checkbox("Analisis")
+                doc_ssp = st.checkbox("SSP")
+                doc_gambar = st.checkbox("Gambar / Shop Drawing")
+                doc_others = st.checkbox("Others (Lainnya)")
+                detail_others = st.text_input("Others, sebutkan detailnya:")
+                file_pendukung = st.file_uploader("Upload Dokumen Pendukung (Opsional)", accept_multiple_files=True)
+            
+            submitted = st.form_submit_button("Kirim Permintaan ke Manager", type="primary")
+            
+            if submitted:
+                if not peminta or not nama_proyek:
+                    st.error("Nama Pemberi Tugas dan Nama Proyek wajib diisi.")
+                else:
+                    with st.spinner("Memproses ke Cloud..."):
+                        id_tiket = datetime.now().strftime("REQ-%Y%m%d-%H%M%S")
+                        dok_list = []
+                        if doc_analisis: dok_list.append("Analisis")
+                        if doc_ssp: dok_list.append("SSP")
+                        if doc_gambar: dok_list.append("Gambar")
+                        if doc_others: dok_list.append(f"Others ({detail_others.strip()})")
+                        dokumen_str = ", ".join(dok_list) if dok_list else "-"
+                        
+                        list_id_pendukung = []
+                        if file_pendukung:
+                            for f in file_pendukung:
+                                file_id = upload_to_drive(f, f"{id_tiket}_{f.name}", FOLDER_PENDUKUNG)
+                                if file_id: list_id_pendukung.append(f"{id_tiket}_{f.name}::{file_id}")
+                        file_pendukung_str = " || ".join(list_id_pendukung) if list_id_pendukung else "-"
+                        
+                        waktu_req = datetime.now().strftime("%d/%m/%Y %H:%M")
+                        
+                        df_baru = pd.DataFrame([{
+                            "ID_Tiket": id_tiket, "Waktu_Request": waktu_req, "Peminta": peminta, "WA_Peminta": wa_peminta,
+                            "SO": so_number, "Pemasukan_Penawaran": pemasukan_penawaran.strftime("%d/%m/%Y"), "Tujuan_Permintaan": tujuan_permintaan,
+                            "Kode_Proyek": kode_proyek, "Proyek": nama_proyek, "Lokasi": lokasi, "Jenis_Produk": jenis_produk,
+                            "Dimensi": dimensi, "Dokumen": dokumen_str, "Departemen_Tujuan": departemen_tujuan, 
+                            "Manager_Tujuan": manager_tujuan, "WA_Manager": wa_manager, "Staff_Tujuan": "-", "WA_Staff": "-", 
+                            "Target_Selesai": tgl_target.strftime("%d/%m/%Y"), "Status_Pengerjaan": "OPEN", 
+                            "Keterangan_Penerima": "-", "File_Pendukung": file_pendukung_str, "File_Hasil": "-", "Aktual_Selesai": "-"
+                        }])
+                        
+                        df = load_data()
+                        df = pd.concat([df, df_baru], ignore_index=True)
+                        save_data(df)
+                        
+                        pesan = f"*PERMINTAAN TUGAS BARU*\n\nHalo Bpk. {manager_tujuan},\nAda request baru dari {peminta} untuk proyek *{nama_proyek}*.\nMohon segera didisposisikan ke tim {departemen_tujuan}.\n\nTiket: {id_tiket}"
+                        st.session_state['last_action_tiket'] = {
+                            'id': id_tiket, 'wa': clean_wa_number(wa_manager), 'pesan': pesan, 
+                            'target_role': 'Manager Engineering', 'target_name': manager_tujuan
+                        }
+                        st.rerun()
+
+    with tab_status:
+        df = load_data()
+        if df.empty:
+            st.info("Belum ada tiket yang terdaftar.")
+        else:
+            tiket_cek = st.selectbox("Pilih ID Tiket Anda:", df["ID_Tiket"].tolist()[::-1])
+            data_cek = df[df["ID_Tiket"] == tiket_cek].iloc[0]
+            
+            st.markdown(f"<h3 style='color: #3b82f6 !important;'>Proyek: {data_cek['Proyek']}</h3>", unsafe_allow_html=True)
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                st.write(f"**Departemen:** {data_cek['Departemen_Tujuan']}")
+                st.write(f"**Manager:** {data_cek['Manager_Tujuan']}")
+                st.write(f"**Staff Eksekutor:** {data_cek['Staff_Tujuan']}")
+            with col_s2:
+                status = data_cek['Status_Pengerjaan']
+                if status == "OPEN": st.warning(f"**Status:** 🟡 Menunggu Disposisi Manager")
+                elif status == "DISPOSISI": st.info(f"**Status:** 🟠 Didisposisikan ke Staff")
+                elif status == "PROSES": st.info(f"**Status:** 🔵 Sedang Dikerjakan")
+                else: st.success(f"**Status:** 🟢 {status}")
+            
+            st.write("---")
+            st.write("💬 **Pesan Balasan Engineering:**", data_cek['Keterangan_Penerima'] if data_cek['Keterangan_Penerima'] != "-" else "-")
+            if str(data_cek['File_Hasil']) != "-":
+                st.success("🎉 Dokumen hasil telah diunggah!")
+                st.write(f"📁 **File Hasil:** {data_cek['File_Hasil']}")
+
+    with tab_edit:
+        st.markdown("<span style='color: #cbd5e1 !important;'>Pilih tiket berstatus **OPEN** untuk mengubah detail permintaannya.</span>", unsafe_allow_html=True)
+        df = load_data()
+        df_open = df[df["Status_Pengerjaan"] == "OPEN"]
+        
+        if df_open.empty:
+            st.info("Saat ini tidak ada tiket berstatus OPEN yang bisa diedit.")
+        else:
+            tiket_edit_pilihan = st.selectbox("Pilih ID Tiket yang ingin direvisi:", df_open["ID_Tiket"].tolist())
+            data_lama = df_open[df_open["ID_Tiket"] == tiket_edit_pilihan].iloc[0]
+            
+            try:
+                tgl_lama_parsed = datetime.strptime(str(data_lama["Target_Selesai"]), "%d/%m/%Y").date()
+            except:
+                tgl_lama_parsed = datetime.today()
+                
+            try:
+                tgl_pemasukan_parsed = datetime.strptime(str(data_lama.get("Pemasukan_Penawaran", "")), "%d/%m/%Y").date()
+            except:
+                tgl_pemasukan_parsed = datetime.today()
+            
+            dok_lama_str = str(data_lama["Dokumen"])
+            
+            with st.form("form_edit_peminta"):
+                col3, col4 = st.columns(2)
+                with col3:
+                    edit_peminta = st.text_input("Nama Pemberi Tugas", value=str(data_lama["Peminta"]))
+                    edit_wa_peminta = st.text_input("No. WhatsApp Pemberi Tugas", value=str(data_lama["WA_Peminta"]) if str(data_lama["WA_Peminta"]) != "-" else "")
+                    edit_so = st.text_input("SO / No. Surat", value=str(data_lama["SO"]) if str(data_lama["SO"]) != "-" else "")
+                    edit_pemasukan = st.date_input("Pemasukan Penawaran", value=tgl_pemasukan_parsed)
+                    edit_tujuan = st.text_input("Tujuan Permintaan", value=str(data_lama.get("Tujuan_Permintaan", "")) if str(data_lama.get("Tujuan_Permintaan", "")) != "-" else "")
+                    edit_kode_proyek = st.text_input("Kode Proyek", value=str(data_lama.get("Kode_Proyek", "")) if str(data_lama.get("Kode_Proyek", "")) != "-" else "")
+                    edit_proyek = st.text_input("Nama Proyek", value=str(data_lama["Proyek"]))
+                    edit_lokasi = st.text_input("Lokasi", value=str(data_lama.get("Lokasi", "")) if str(data_lama.get("Lokasi", "")) != "-" else "")
+                    
+                with col4:
+                    edit_jenis = st.text_input("Jenis Produk", value=str(data_lama.get("Jenis_Produk", "")) if str(data_lama.get("Jenis_Produk", "")) != "-" else "")
+                    edit_dimensi = st.text_input("Dimensi", value=str(data_lama.get("Dimensi", "")) if str(data_lama.get("Dimensi", "")) != "-" else "")
+                    edit_tgl_target = st.date_input("Revisi Target Selesai", value=tgl_lama_parsed)
+                    
+                    edit_analisis = st.checkbox("Analisis", value="Analisis" in dok_lama_str)
+                    edit_ssp = st.checkbox("SSP", value="SSP" in dok_lama_str)
+                    edit_gambar = st.checkbox("Gambar / Shop Drawing", value="Gambar" in dok_lama_str)
+                    is_others = "Others" in dok_lama_str
+                    edit_others = st.checkbox("Others (Lainnya)", value=is_others)
+                    
+                    detail_lama = ""
+                    if is_others and "(" in dok_lama_str:
+                        match = re.search(r'Others \((.*?)\)', dok_lama_str)
+                        if match: detail_lama = match.group(1)
+                    edit_detail_others = st.text_input("Others, sebutkan detailnya:", value=detail_lama)
+                    
+                    st.write("<br>**Tambah Dokumen Pendukung (Opsional):**", unsafe_allow_html=True)
+                    edit_file_pendukung = st.file_uploader("Upload Dokumen Tambahan", accept_multiple_files=True)
+                
+                submitted_edit = st.form_submit_button("Simpan Perubahan", type="primary")
+                
+                if submitted_edit:
+                    if not edit_peminta or not edit_proyek:
+                        st.error("Nama Pemberi Tugas dan Nama Proyek wajib diisi.")
+                    else:
+                        with st.spinner("Memperbarui data di Cloud..."):
+                            dok_list_edit = []
+                            if edit_analisis: dok_list_edit.append("Analisis")
+                            if edit_ssp: dok_list_edit.append("SSP")
+                            if edit_gambar: dok_list_edit.append("Gambar")
+                            if edit_others: dok_list_edit.append(f"Others ({edit_detail_others.strip()})" if edit_detail_others.strip() else "Others")
+                            
+                            list_id_tambahan = []
+                            if edit_file_pendukung:
+                                for f in edit_file_pendukung:
+                                    safe_filename = f"{tiket_edit_pilihan}_{f.name}"
+                                    file_id = upload_to_drive(f, safe_filename, FOLDER_PENDUKUNG)
+                                    if file_id: list_id_tambahan.append(f"{safe_filename}::{file_id}")
+                            
+                            file_str_baru = " || ".join(list_id_tambahan)
+                            file_lama = str(data_lama["File_Pendukung"])
+                            if list_id_tambahan:
+                                file_final = file_str_baru if file_lama in ["-", "nan", ""] else file_lama + " || " + file_str_baru
+                                df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "File_Pendukung"] = file_final
+                            
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Peminta"] = edit_peminta
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "WA_Peminta"] = edit_wa_peminta
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "SO"] = edit_so
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Pemasukan_Penawaran"] = edit_pemasukan.strftime("%d/%m/%Y")
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Tujuan_Permintaan"] = edit_tujuan
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Kode_Proyek"] = edit_kode_proyek
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Proyek"] = edit_proyek
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Lokasi"] = edit_lokasi
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Jenis_Produk"] = edit_jenis
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Dimensi"] = edit_dimensi
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Dokumen"] = ", ".join(dok_list_edit) if dok_list_edit else "-"
+                            df.loc[df["ID_Tiket"] == tiket_edit_pilihan, "Target_Selesai"] = edit_tgl_target.strftime("%d/%m/%Y")
+                            
+                            save_data(df)
+                            st.success(f"Berhasil! Tiket {tiket_edit_pilihan} telah diperbarui di Google Sheets.")
+
+# ==========================================
+# 2. MANAGER ENGINEERING (DISPOSISI TUGAS)
+# ==========================================
+elif st.session_state['active_menu'] == "2. Manager Engineering (Disposisi)":
+    st.markdown("<h1>💼 DASHBOARD MANAGER (DISPOSISI)</h1>", unsafe_allow_html=True)
+    
+    departemen_pilihan = st.selectbox("Pilih Departemen Anda:", list(STRUKTUR_ORG.keys()))
+    manager_aktif = STRUKTUR_ORG[departemen_pilihan]["Manager"]
+    st.info(f"Login Sebagai Manager: **{manager_aktif}**")
+    
+    df = load_data()
+    if df.empty:
+        st.info("Database kosong.")
+    else:
+        df_open = df[(df["Departemen_Tujuan"] == departemen_pilihan) & (df["Status_Pengerjaan"] == "OPEN")]
+        
+        st.write("### 📥 Tiket Menunggu Disposisi (OPEN)")
+        if df_open.empty:
+            st.success("Tidak ada tiket baru yang perlu didisposisikan.")
+        else:
+            st.dataframe(df_open[["ID_Tiket", "Proyek", "Peminta", "Target_Selesai"]], use_container_width=True)
+            
+            tiket_disp = st.selectbox("Pilih Tiket untuk Didisposisi:", df_open["ID_Tiket"].tolist())
+            tiket_info = df_open[df_open["ID_Tiket"] == tiket_disp].iloc[0]
+            
+            list_staff = STRUKTUR_ORG[departemen_pilihan]["Staff"]
+            
+            with st.form("form_disposisi"):
+                st.write(f"**Proyek:** {tiket_info['Proyek']} | **Dokumen:** {tiket_info['Dokumen']}")
+                pilihan_staff = st.selectbox("Delegasikan Tugas ini kepada:", list(list_staff.keys()))
+                pesan_tambahan = st.text_input("Catatan untuk Staff (Opsional):")
+                
+                btn_disposisi = st.form_submit_button("Disposisi ke Staff", type="primary")
+                
+                if btn_disposisi:
+                    no_wa_staff = list_staff[pilihan_staff]
+                    
+                    df.loc[df["ID_Tiket"] == tiket_disp, "Staff_Tujuan"] = pilihan_staff
+                    df.loc[df["ID_Tiket"] == tiket_disp, "WA_Staff"] = no_wa_staff
+                    df.loc[df["ID_Tiket"] == tiket_disp, "Status_Pengerjaan"] = "DISPOSISI"
+                    if pesan_tambahan:
+                        df.loc[df["ID_Tiket"] == tiket_disp, "Keterangan_Penerima"] = f"Catatan Manager: {pesan_tambahan}"
+                    
+                    save_data(df)
+                    
+                    pesan_wa = f"*DISPOSISI TUGAS BARU*\n\nHalo {pilihan_staff},\nBpk. {manager_aktif} telah mendelegasikan tugas proyek *{tiket_info['Proyek']}* kepada Anda.\nTarget Selesai: {tiket_info['Target_Selesai']}\n\nSilakan cek Dashboard Staff untuk memproses tiket {tiket_disp}."
+                    st.session_state['last_action_tiket'] = {
+                        'id': tiket_disp, 'wa': clean_wa_number(no_wa_staff), 'pesan': pesan_wa, 
+                        'target_role': 'Staff', 'target_name': pilihan_staff
+                    }
+                    st.rerun()
+
+        st.divider()
+        with st.expander("Lihat Tiket yang Sedang Diproses / Selesai di Departemen Anda"):
+            df_histori = df[(df["Departemen_Tujuan"] == departemen_pilihan) & (df["Status_Pengerjaan"].isin(["DISPOSISI", "PROSES", "CLOSED (Selesai)"]))]
+            st.dataframe(df_histori, use_container_width=True)
+
+# ==========================================
+# 3. STAFF ENGINEERING (EKSEKUTOR)
+# ==========================================
+elif st.session_state['active_menu'] == "3. Staff Engineering (Eksekutor)":
+    st.markdown("<h1>🛠️ DASHBOARD STAFF (EKSEKUTOR)</h1>", unsafe_allow_html=True)
+    
+    semua_staff = []
+    for dept, data in STRUKTUR_ORG.items():
+        semua_staff.extend(list(data["Staff"].keys()))
+        
+    staff_aktif = st.selectbox("Pilih Nama Anda:", sorted(semua_staff))
+    
+    df = load_data()
+    if df.empty:
+        st.info("Database kosong.")
+    else:
+        df_staff = df[(df["Staff_Tujuan"] == staff_aktif) & (df["Status_Pengerjaan"].isin(["DISPOSISI", "PROSES"]))]
+        
+        st.write(f"### 📋 Daftar Pekerjaan Aktif untuk {staff_aktif}")
+        if df_staff.empty:
+            st.success("Hore! Tidak ada pekerjaan yang tertunda saat ini.")
+        else:
+            st.dataframe(df_staff[["ID_Tiket", "Proyek", "Status_Pengerjaan", "Target_Selesai"]], use_container_width=True)
+            
+            tiket_kerja = st.selectbox("Pilih ID Tiket untuk Diupdate:", df_staff["ID_Tiket"].tolist())
+            tiket_info = df_staff[df_staff["ID_Tiket"] == tiket_kerja].iloc[0]
+            
+            st.info(f"📌 **Dokumen diminta:** {tiket_info['Dokumen']} | **Target:** {tiket_info['Target_Selesai']}")
+            st.write(f"📎 **File Referensi dari Pemberi Tugas:** {tiket_info['File_Pendukung']}")
+            
+            with st.form("form_update_staff"):
+                status_baru = st.selectbox("Update Status Pekerjaan:", ["PROSES", "CLOSED (Selesai)"])
+                file_uploads = st.file_uploader("Upload Dokumen Hasil (Bila sudah selesai)", accept_multiple_files=True)
+                keterangan = st.text_area("Pesan / Keterangan Balasan:")
+                
+                btn_update = st.form_submit_button("Simpan Update", type="primary")
+                
+                if btn_update:
+                    with st.spinner("Memproses & Upload ke Cloud..."):
+                        list_id_hasil = []
+                        if file_uploads:
+                            for f in file_uploads:
+                                file_id = upload_to_drive(f, f"{tiket_kerja}_{f.name}", FOLDER_HASIL)
+                                if file_id: list_id_hasil.append(f"{tiket_kerja}_{f.name}::{file_id}")
+                        
+                        if list_id_hasil:
+                            file_str_baru = " || ".join(list_id_hasil)
+                            file_lama = str(df.loc[df["ID_Tiket"] == tiket_kerja, "File_Hasil"].values[0])
+                            df.loc[df["ID_Tiket"] == tiket_kerja, "File_Hasil"] = file_str_baru if file_lama in ["-", "nan"] else file_lama + " || " + file_str_baru
+                        
+                        if status_baru == "CLOSED (Selesai)":
+                            df.loc[df["ID_Tiket"] == tiket_kerja, "Aktual_Selesai"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+                            
+                        df.loc[df["ID_Tiket"] == tiket_kerja, "Status_Pengerjaan"] = status_baru
+                        df.loc[df["ID_Tiket"] == tiket_kerja, "Keterangan_Penerima"] = keterangan
+                        save_data(df)
+                        
+                        wa_peminta = clean_wa_number(tiket_info.get('WA_Peminta', ''))
+                        pesan_balik = f"*UPDATE TIKET {tiket_kerja}*\n\nHalo {tiket_info['Peminta']},\nDokumen untuk proyek *{tiket_info['Proyek']}* saat ini berstatus *{status_baru}*.\nCatatan Staff ({staff_aktif}): {keterangan}"
+                        
+                        st.session_state['last_action_tiket'] = {
+                            'id': tiket_kerja, 'wa': wa_peminta, 'pesan': pesan_balik, 
+                            'target_role': 'Pemberi Tugas', 'target_name': tiket_info['Peminta']
+                        }
+                        st.rerun()
+
+# ==========================================
+# 4. DASHBOARD WORKLOAD & ANALITIK (GLOBAL)
+# ==========================================
+elif st.session_state['active_menu'] == "4. Dashboard Workload & Analitik":
+    st.markdown("<h1>📊 Dashboard Workload Keseluruhan</h1>", unsafe_allow_html=True)
+    df = load_data()
+    
+    if df.empty:
+        st.info("Belum ada data.")
+    else:
+        df['Parsed_Date'] = pd.to_datetime(df['Waktu_Request'], format='%d/%m/%Y %H:%M', errors='coerce')
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Permintaan", len(df))
+        col2.metric("Menunggu Manager (OPEN)", len(df[df['Status_Pengerjaan'] == 'OPEN']))
+        col3.metric("Sedang Dikerjakan Staff", len(df[df['Status_Pengerjaan'].isin(['DISPOSISI', 'PROSES'])]))
+        col4.metric("Selesai (CLOSED)", len(df[df['Status_Pengerjaan'] == 'CLOSED (Selesai)']))
+        
+        st.divider()
+        tab_harian, tab_mingguan, tab_bulanan = st.tabs(["📅 Harian", "📆 Mingguan", "🗓️ Bulanan"])
+        
+        with tab_harian:
+            df['Date_Only'] = df['Parsed_Date'].dt.date
+            df_harian = df.groupby('Date_Only').size().reset_index(name='Jumlah')
+            if not df_harian.empty:
+                fig, ax = plt.subplots(figsize=(10, 4))
+                fig.patch.set_alpha(0); ax.patch.set_alpha(0)
+                ax.plot(pd.to_datetime(df_harian['Date_Only']), df_harian['Jumlah'], marker='o', color='#38bdf8', linewidth=3)
+                ax.tick_params(colors='#ffffff'); ax.spines['bottom'].set_color('#ffffff'); ax.spines['left'].set_color('#ffffff')
+                ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False); plt.xticks(rotation=45)
+                st.pyplot(fig)
+
+        with tab_mingguan:
+            df['Week_Year'] = df['Parsed_Date'].dt.strftime('%Y-W%U')
+            df_mingguan = df.groupby('Week_Year').size().reset_index(name='Jumlah')
+            if not df_mingguan.empty:
+                fig, ax = plt.subplots(figsize=(10, 4))
+                fig.patch.set_alpha(0); ax.patch.set_alpha(0)
+                ax.bar(df_mingguan['Week_Year'], df_mingguan['Jumlah'], color='#1769e0')
+                ax.tick_params(colors='#ffffff'); ax.spines['bottom'].set_color('#ffffff'); ax.spines['left'].set_color('#ffffff')
+                ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False); plt.xticks(rotation=45)
+                st.pyplot(fig)
+
+        with tab_bulanan:
+            df['Month_Year'] = df['Parsed_Date'].dt.strftime('%Y-%m')
+            df_bulanan = df.groupby('Month_Year').size().reset_index(name='Jumlah')
+            if not df_bulanan.empty:
+                fig, ax = plt.subplots(figsize=(10, 4))
+                fig.patch.set_alpha(0); ax.patch.set_alpha(0)
+                ax.bar(df_bulanan['Month_Year'], df_bulanan['Jumlah'], color='#38bdf8')
+                ax.tick_params(colors='#ffffff'); ax.spines['bottom'].set_color('#ffffff'); ax.spines['left'].set_color('#ffffff')
+                ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+                st.pyplot(fig)
+                
+        st.write("### Data Tiket Keseluruhan")
+        st.dataframe(df[['ID_Tiket', 'Peminta', 'Proyek', 'Departemen_Tujuan', 'Manager_Tujuan', 'Staff_Tujuan', 'Status_Pengerjaan']], use_container_width=True)
