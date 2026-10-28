@@ -147,23 +147,26 @@ export default function App() {
       <div className="flex-1 flex max-w-[1600px] w-full mx-auto">
         {/* Sidebar Nav */}
         <Sidebar
-          currentRole={activeRole}
+          currentRole={session.role}
+          userRole={session.role}
+          session={session}
           onSelectRole={(role) => {
-            setActiveRole(role);
-            if (role === 'dashboard') {
-              setDashboardSubTab('analytics');
+            if (role === session.role) {
+              setActiveRole(role);
+              if (role === 'dashboard') {
+                setDashboardSubTab('analytics');
+              }
             }
           }}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           tickets={tickets}
-          onOpenGuideModal={() => setIsGuideModalOpen(true)}
         />
 
         {/* Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          {/* Dashboard Mode Selector */}
-          {activeRole === 'dashboard' && (
+          {/* Dashboard Mode Selector - STRICTLY EXCLUSIVE to dashboard role */}
+          {session.role === 'dashboard' && (
             <div className="flex items-center gap-2 mb-6 p-1 bg-slate-900 border border-slate-800 rounded-xl w-fit">
               <button
                 type="button"
@@ -193,8 +196,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Module 1: Pemberi Tugas (Sales / Proyek) */}
-          {activeRole === 'pemberi_tugas' && (
+          {/* Module: Pemberi Tugas (Sales / Proyek) - STRICT RBAC */}
+          {session.role === 'pemberi_tugas' && (
             <PemberiTugasView
               tickets={tickets}
               onAddTicket={handleAddTicket}
@@ -204,8 +207,8 @@ export default function App() {
             />
           )}
 
-          {/* Module 2: Manager Engineering (Disposisi) */}
-          {activeRole === 'manager' && (
+          {/* Module: Manager Engineering (Disposisi) - STRICT RBAC */}
+          {session.role === 'manager' && (
             <ManagerView
               tickets={tickets}
               onUpdateTicket={handleUpdateTicket}
@@ -214,8 +217,8 @@ export default function App() {
             />
           )}
 
-          {/* Module 3: Staff Engineering (Eksekutor) */}
-          {activeRole === 'staff' && (
+          {/* Module: Staff Engineering (Eksekutor) - STRICT RBAC */}
+          {session.role === 'staff' && (
             <StaffView
               tickets={tickets}
               onUpdateTicket={handleUpdateTicket}
@@ -224,16 +227,16 @@ export default function App() {
             />
           )}
 
-          {/* Module 4: Dashboard Workload & Analitik */}
-          {activeRole === 'dashboard' && dashboardSubTab === 'analytics' && (
+          {/* Module: Dashboard Workload & Analitik - STRICT RBAC */}
+          {session.role === 'dashboard' && dashboardSubTab === 'analytics' && (
             <DashboardView
               tickets={tickets}
               onSelectTicketDetail={setSelectedTicketDetail}
             />
           )}
 
-          {/* Module 5: Database & Rekapitulasi */}
-          {activeRole === 'dashboard' && dashboardSubTab === 'database' && (
+          {/* Module: Database & Rekapitulasi - STRICT RBAC */}
+          {session.role === 'dashboard' && dashboardSubTab === 'database' && (
             <DatabaseView
               tickets={tickets}
               onResetData={handleResetData}

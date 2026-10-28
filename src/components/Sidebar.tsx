@@ -1,32 +1,35 @@
 import React from 'react';
 import { 
   FileEdit, Briefcase, Wrench, BarChart3, Database, 
-  HelpCircle, ChevronRight, X, Building, CheckCircle2, Clock
+  X, Building, ShieldCheck
 } from 'lucide-react';
-import { Ticket, UserRole } from '../types';
+import { Ticket, UserRole, UserSession } from '../types';
 
 interface SidebarProps {
   currentRole: UserRole;
+  userRole: UserRole;
+  session: UserSession;
   onSelectRole: (role: UserRole) => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   tickets: Ticket[];
-  onOpenGuideModal: () => void;
+  onOpenGuideModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentRole,
+  userRole,
+  session,
   onSelectRole,
   isOpenMobile,
   onCloseMobile,
-  tickets,
-  onOpenGuideModal
+  tickets
 }) => {
   const openCount = tickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
   const inProgressCount = tickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
   const closedCount = tickets.filter(t => t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
 
-  const navItems: {
+  const allNavItems: {
     id: UserRole;
     label: string;
     sublabel: string;
@@ -64,9 +67,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
+  // STRICT RBAC: Filter navigation items based strictly on authenticated user role
+  const permittedNavItems = allNavItems.filter(item => {
+    if (userRole === 'pemberi_tugas') {
+      return item.id === 'pemberi_tugas';
+    }
+    if (userRole === 'manager') {
+      return item.id === 'manager';
+    }
+    if (userRole === 'staff') {
+      return item.id === 'staff';
+    }
+    if (userRole === 'dashboard') {
+      return item.id === 'dashboard';
+    }
+    return false;
+  });
+
   const handleNavClick = (role: UserRole) => {
-    onSelectRole(role);
-    onCloseMobile();
+    // Only allow navigation to permitted role
+    if (role === userRole) {
+      onSelectRole(role);
+      onCloseMobile();
+    }
   };
 
   return (
@@ -92,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="w-7 h-7 rounded bg-blue-600 text-white font-black text-xs flex items-center justify-center">
                 WBP
               </div>
-              <span className="font-bold text-xs text-white">SIM-Teknis</span>
+              <span className="font-bold text-xs text-white">ENGINEERING</span>
             </div>
             <button
               onClick={onCloseMobile}
@@ -102,12 +125,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {/* Navigation Items */}
+          {/* Active Role Privilege Badge */}
+          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-blue-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>Hak Akses Terverifikasi</span>
+            </div>
+            <div className="text-xs font-semibold text-white truncate">
+              {session.roleName}
+            </div>
+            <div className="text-[10px] text-slate-400 leading-tight">
+              Modul dibatasi khusus untuk wewenang peran ini.
+            </div>
+          </div>
+
+          {/* Navigation Items - Only Permitted Items Rendered */}
           <div className="space-y-1">
             <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase px-3 mb-2">
-              Modul Alur Kerja
+              Modul Kerja Aktif
             </div>
-            {navItems.map(item => {
+            {permittedNavItems.map(item => {
               const isActive = currentRole === item.id;
               const Icon = item.icon;
 
@@ -144,28 +181,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </div>
 
-          {/* Database & Archive Navigation Item */}
-          <div className="pt-2 border-t border-slate-800">
-            <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase px-3 mb-2">
-              Sistem Basis Data
-            </div>
-            {/* Custom role trigger or link */}
-            <button
-              type="button"
-              onClick={() => handleNavClick('dashboard')}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Database className="w-4 h-4 text-emerald-400" />
-                <span>Basis Data & Rekap</span>
+          {/* Database & Archive Navigation Item - EXCLUSIVE to Dashboard/Executive Role */}
+          {userRole === 'dashboard' && (
+            <div className="pt-2 border-t border-slate-800">
+              <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase px-3 mb-2">
+                Sistem Basis Data
               </div>
-              <span className="text-[10px] font-mono text-slate-500">
-                {tickets.length} Data
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => handleNavClick('dashboard')}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  <span>Basis Data & Rekap</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-500">
+                  {tickets.length} Data
+                </span>
+              </button>
+            </div>
+          )}
 
-          {/* Quick Metrics Badge Widget */}
+          {/* Quick Metrics Badge Widget - Filtered contextually per role */}
           <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
               <span>Ringkasan Tiket</span>

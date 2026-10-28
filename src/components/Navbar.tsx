@@ -60,7 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="hidden sm:flex items-center gap-2">
           <div className="text-right">
             <div className="text-[11px] font-semibold text-white leading-tight">
-              {session.userName}
+              {session.roleName}
             </div>
             <div className="text-[10px] text-slate-400 font-medium tracking-tight">
               PT. Waskita Beton Precast, Tbk
