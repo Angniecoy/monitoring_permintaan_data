@@ -95,7 +95,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget && canClose && onClose) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
         {/* Brand header */}
         <div className="px-6 pt-6 pb-4 bg-gradient-to-b from-slate-800/80 to-slate-900/40 border-b border-slate-800">
@@ -108,7 +115,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 PT. Waskita Beton Precast, Tbk
               </div>
               <h2 className="text-base font-bold text-white tracking-tight">
-                Sistem Manajemen Dokumen Teknis
+                ENGINEERING WBP
               </h2>
             </div>
           </div>

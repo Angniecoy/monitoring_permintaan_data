@@ -26,12 +26,25 @@ export default function App() {
   // Global Tickets Data
   const [tickets, setTickets] = useState<Ticket[]>(() => getStoredTickets());
 
-  // User Session & Role
-  const [session, setSession] = useState<UserSession>({
-    isLoggedIn: true,
-    role: 'pemberi_tugas',
-    roleName: 'Pemberi Tugas (Sales / Proyek)',
-    userName: 'Sales & Project WBP'
+  // User Session & Role - Mandatory Protected Login Gate
+  const [session, setSession] = useState<UserSession>(() => {
+    try {
+      const saved = sessionStorage.getItem('wbp_sim_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.isLoggedIn) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      isLoggedIn: false,
+      role: 'pemberi_tugas',
+      roleName: 'Pemberi Tugas (Sales / Proyek)',
+      userName: ''
+    };
   });
 
   // Navigation State
@@ -86,14 +99,46 @@ export default function App() {
     setSession(newSession);
     setActiveRole(newSession.role);
     setIsLoginModalOpen(false);
+    try {
+      sessionStorage.setItem('wbp_sim_session', JSON.stringify(newSession));
+    } catch {
+      // ignore
+    }
   };
+
+  const handleLogout = () => {
+    try {
+      sessionStorage.removeItem('wbp_sim_session');
+    } catch {
+      // ignore
+    }
+    setSession({
+      isLoggedIn: false,
+      role: 'pemberi_tugas',
+      roleName: 'Pemberi Tugas (Sales / Proyek)',
+      userName: ''
+    });
+  };
+
+  // Mandatory Login Gate: If not logged in, render ONLY the Login screen
+  if (!session.isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center font-sans selection:bg-blue-600 selection:text-white p-4">
+        <LoginModal
+          isOpen={true}
+          onLoginSuccess={handleLoginSuccess}
+          canClose={false}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* Top Bar */}
       <Navbar
         session={session}
-        onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        onOpenLoginModal={handleLogout}
         onToggleSidebarMobile={() => setIsMobileSidebarOpen(prev => !prev)}
         onQuickSearchClick={() => setIsQuickSearchOpen(true)}
       />

@@ -71,11 +71,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={onOpenLoginModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded-xl border border-slate-700/60 transition-colors whitespace-nowrap shrink-0"
-          title="Ganti Peran / Keluar"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-rose-300 bg-slate-800 hover:bg-slate-700/80 rounded-xl border border-slate-700/60 transition-colors whitespace-nowrap shrink-0"
+          title="Keluar dari Aplikasi"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Ganti Akun</span>
+          <span className="hidden sm:inline">Keluar</span>
         </button>
       </div>
     </header>
