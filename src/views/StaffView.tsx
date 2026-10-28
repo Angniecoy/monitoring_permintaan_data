@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Ticket, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber, formatCurrentDateTime } from '../data/mockData';
+import { saveFileToStorage, downloadFile } from '../data/fileStore';
 
 interface StaffViewProps {
   tickets: Ticket[];
@@ -43,9 +44,13 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
   const currentTask = myActiveTasks.find(t => t.ID_Tiket === selectedTicketId) || myActiveTasks[0] || null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const names = Array.from(e.target.files).map(f => f.name);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      for (const file of filesArray) {
+        await saveFileToStorage(file);
+      }
+      const names = filesArray.map(f => f.name);
       setHasilFiles(prev => [...prev, ...names]);
     }
   };
@@ -390,9 +395,31 @@ export const StaffView: React.FC<StaffViewProps> = ({
                       </div>
                       <div className="pt-1">
                         <span className="text-slate-400 block mb-1">Berkas Referensi Awal:</span>
-                        <div className="font-mono text-sky-400 text-[11px]">
-                          {currentTask.File_Pendukung !== '-' ? currentTask.File_Pendukung : 'Tidak ada berkas terlampir'}
-                        </div>
+                        {currentTask.File_Pendukung !== '-' ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentTask.File_Pendukung.split('||').map((fileName, idx) => {
+                              const trimmed = fileName.trim();
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => downloadFile(trimmed, {
+                                    proyek: currentTask.Proyek,
+                                    idTiket: currentTask.ID_Tiket,
+                                    dokumen: currentTask.Dokumen
+                                  })}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-950/70 border border-sky-800/80 text-sky-300 hover:text-white hover:bg-sky-900/60 transition-colors text-[11px] font-mono group"
+                                  title={`Unduh ${trimmed}`}
+                                >
+                                  <Download className="w-3 h-3 text-sky-400 group-hover:scale-110 transition-transform" />
+                                  <span className="truncate max-w-[200px]">{trimmed}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-slate-500 italic text-[11px]">Tidak ada berkas terlampir</div>
+                        )}
                       </div>
                     </div>
 
@@ -575,15 +602,27 @@ export const StaffView: React.FC<StaffViewProps> = ({
                         </td>
                         <td className="px-4 py-3.5 text-slate-300 max-w-xs">
                           {ticket.File_Hasil !== '-' ? (
-                            <button
-                              type="button"
-                              onClick={() => alert(`Mengunduh berkas hasil: ${ticket.File_Hasil}`)}
-                              className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 truncate text-left underline"
-                              title={ticket.File_Hasil}
-                            >
-                              <Download className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{ticket.File_Hasil.split('||')[0]?.trim()}</span>
-                            </button>
+                            <div className="flex flex-col gap-1">
+                              {ticket.File_Hasil.split('||').map((fileName, idx) => {
+                                const trimmed = fileName.trim();
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => downloadFile(trimmed, {
+                                      proyek: ticket.Proyek,
+                                      idTiket: ticket.ID_Tiket,
+                                      dokumen: ticket.Dokumen
+                                    })}
+                                    className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 truncate text-left underline group w-fit"
+                                    title={`Unduh ${trimmed}`}
+                                  >
+                                    <Download className="w-3 h-3 shrink-0 group-hover:scale-110 transition-transform" />
+                                    <span className="truncate max-w-[200px]">{trimmed}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           ) : (
                             <span className="text-slate-500 italic text-[11px]">-</span>
                           )}

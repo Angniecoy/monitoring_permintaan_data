@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Calendar, User, Phone, FileText, CheckCircle2, Clock, AlertTriangle, ArrowRight, Download, Send } from 'lucide-react';
 import { Ticket } from '../types';
 import { cleanWhatsAppNumber } from '../data/mockData';
+import { downloadFile } from '../data/fileStore';
 
 interface TicketDetailModalProps {
   ticket: Ticket | null;
@@ -294,8 +295,8 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
                       </span>
                       <button
                         type="button"
-                        onClick={() => alert(`Simulasi mengunduh berkas: ${file.name}`)}
-                        className="px-2 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-300 rounded flex items-center gap-1 transition-colors"
+                        onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
+                        className="px-2.5 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white rounded flex items-center gap-1 transition-colors"
                       >
                         <Download className="w-3 h-3" /> Unduh
                       </button>
@@ -321,8 +322,8 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
                       </span>
                       <button
                         type="button"
-                        onClick={() => alert(`Simulasi mengunduh hasil engineering: ${file.name}`)}
-                        className="px-2 py-1 text-[10px] bg-emerald-700 hover:bg-emerald-600 text-white rounded flex items-center gap-1 transition-colors"
+                        onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
+                        className="px-2.5 py-1 text-[10px] bg-emerald-700 hover:bg-emerald-600 text-white rounded flex items-center gap-1 transition-colors shadow-sm"
                       >
                         <Download className="w-3 h-3" /> Unduh Hasil
                       </button>

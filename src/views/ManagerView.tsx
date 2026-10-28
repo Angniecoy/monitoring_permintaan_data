@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { 
   Building2, UserCheck, Send, Clock, CheckCircle2, 
   ArrowRight, MessageSquare, AlertCircle, Eye, ShieldCheck, 
-  Layers, Users, Check
+  Layers, Users, Check, Download
 } from 'lucide-react';
 import { DepartmentName, Ticket, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber } from '../data/mockData';
+import { downloadFile } from '../data/fileStore';
 
 interface ManagerViewProps {
   tickets: Ticket[];
@@ -323,6 +324,23 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                         <span className="text-slate-500 text-[10px]">Dokumen yang Diminta:</span>
                         <div className="text-slate-300 font-medium">{currentTicket.Dokumen}</div>
                       </div>
+                      {currentTicket.File_Pendukung && currentTicket.File_Pendukung !== '-' && (
+                        <div className="col-span-2 pt-1 border-t border-slate-800/80 flex items-center justify-between">
+                          <span className="text-slate-500 text-[10px]">Lampiran Pemohon:</span>
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(currentTicket.File_Pendukung.split('||')[0]?.trim() || currentTicket.File_Pendukung, {
+                              proyek: currentTicket.Proyek,
+                              idTiket: currentTicket.ID_Tiket,
+                              dokumen: currentTicket.Dokumen
+                            })}
+                            className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-400 hover:text-sky-300 underline"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>{currentTicket.File_Pendukung.split('||')[0]?.trim()}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <form onSubmit={handleDisposisi} className="space-y-4">

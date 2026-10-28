@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { 
   PlusCircle, Search, Edit3, Send, CheckCircle2, FileUp, 
   Clock, AlertCircle, Building2, User, Phone, MapPin, 
-  Calendar, Layers, FileCheck, ArrowRight, X, Eye
+  Calendar, Layers, FileCheck, ArrowRight, X, Eye, Download
 } from 'lucide-react';
 import { DepartmentName, Ticket, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber, generateTicketId, formatCurrentDateTime } from '../data/mockData';
+import { saveFileToStorage, downloadFile } from '../data/fileStore';
 
 interface PemberiTugasViewProps {
   tickets: Ticket[];
@@ -72,9 +73,13 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const currentManager = STRUKTUR_ORG[departemenTujuan].Manager;
   const currentWaManager = STRUKTUR_ORG[departemenTujuan].WA_Manager;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const names = Array.from(e.target.files).map(f => f.name);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      for (const file of filesArray) {
+        await saveFileToStorage(file);
+      }
+      const names = filesArray.map(f => f.name);
       setUploadedFiles(prev => [...prev, ...names]);
     }
   };
@@ -868,23 +873,56 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60">
                   <div className="font-bold text-slate-300 mb-2">Berkas Pendukung Awal:</div>
-                  <div className="text-slate-400 font-mono text-[11px]">
-                    {displayedTicket.File_Pendukung !== '-' ? displayedTicket.File_Pendukung : 'Tidak ada berkas'}
-                  </div>
+                  {displayedTicket.File_Pendukung !== '-' ? (
+                    <div className="space-y-1.5">
+                      {displayedTicket.File_Pendukung.split('||').map((fn, idx) => {
+                        const cleanFn = fn.trim();
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-2 rounded bg-slate-900 border border-slate-800">
+                            <span className="font-mono text-[11px] text-slate-300 truncate max-w-[200px]">{cleanFn}</span>
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(cleanFn, {
+                                proyek: displayedTicket.Proyek,
+                                idTiket: displayedTicket.ID_Tiket,
+                                dokumen: displayedTicket.Dokumen
+                              })}
+                              className="px-2.5 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white rounded flex items-center gap-1 transition-colors"
+                            >
+                              <Download className="w-3 h-3" /> Unduh
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-slate-500 italic">Tidak ada berkas</div>
+                  )}
                 </div>
 
                 <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60">
                   <div className="font-bold text-slate-300 mb-2">Dokumen Hasil Engineering:</div>
                   {displayedTicket.File_Hasil !== '-' ? (
                     <div className="space-y-1.5">
-                      <div className="text-emerald-300 font-mono text-[11px]">{displayedTicket.File_Hasil}</div>
-                      <button
-                        type="button"
-                        onClick={() => alert(`Mengunduh hasil dokumen: ${displayedTicket.File_Hasil}`)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors"
-                      >
-                        Unduh Berkas Hasil
-                      </button>
+                      {displayedTicket.File_Hasil.split('||').map((fn, idx) => {
+                        const cleanFn = fn.trim();
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-2 rounded bg-emerald-950/20 border border-emerald-900/30">
+                            <span className="text-emerald-300 font-mono text-[11px] truncate max-w-[200px]">{cleanFn}</span>
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(cleanFn, {
+                                proyek: displayedTicket.Proyek,
+                                idTiket: displayedTicket.ID_Tiket,
+                                dokumen: displayedTicket.Dokumen
+                              })}
+                              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors flex items-center gap-1 shadow-sm"
+                            >
+                              <Download className="w-3 h-3" /> Unduh Hasil
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-slate-500 italic">Pengerjaan belum selesai / belum diunggah.</div>
