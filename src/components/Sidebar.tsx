@@ -36,13 +36,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }[] = [
     {
       id: 'pemberi_tugas',
-      label: '1. Pemberi Tugas',
+      label: 'Pemberi Tugas',
       sublabel: 'Sales & Tim Proyek',
       icon: FileEdit,
     },
     {
       id: 'manager',
-      label: '2. Manager Disposisi',
+      label: 'Manager Disposisi',
       sublabel: 'Delegasi & Penugasan',
       icon: Briefcase,
       badgeCount: openCount,
@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'staff',
-      label: '3. Staff Eksekutor',
+      label: 'Staff Eksekutor',
       sublabel: 'Kalkulasi & Drawing',
       icon: Wrench,
       badgeCount: inProgressCount,
@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'dashboard',
-      label: '4. Dashboard Analitik',
+      label: 'Dashboard Analitik',
       sublabel: 'Tren & Workload Tim',
       icon: BarChart3,
     },

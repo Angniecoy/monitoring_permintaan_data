@@ -89,7 +89,7 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950/40 border border-slate-800">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
-            Modul 05 · Basis Data & Rekapitulasi
+            Basis Data & Rekapitulasi
           </div>
           <h1 className="text-xl font-bold text-white tracking-tight mt-0.5">
             Arsip & Database Tiket Terintegrasi

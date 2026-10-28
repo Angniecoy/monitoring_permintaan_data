@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, User, KeyRound, Building2, ChevronRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import { UserRole, UserSession } from '../types';
 
 interface LoginModalProps {
@@ -18,6 +18,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [selectedRole, setSelectedRole] = useState<UserRole>('pemberi_tugas');
   const [username, setUsername] = useState('WBP');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
@@ -25,39 +26,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const roleConfigs: {
     id: UserRole;
     title: string;
-    code: string;
     desc: string;
     pass: string;
     badge: string;
   }[] = [
     {
       id: 'pemberi_tugas',
-      title: '1. Pemberi Tugas (Sales / Proyek)',
-      code: 'WBP456',
+      title: 'Pemberi Tugas (Sales / Proyek)',
       desc: 'Buat permintaan baru, lampirkan TOR/spek, dan lacak status dokumen',
       pass: 'WBP456',
       badge: 'Sales & Project'
     },
     {
       id: 'manager',
-      title: '2. Manager Engineering (Disposisi)',
-      code: 'WBPMGR',
+      title: 'Manager Engineering (Disposisi)',
       desc: 'Disposisi tugas masuk ke staf teknis dan pantau antrean departemen',
       pass: 'WBPMGR',
       badge: 'Manager'
     },
     {
       id: 'staff',
-      title: '3. Staff Engineering (Eksekutor)',
-      code: 'WBP123',
+      title: 'Staff Engineering (Eksekutor)',
       desc: 'Kerjakan dokumen (Analisis, SSP, Gambar), upload hasil & submit',
       pass: 'WBP123',
       badge: 'Technical Staff'
     },
     {
       id: 'dashboard',
-      title: '4. Dashboard Workload & Analitik',
-      code: 'WBPVIEW',
+      title: 'Dashboard Workload & Analitik',
       desc: 'Tinjau metrik beban kerja, tren harian/mingguan/bulanan & rekapitulasi',
       pass: 'WBPVIEW',
       badge: 'Executive / All'
@@ -68,8 +64,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
+    if (!username.trim()) {
+      setErrorMsg('Silakan masukkan Username.');
+      return;
+    }
+
+    if (!password) {
+      setErrorMsg('Silakan masukkan Password.');
+      return;
+    }
+
     if (username.trim().toUpperCase() !== 'WBP') {
-      setErrorMsg('Username harus "WBP"');
+      setErrorMsg('Username atau Password tidak valid!');
       return;
     }
 
@@ -84,18 +90,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         userName: `WBP ${currentConfig.badge}`
       });
     } else {
-      setErrorMsg(`Password salah untuk ${currentConfig.title}. Hint: ${currentConfig.pass}`);
+      setErrorMsg('Username atau Password tidak sesuai untuk akses ini!');
     }
-  };
-
-  const handleQuickLogin = (role: UserRole) => {
-    const config = roleConfigs.find(r => r.id === role)!;
-    onLoginSuccess({
-      isLoggedIn: true,
-      role: role,
-      roleName: config.title,
-      userName: `WBP ${config.badge}`
-    });
   };
 
   return (
@@ -109,7 +105,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
             <div>
               <div className="text-[10px] font-bold tracking-widest text-blue-400 uppercase">
-                PT Waskita Beton Precast, Tbk
+                PT. Waskita Beton Precast, Tbk
               </div>
               <h2 className="text-base font-bold text-white tracking-tight">
                 Sistem Manajemen Dokumen Teknis
@@ -146,21 +142,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         setSelectedRole(role.id);
                         setErrorMsg('');
                       }}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                      className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                         isSelected
                           ? 'bg-blue-600/15 border-blue-500/80 text-white shadow-sm'
                           : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
                       }`}
                     >
-                      <div>
+                      <div className="pr-2">
                         <div className="text-xs font-semibold">{role.title}</div>
-                        <div className="text-[11px] text-slate-400 line-clamp-1">{role.desc}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{role.desc}</div>
                       </div>
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                        isSelected ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-slate-800 text-slate-500'
-                      }`}>
-                        {role.code}
-                      </span>
+                      <div className="shrink-0">
+                        {isSelected && (
+                          <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
+                            <Check className="w-3 h-3" />
+                          </div>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -178,8 +176,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="WBP"
-                    className="w-full pl-9 pr-3 py-2 text-xs font-mono bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    placeholder="Masukkan username"
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                   />
                 </div>
               </div>
@@ -191,71 +189,42 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={`e.g. ${roleConfigs.find(r => r.id === selectedRole)?.pass}`}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-mono bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-9 py-2 text-xs bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 transition-colors p-0.5"
+                    title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>Masuk Aplikasi</span>
             </button>
           </form>
-
-          {/* Quick Demo Access Bar */}
-          <div className="pt-3 border-t border-slate-800">
-            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span>Akses Cepat Pengujian (1-Klik)</span>
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('pemberi_tugas')}
-                className="p-2 text-[11px] bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-slate-200 text-left transition-colors"
-              >
-                📝 Sales / Proyek
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('manager')}
-                className="p-2 text-[11px] bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-slate-200 text-left transition-colors"
-              >
-                💼 Manager Disposisi
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('staff')}
-                className="p-2 text-[11px] bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-slate-200 text-left transition-colors"
-              >
-                🛠️ Staff Eksekutor
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('dashboard')}
-                className="p-2 text-[11px] bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-slate-200 text-left transition-colors"
-              >
-                📊 Dashboard Analitik
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+        <div className="px-6 py-3.5 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
           <span>PT. Waskita Beton Precast, Tbk - 2026</span>
           {canClose && onClose && (
             <button
+              type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-white transition-colors"
             >
               Batal
             </button>

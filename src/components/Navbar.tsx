@@ -1,11 +1,11 @@
 import React from 'react';
-import { Sparkles, LogOut, Shield, Search, Menu, Building2 } from 'lucide-react';
+import { LogOut, Search, Menu } from 'lucide-react';
 import { UserSession } from '../types';
 
 interface NavbarProps {
   session: UserSession;
   onOpenLoginModal: () => void;
-  onOpenGuideModal: () => void;
+  onOpenGuideModal?: () => void;
   onToggleSidebarMobile: () => void;
   onQuickSearchClick: () => void;
 }
@@ -13,7 +13,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   session,
   onOpenLoginModal,
-  onOpenGuideModal,
   onToggleSidebarMobile,
   onQuickSearchClick
 }) => {
@@ -34,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             WBP
           </div>
           <span className="text-base font-bold tracking-tight text-white whitespace-nowrap">
-            SIM-Teknis WBP
+            ENGINEERING WBP
           </span>
         </a>
       </div>
@@ -56,18 +55,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
       </div>
 
-      {/* Zone 3: Active Role Badge + Layout Guide + Auth Action */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <button
-          type="button"
-          onClick={onOpenGuideModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-300 bg-blue-950/50 hover:bg-blue-900/50 border border-blue-800/60 rounded-xl transition-colors whitespace-nowrap"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-          <span className="hidden sm:inline">Rekomendasi Layout</span>
-        </button>
-
-        <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-800">
+      {/* Zone 3: Active Role Badge + Auth Action */}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="hidden sm:flex items-center gap-2">
           <div className="text-right">
             <div className="text-[11px] font-semibold text-white leading-tight">
               {session.userName}

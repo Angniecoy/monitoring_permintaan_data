@@ -94,7 +94,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-            Modul 02 · Manajemen Disposisi & Delegasi
+            Manajemen Disposisi & Delegasi
           </div>
           <h1 className="text-xl font-bold text-white tracking-tight mt-0.5">
             Dashboard Manager Engineering

@@ -30,7 +30,7 @@ export default function App() {
   const [session, setSession] = useState<UserSession>({
     isLoggedIn: true,
     role: 'pemberi_tugas',
-    roleName: '1. Pemberi Tugas (Sales / Proyek)',
+    roleName: 'Pemberi Tugas (Sales / Proyek)',
     userName: 'Sales & Project WBP'
   });
 
@@ -94,7 +94,6 @@ export default function App() {
       <Navbar
         session={session}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
-        onOpenGuideModal={() => setIsGuideModalOpen(true)}
         onToggleSidebarMobile={() => setIsMobileSidebarOpen(prev => !prev)}
         onQuickSearchClick={() => setIsQuickSearchOpen(true)}
       />
