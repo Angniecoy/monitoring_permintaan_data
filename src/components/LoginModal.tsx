@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { 
   Lock, User, KeyRound, AlertCircle, Eye, EyeOff, Check, 
-  UserPlus, Users, Trash2, Edit3, Search, ShieldCheck, 
-  Building2, Phone, RotateCcw, ArrowRight, CheckCircle2, X, LogIn
+  UserPlus, Users, Trash2, Edit3, Search, 
+  Phone, RotateCcw, ArrowRight, CheckCircle2, X, LogIn, Activity
 } from 'lucide-react';
-import { DepartmentName, UserAccount, UserRole, UserSession } from '../types';
-import { ROLE_LABELS, cleanWhatsAppNumber } from '../data/mockData';
+import { DepartmentName, Ticket, UserAccount, UserRole, UserSession } from '../types';
+import { ROLE_LABELS, cleanWhatsAppNumber, getStoredTickets } from '../data/mockData';
 
 interface LoginModalProps {
   isOpen: boolean;
   users: UserAccount[];
+  tickets?: Ticket[];
   onLoginSuccess: (session: UserSession) => void;
   onRegisterUser: (newUser: Omit<UserAccount, 'id' | 'createdAt'>) => UserAccount;
   onUpdateUser: (updatedUser: UserAccount) => void;
@@ -23,6 +24,7 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   users,
+  tickets,
   onLoginSuccess,
   onRegisterUser,
   onUpdateUser,
@@ -303,7 +305,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return matchesRole && matchesQuery;
   });
 
-  const usersForSelectedRole = users.filter(u => u.role === selectedRole);
+  const allTickets = tickets || getStoredTickets();
+  const activeTickets = allTickets.filter(
+    t => t.Status_Pengerjaan === 'OPEN' || t.Status_Pengerjaan === 'PROSES'
+  );
+  const openTicketsCount = activeTickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
+  const prosesTicketsCount = activeTickets.filter(t => t.Status_Pengerjaan === 'PROSES').length;
 
   return (
     <div 
@@ -459,50 +466,73 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
-              {/* Quick Registered Account Picker for Selected Role */}
-              {usersForSelectedRole.length > 0 && (
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-700">
-                      Akun Terdaftar ({roleConfigs.find(r => r.id === selectedRole)?.shortTitle}) — Klik untuk isi cepat:
+              {/* Horizontal Running Ticker / Marquee for Active Tickets (OPEN & PROSES) */}
+              <div className="p-3 rounded-xl bg-slate-50/95 border border-slate-200/90 space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#282974] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#282974]"></span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('manage')}
-                      className="text-[11px] font-semibold text-[#282974] hover:text-[#1e1f5a]"
-                    >
-                      Kelola Semua User →
-                    </button>
+                    <Activity className="w-3.5 h-3.5 text-[#282974]" />
+                    <span className="text-[11px] font-bold text-slate-800 tracking-tight">
+                      Live Status Tiket Aktif (Belum Closed)
+                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {usersForSelectedRole.map(u => {
-                      const isCurrentUsername = username.toLowerCase() === u.username.toLowerCase();
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            setUsername(u.username);
-                            setPassword(u.password);
-                            setErrorMsg('');
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all flex items-center gap-1.5 ${
-                            isCurrentUsername
-                              ? 'bg-[#282974] text-white border-[#282974] shadow-2xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-[#282974]/50 hover:bg-[#282974]/5'
-                          }`}
-                        >
-                          <User className="w-3 h-3 shrink-0" />
-                          <span className="font-semibold">{u.fullName}</span>
-                          <span className={`text-[10px] font-mono ${isCurrentUsername ? 'text-white/80' : 'text-slate-400'}`}>
-                            (@{u.username})
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                      {openTicketsCount} OPEN
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-[#282974]/10 text-[#282974] border border-[#282974]/25">
+                      {prosesTicketsCount} PROSES
+                    </span>
                   </div>
                 </div>
-              )}
+
+                {activeTickets.length > 0 ? (
+                  <div className="relative overflow-hidden rounded-lg bg-white border border-slate-200 py-2">
+                    {/* Edge gradient masks for smooth visual entry & exit */}
+                    <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-white to-transparent z-10" />
+                    <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent z-10" />
+
+                    <div className="animate-ticker-marquee items-center">
+                      {[...activeTickets, ...activeTickets].map((t, idx) => {
+                        const isOpen = t.Status_Pengerjaan === 'OPEN';
+                        return (
+                          <div
+                            key={`${t.ID_Tiket}-${idx}`}
+                            className="inline-flex items-center gap-2 px-3.5 border-r border-slate-200/80 whitespace-nowrap text-xs"
+                          >
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                                isOpen
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-[#282974] text-white border-[#282974]'
+                              }`}
+                            >
+                              {t.Status_Pengerjaan}
+                            </span>
+                            <span className="font-mono font-bold text-[#282974] text-[11px]">
+                              {t.ID_Tiket}
+                            </span>
+                            <span className="text-slate-300">—</span>
+                            <span className="font-semibold text-slate-800 text-[11px]">
+                              {t.Proyek}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              ({t.Departemen_Tujuan.replace('Engineering ', 'Eng. ')} · Target: {t.Target_Selesai})
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-2 px-3 rounded-lg bg-white border border-slate-200 text-center text-[11px] text-emerald-700 font-medium">
+                    Seluruh tiket saat ini telah berstatus CLOSED (Selesai).
+                  </div>
+                )}
+              </div>
 
               {/* Username & Password Inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

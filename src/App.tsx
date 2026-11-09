@@ -183,6 +183,7 @@ export default function App() {
         <LoginModal
           isOpen={true}
           users={users}
+          tickets={tickets}
           onLoginSuccess={handleLoginSuccess}
           onRegisterUser={handleRegisterUser}
           onUpdateUser={handleUpdateUser}
@@ -338,6 +339,7 @@ export default function App() {
         key={loginModalInitialTab + String(isLoginModalOpen)}
         isOpen={isLoginModalOpen}
         users={users}
+        tickets={tickets}
         onLoginSuccess={handleLoginSuccess}
         onRegisterUser={handleRegisterUser}
         onUpdateUser={handleUpdateUser}
