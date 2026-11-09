@@ -185,6 +185,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     const cleanName = regFullName.trim();
     const cleanUser = regUsername.trim();
+    const cleanWa = regWhatsapp.trim();
 
     if (!cleanName) {
       setRegError('Nama Lengkap wajib diisi.');
@@ -200,6 +201,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
     if (!regPassword || regPassword.length < 3) {
       setRegError('Password wajib diisi (minimal 3 karakter).');
+      return;
+    }
+    if (!cleanWa) {
+      setRegError('Nomor WhatsApp wajib diisi.');
       return;
     }
 
@@ -223,7 +228,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       role: regRole,
       roleName: roleTitle,
       department: needsDept ? regDept : undefined,
-      whatsapp: regWhatsapp.trim() ? cleanWhatsAppNumber(regWhatsapp.trim()) : undefined
+      whatsapp: cleanWhatsAppNumber(cleanWa)
     });
 
     // Reset registration form
@@ -635,6 +640,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </label>
                   <input
                     type="text"
+                    required
                     value={regFullName}
                     onChange={(e) => setRegFullName(e.target.value)}
                     placeholder="Contoh: Ir. Andi Pratama (Sales Infrastruktur)"
@@ -651,6 +657,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                     <input
                       type="text"
+                      required
                       value={regUsername}
                       onChange={(e) => setRegUsername(e.target.value)}
                       placeholder="Contoh: andi_wbp"
@@ -668,6 +675,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                     <input
                       type={showRegPassword ? 'text' : 'password'}
+                      required
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="Buat password akun"
@@ -731,16 +739,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                 <div className={(regRole === 'manager' || regRole === 'staff') ? '' : 'sm:col-span-2'}>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Nomor WhatsApp (Opsional — untuk notifikasi tiket)
+                    Nomor WhatsApp <span className="text-rose-600">*</span>
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                     <input
                       type="text"
+                      required
                       value={regWhatsapp}
                       onChange={(e) => setRegWhatsapp(e.target.value)}
                       placeholder="Contoh: 081234567890"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]"
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15"
                     />
                   </div>
                 </div>
