@@ -204,13 +204,13 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner & Module Description */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-blue-50/70 border border-slate-200 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/6 border border-slate-200 shadow-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Sales & Tim Proyek
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Form Registrasi & Pelacakan Dokumen Teknis
+            Form Registrasi & Monitoring Dokumen Teknis
           </h1>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             Ajukan permohonan analisis struktur, SSP, shop drawing, atau metode kerja kepada divisi Engineering WBP secara terstruktur dan terintegrasi langsung dengan WhatsApp Manager.
@@ -224,7 +224,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
             onClick={() => setActiveTab('baru')}
             className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
               activeTab === 'baru'
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
@@ -237,7 +237,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
             onClick={() => setActiveTab('lacak')}
             className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
               activeTab === 'lacak'
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
@@ -250,7 +250,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
             onClick={() => setActiveTab('edit')}
             className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
               activeTab === 'edit'
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
@@ -269,7 +269,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  formStep >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                  formStep >= 1 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
                 }`}>
                   1
                 </span>
@@ -278,7 +278,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 </span>
                 <span className="text-slate-300 mx-1">›</span>
                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  formStep >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                  formStep >= 2 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
                 }`}>
                   2
                 </span>
@@ -287,7 +287,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 </span>
                 <span className="text-slate-300 mx-1">›</span>
                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  formStep >= 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                  formStep >= 3 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
                 }`}>
                   3
                 </span>
@@ -329,7 +329,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={peminta}
                         onChange={(e) => setPeminta(e.target.value)}
                         placeholder="e.g. Budi Santoso"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
                         required
                       />
                     </div>
@@ -343,7 +343,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={waPeminta}
                         onChange={(e) => setWaPeminta(e.target.value)}
                         placeholder="Contoh: 08123456789"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors font-mono"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors font-mono"
                       />
                     </div>
                   </div>
@@ -358,7 +358,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={soNumber}
                         onChange={(e) => setSoNumber(e.target.value)}
                         placeholder="SO-WBP/2026/X/..."
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors font-mono"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors font-mono"
                       />
                     </div>
 
@@ -370,7 +370,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         type="date"
                         value={pemasukanPenawaran}
                         onChange={(e) => setPemasukanPenawaran(e.target.value)}
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors font-mono"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors font-mono"
                       />
                     </div>
                   </div>
@@ -385,7 +385,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={namaProyek}
                         onChange={(e) => setNamaProyek(e.target.value)}
                         placeholder="e.g. Tol Probolinggo Banyuwangi Seksi 2"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
                         required
                       />
                     </div>
@@ -399,7 +399,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={kodeProyek}
                         onChange={(e) => setKodeProyek(e.target.value)}
                         placeholder="PRJ-TB-01"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors font-mono"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors font-mono"
                       />
                     </div>
                   </div>
@@ -414,7 +414,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={lokasi}
                         onChange={(e) => setLokasi(e.target.value)}
                         placeholder="e.g. Probolinggo, Jawa Timur"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
                       />
                     </div>
 
@@ -427,7 +427,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={tujuanPermintaan}
                         onChange={(e) => setTujuanPermintaan(e.target.value)}
                         placeholder="e.g. Perhitungan Struktur & Metode Kerja Tender"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
                       />
                     </div>
                   </div>
@@ -443,7 +443,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         setFormError('');
                         setFormStep(2);
                       }}
-                      className="flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm shadow-blue-600/20"
+                      className="flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors shadow-sm shadow-[#282974]/20"
                     >
                       <span>Lanjut: Spesifikasi Teknis</span>
                       <ArrowRight className="w-4 h-4" />
@@ -463,7 +463,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                       <select
                         value={departemenTujuan}
                         onChange={(e) => setDepartemenTujuan(e.target.value as DepartmentName)}
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-blue-600 transition-colors font-medium"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] transition-colors font-medium"
                       >
                         {Object.keys(STRUKTUR_ORG).map(dept => (
                           <option key={dept} value={dept}>{dept}</option>
@@ -479,15 +479,15 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         type="date"
                         value={targetSelesai}
                         onChange={(e) => setTargetSelesai(e.target.value)}
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-blue-600 transition-colors font-mono"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] transition-colors font-mono"
                         required
                       />
                     </div>
                   </div>
 
                   {/* Manager Auto-Badge Info */}
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-blue-700">
+                  <div className="p-3 bg-[#282974]/8 border border-[#282974]/25 rounded-xl flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-[#282974]">
                       <User className="w-4 h-4" />
                       <span>Manager Penerima: <strong>{currentManager}</strong></span>
                     </div>
@@ -506,7 +506,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={jenisProduk}
                         onChange={(e) => setJenisProduk(e.target.value)}
                         placeholder="e.g. PC-I Girder, Box Girder, Readymix"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
                       />
                     </div>
 
@@ -519,7 +519,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         value={dimensi}
                         onChange={(e) => setDimensi(e.target.value)}
                         placeholder="e.g. H-210 L-40.8m atau Volume 1.500 m3"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition-colors"
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
                       />
                     </div>
                   </div>
@@ -535,7 +535,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                           type="checkbox"
                           checked={docAnalisis}
                           onChange={(e) => setDocAnalisis(e.target.checked)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                          className="rounded border-slate-300 text-[#282974] focus:ring-0"
                         />
                         <span className="text-slate-800 font-medium">Analisis</span>
                       </label>
@@ -545,7 +545,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                           type="checkbox"
                           checked={docSSP}
                           onChange={(e) => setDocSSP(e.target.checked)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                          className="rounded border-slate-300 text-[#282974] focus:ring-0"
                         />
                         <span className="text-slate-800 font-medium">SSP</span>
                       </label>
@@ -555,7 +555,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                           type="checkbox"
                           checked={docGambar}
                           onChange={(e) => setDocGambar(e.target.checked)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                          className="rounded border-slate-300 text-[#282974] focus:ring-0"
                         />
                         <span className="text-slate-800 font-medium">Gambar / CAD</span>
                       </label>
@@ -565,7 +565,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                           type="checkbox"
                           checked={docOthers}
                           onChange={(e) => setDocOthers(e.target.checked)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                          className="rounded border-slate-300 text-[#282974] focus:ring-0"
                         />
                         <span className="text-slate-800 font-medium">Others</span>
                       </label>
@@ -578,7 +578,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                           value={detailOthers}
                           onChange={(e) => setDetailOthers(e.target.value)}
                           placeholder="Sebutkan detail kebutuhan dokumen lainnya..."
-                          className="w-full px-3.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600"
+                          className="w-full px-3.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]"
                         />
                       </div>
                     )}
@@ -602,7 +602,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         setFormError('');
                         setFormStep(3);
                       }}
-                      className="flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm shadow-blue-600/20"
+                      className="flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors shadow-sm shadow-[#282974]/20"
                     >
                       <span>Lanjut: Lampiran & Review</span>
                       <ArrowRight className="w-4 h-4" />
@@ -618,7 +618,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                       Upload Dokumen Pendukung (TOR, Gambar Referensi, Data Tanah)
                     </label>
-                    <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-5 text-center transition-colors bg-slate-50">
+                    <div className="border-2 border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-5 text-center transition-colors bg-slate-50">
                       <FileUp className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                       <div className="text-xs text-slate-700 font-medium">
                         Klik untuk memilih berkas atau seret berkas ke sini
@@ -630,7 +630,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         type="file"
                         multiple
                         onChange={handleFileUpload}
-                        className="mt-3 text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                        className="mt-3 text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#282974] file:text-white hover:file:bg-[#1e1f5a] cursor-pointer"
                       />
                     </div>
                   </div>
@@ -717,7 +717,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <span className="text-slate-500">Departemen:</span>
-                    <div className="text-blue-600 font-semibold">{departemenTujuan}</div>
+                    <div className="text-[#282974] font-semibold">{departemenTujuan}</div>
                   </div>
                   <div>
                     <span className="text-slate-500">Target Selesai:</span>
@@ -760,7 +760,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   value={searchTicketQuery}
                   onChange={(e) => setSearchTicketQuery(e.target.value)}
                   placeholder="Ketik nama proyek, pemohon, atau ID tiket..."
-                  className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white"
+                  className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:bg-white"
                 />
               </div>
 
@@ -769,7 +769,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <select
                   value={selectedTicketId}
                   onChange={(e) => setSelectedTicketId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
+                  className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:bg-white"
                 >
                   {tickets
                     .filter(t => 
@@ -793,13 +793,13 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-blue-600">{displayedTicket.ID_Tiket}</span>
+                    <span className="font-mono text-sm font-bold text-[#282974]">{displayedTicket.ID_Tiket}</span>
                     <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold ${
                       displayedTicket.Status_Pengerjaan === 'OPEN'
                         ? 'bg-amber-50 text-amber-700 border border-amber-200'
                         : displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
                     }`}>
                       {displayedTicket.Status_Pengerjaan}
                     </span>
@@ -812,7 +812,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onSelectTicketDetail(displayedTicket)}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors self-start sm:self-auto"
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 rounded-xl border border-[#282974]/25 transition-colors self-start sm:self-auto"
                 >
                   <Eye className="w-4 h-4" />
                   <span>Lihat Seluruh Detail</span>
@@ -841,7 +841,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   </div>
                   <div className={`p-2.5 rounded-lg ${
                     displayedTicket.Status_Pengerjaan === 'PROSES' || displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
-                      ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                      ? 'bg-[#282974]/8 border border-[#282974]/25 text-[#282974]'
                       : 'bg-white border border-slate-200 text-slate-400'
                   }`}>
                     <div className="font-bold">3. Pengerjaan</div>
@@ -893,7 +893,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                                 idTiket: displayedTicket.ID_Tiket,
                                 dokumen: displayedTicket.Dokumen
                               })}
-                              className="px-2.5 py-1 text-[10px] bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 rounded-md flex items-center gap-1 font-semibold transition-colors"
+                              className="px-2.5 py-1 text-[10px] bg-[#282974]/8 hover:bg-[#282974] text-[#282974] hover:text-white border border-[#282974]/25 hover:border-[#282974] rounded-md flex items-center gap-1 font-semibold transition-colors"
                             >
                               <Download className="w-3 h-3" /> Unduh
                             </button>
@@ -979,7 +979,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <select
                   value={editTicketId}
                   onChange={(e) => handleSelectEditTicket(e.target.value)}
-                  className="w-full max-w-md px-3.5 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full max-w-md px-3.5 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974]"
                 >
                   {openTickets.map(t => (
                     <option key={t.ID_Tiket} value={t.ID_Tiket}>
@@ -1073,7 +1073,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   <div className="flex justify-end pt-3">
                     <button
                       type="submit"
-                      className="px-6 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm shadow-blue-600/20"
+                      className="px-6 py-2.5 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors shadow-sm shadow-[#282974]/20"
                     >
                       Simpan Perubahan
                     </button>

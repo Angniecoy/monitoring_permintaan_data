@@ -78,7 +78,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       desc: 'Buat permintaan baru, lampirkan TOR/spek, dan lacak status dokumen',
       pass: 'WBP456',
       badge: 'Sales & Project',
-      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
+      badgeColor: 'bg-[#282974]/10 text-[#282974] border-[#282974]/25'
     },
     {
       id: 'manager',
@@ -87,7 +87,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       desc: 'Disposisi tugas masuk ke staf teknis dan pantau antrean departemen',
       pass: 'WBPMGR',
       badge: 'Manager',
-      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+      badgeColor: 'bg-[#282974]/10 text-[#282974] border-[#282974]/25'
     },
     {
       id: 'staff',
@@ -96,7 +96,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       desc: 'Kerjakan dokumen (Analisis, SSP, Gambar), upload hasil & submit',
       pass: 'WBP123',
       badge: 'Technical Staff',
-      badgeColor: 'bg-sky-50 text-sky-700 border-sky-200'
+      badgeColor: 'bg-[#282974]/10 text-[#282974] border-[#282974]/25'
     },
     {
       id: 'dashboard',
@@ -319,14 +319,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="px-6 pt-5 pb-4 bg-gradient-to-b from-slate-50 to-white border-b border-slate-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-blue-600 text-white font-black text-sm tracking-tighter shadow-sm shadow-blue-600/25">
+              <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#282974] text-white font-black text-sm tracking-tighter shadow-sm shadow-[#282974]/25">
                 WBP
               </div>
               <div>
-                <div className="text-[10px] font-bold tracking-widest text-blue-600 uppercase">
+                <div className="text-[10px] font-bold tracking-widest text-[#282974] uppercase">
                   PT. Waskita Beton Precast, Tbk
                 </div>
-                <h2 className="text-[12px] font-bold text-black-600 tracking-tight">
+                <h2 className="text-[12px] font-bold text-[#282974] tracking-tight">
                   ENGINEERING PORTAL
                 </h2>
               </div>
@@ -342,7 +342,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'login'
-                    ? 'bg-blue-600 text-white shadow-2xs'
+                    ? 'bg-[#282974] text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
@@ -359,7 +359,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'register'
-                    ? 'bg-blue-600 text-white shadow-2xs'
+                    ? 'bg-[#282974] text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
@@ -375,7 +375,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'manage'
-                    ? 'bg-blue-600 text-white shadow-2xs'
+                    ? 'bg-[#282974] text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
@@ -428,25 +428,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         }}
                         className={`flex items-start justify-between p-3 rounded-xl border text-left transition-all ${
                           isSelected
-                            ? 'bg-blue-50/80 border-blue-600 text-slate-900 shadow-2xs'
+                            ? 'bg-[#282974]/8 border-[#282974] text-slate-900 shadow-2xs'
                             : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                         }`}
                       >
                         <div className="pr-2">
-                          <div className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+                          <div className={`text-xs font-semibold ${isSelected ? 'text-[#282974]' : 'text-slate-800'}`}>
                             {role.shortTitle}
                           </div>
                           <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
                             {role.desc}
                           </div>
                           <div className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-medium text-slate-600">
-                            <Users className="w-2.5 h-2.5 text-blue-600" />
+                            <Users className="w-2.5 h-2.5 text-[#282974]" />
                             <span>{countInRole} Akun Terdaftar</span>
                           </div>
                         </div>
                         <div className="shrink-0">
                           {isSelected && (
-                            <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-[#282974] text-white flex items-center justify-center">
                               <Check className="w-3 h-3" />
                             </div>
                           )}
@@ -467,7 +467,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('manage')}
-                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                      className="text-[11px] font-semibold text-[#282974] hover:text-[#1e1f5a]"
                     >
                       Kelola Semua User →
                     </button>
@@ -486,13 +486,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           }}
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all flex items-center gap-1.5 ${
                             isCurrentUsername
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/50'
+                              ? 'bg-[#282974] text-white border-[#282974] shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-[#282974]/50 hover:bg-[#282974]/5'
                           }`}
                         >
                           <User className="w-3 h-3 shrink-0" />
                           <span className="font-semibold">{u.fullName}</span>
-                          <span className={`text-[10px] font-mono ${isCurrentUsername ? 'text-blue-100' : 'text-slate-400'}`}>
+                          <span className={`text-[10px] font-mono ${isCurrentUsername ? 'text-white/80' : 'text-slate-400'}`}>
                             (@{u.username})
                           </span>
                         </button>
@@ -515,7 +515,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="Masukkan username Anda"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 transition-colors"
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors"
                     />
                   </div>
                 </div>
@@ -531,7 +531,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Masukkan password"
-                      className="w-full pl-9 pr-9 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 transition-colors"
+                      className="w-full pl-9 pr-9 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors"
                     />
                     <button
                       type="button"
@@ -547,7 +547,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl shadow-md shadow-[#282974]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>Masuk Aplikasi</span>
@@ -567,7 +567,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setRegError('');
                     setSuccessMsg('');
                   }}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 border border-[#282974]/25 transition-colors"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Buat Akun Baru / Register</span>
@@ -580,10 +580,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* ==================== TAB 2: REGISTRASI AKUN BARU ==================== */}
         {activeTab === 'register' && (
           <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
-            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-start justify-between gap-3">
+            <div className="p-3.5 rounded-xl bg-[#282974]/8 border border-[#282974]/25 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <UserPlus className="w-4 h-4 text-blue-600" />
+                  <UserPlus className="w-4 h-4 text-[#282974]" />
                   <span>Registrasi Akun Pengguna Baru</span>
                 </h3>
                 <p className="text-[11px] text-slate-600 mt-0.5">
@@ -617,7 +617,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={regFullName}
                     onChange={(e) => setRegFullName(e.target.value)}
                     placeholder="Contoh: Ir. Andi Pratama (Sales Infrastruktur)"
-                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15"
                   />
                 </div>
 
@@ -633,7 +633,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       value={regUsername}
                       onChange={(e) => setRegUsername(e.target.value)}
                       placeholder="Contoh: andi_wbp"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15"
                     />
                   </div>
                 </div>
@@ -650,7 +650,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="Buat password akun"
-                      className="w-full pl-9 pr-9 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                      className="w-full pl-9 pr-9 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15"
                     />
                     <button
                       type="button"
@@ -678,12 +678,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         onClick={() => setRegRole(role.id)}
                         className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                           isSelected
-                            ? 'bg-blue-50/80 border-blue-600 text-slate-900 shadow-2xs'
+                            ? 'bg-[#282974]/8 border-[#282974] text-slate-900 shadow-2xs'
                             : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
                         <div className="pr-2">
-                          <div className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+                          <div className={`text-xs font-semibold ${isSelected ? 'text-[#282974]' : 'text-slate-800'}`}>
                             {role.title}
                           </div>
                           <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
@@ -691,7 +691,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           </div>
                         </div>
                         {isSelected && (
-                          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+                          <div className="w-5 h-5 rounded-full bg-[#282974] text-white flex items-center justify-center shrink-0">
                             <Check className="w-3 h-3" />
                           </div>
                         )}
@@ -711,7 +711,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <select
                       value={regDept}
                       onChange={(e) => setRegDept(e.target.value as DepartmentName)}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974]"
                     >
                       <option value="Engineering Precast">Engineering Precast</option>
                       <option value="Engineering Readymix">Engineering Readymix</option>
@@ -731,7 +731,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       value={regWhatsapp}
                       onChange={(e) => setRegWhatsapp(e.target.value)}
                       placeholder="Contoh: 081234567890"
-                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600"
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]"
                     />
                   </div>
                 </div>
@@ -741,7 +741,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
                 <button
                   type="submit"
-                  className="w-full sm:flex-1 py-2.5 px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:flex-1 py-2.5 px-4 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl shadow-md shadow-[#282974]/20 transition-all flex items-center justify-center gap-2"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Simpan & Buat Akun</span>
@@ -766,7 +766,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
               <div>
                 <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-blue-600" />
+                  <Users className="w-4 h-4 text-[#282974]" />
                   <span>Manajemen Daftar User ({users.length} Akun)</span>
                 </h3>
                 <p className="text-[11px] text-slate-600">
@@ -777,7 +777,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('register')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-2xs transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shadow-2xs transition-colors"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>+ Tambah User</span>
@@ -811,11 +811,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {editingUser && (
               <form
                 onSubmit={handleSaveEditUser}
-                className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 space-y-3"
+                className="p-4 rounded-xl bg-[#282974]/6 border border-[#282974]/25 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                    <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-xs font-bold text-[#282974] flex items-center gap-1.5">
+                    <Edit3 className="w-3.5 h-3.5 text-[#282974]" />
                     <span>Edit Akun: {editingUser.fullName}</span>
                   </span>
                   <button
@@ -920,7 +920,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a]"
                   >
                     Simpan Perubahan
                   </button>
@@ -937,13 +937,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   value={searchUserQuery}
                   onChange={(e) => setSearchUserQuery(e.target.value)}
                   placeholder="Cari nama lengkap, username, atau departemen..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:bg-white"
                 />
               </div>
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value as 'ALL' | UserRole)}
-                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-blue-600"
+                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-[#282974]"
               >
                 <option value="ALL">Semua Peran ({users.length})</option>
                 <option value="pemberi_tugas">Pemberi Tugas / Sales</option>
@@ -970,7 +970,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       className="p-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                     >
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-9 h-9 rounded-xl bg-[#282974]/8 border border-[#282974]/25 text-[#282974] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                           {u.fullName.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 space-y-1">
@@ -1025,7 +1025,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             setErrorMsg('');
                             setActiveTab('login');
                           }}
-                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 border border-[#282974]/25 transition-colors flex items-center gap-1"
                           title="Isi ke form login"
                         >
                           <LogIn className="w-3 h-3" />
@@ -1038,7 +1038,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             setEditingUser({ ...u });
                             setEditError('');
                           }}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 border border-slate-200 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-[#282974] hover:bg-slate-100 border border-slate-200 transition-colors"
                           title="Edit User"
                         >
                           <Edit3 className="w-3.5 h-3.5" />

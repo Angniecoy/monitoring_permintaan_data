@@ -141,9 +141,9 @@ export const StaffView: React.FC<StaffViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-sky-50/70 border border-slate-200 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-sky-600">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Eksekusi Staf Teknis
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
@@ -163,7 +163,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
               setActiveStaff(e.target.value);
               setSelectedTicketId('');
             }}
-            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-sky-600 font-sans"
+            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-[#282974] font-sans"
           >
             {allStaff.map(staf => {
               const activeCount = tickets.filter(
@@ -190,18 +190,18 @@ export const StaffView: React.FC<StaffViewProps> = ({
           onClick={() => setActiveTab('aktif')}
           className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
             activeTab === 'aktif' 
-              ? 'bg-sky-50/70 border-sky-500 ring-1 ring-sky-500/20 shadow-xs' 
+              ? 'bg-[#282974]/8 border-[#282974] ring-1 ring-[#282974]/20 shadow-xs' 
               : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
           }`}
         >
           <div>
             <div className="text-[11px] text-slate-600 font-medium">Tugas Aktif (Perlu Dikerjakan)</div>
-            <div className="text-2xl font-mono font-bold text-sky-600 mt-1">
+            <div className="text-2xl font-mono font-bold text-[#282974] mt-1">
               {myActiveTasks.length}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">Status: DISPOSISI & PROSES</div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-[#282974]/10 text-[#282974] flex items-center justify-center font-bold">
             <Clock className="w-5 h-5" />
           </div>
         </div>
@@ -232,7 +232,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
           onClick={() => setActiveTab('semua')}
           className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
             activeTab === 'semua' 
-              ? 'bg-blue-50/70 border-blue-500 ring-1 ring-blue-500/20 shadow-xs' 
+              ? 'bg-[#282974]/8 border-[#282974] ring-1 ring-[#282974]/20 shadow-xs' 
               : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
           }`}
         >
@@ -256,7 +256,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
           onClick={() => setActiveTab('aktif')}
           className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
             activeTab === 'aktif'
-              ? 'bg-sky-600 text-white shadow-sm shadow-sky-600/20'
+              ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -282,7 +282,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
           onClick={() => setActiveTab('semua')}
           className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
             activeTab === 'semua'
-              ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+              ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -337,15 +337,15 @@ export const StaffView: React.FC<StaffViewProps> = ({
                         onClick={() => setSelectedTicketId(ticket.ID_Tiket)}
                         className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
                           isSelected
-                            ? 'bg-sky-50/70 border-sky-500 shadow-sm'
+                            ? 'bg-[#282974]/8 border-[#282974] shadow-sm'
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-mono text-[11px] font-bold text-sky-600">
+                          <span className="font-mono text-[11px] font-bold text-[#282974]">
                             {ticket.ID_Tiket}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#282974]/10 text-[#282974] border border-[#282974]/25">
                             {ticket.Status_Pengerjaan}
                           </span>
                         </div>
@@ -376,7 +376,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <span className="text-[10px] font-mono text-sky-600 uppercase font-bold tracking-wider">
+                        <span className="text-[10px] font-mono text-[#282974] uppercase font-bold tracking-wider">
                           RUANG KERJA EKSEKUSI TIKET
                         </span>
                         <h3 className="text-base font-bold text-slate-900 mt-0.5">
@@ -427,10 +427,10 @@ export const StaffView: React.FC<StaffViewProps> = ({
                                     idTiket: currentTask.ID_Tiket,
                                     dokumen: currentTask.Dokumen
                                   })}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-700 hover:text-white hover:bg-sky-600 hover:border-sky-600 transition-colors text-[11px] font-mono font-semibold group"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#282974]/10 border border-[#282974]/25 text-[#282974] hover:text-white hover:bg-[#282974] hover:border-[#282974] transition-colors text-[11px] font-mono font-semibold group"
                                   title={`Unduh ${trimmed}`}
                                 >
-                                  <Download className="w-3 h-3 text-sky-600 group-hover:text-white group-hover:scale-110 transition-transform" />
+                                  <Download className="w-3 h-3 text-[#282974] group-hover:text-white group-hover:scale-110 transition-transform" />
                                   <span className="truncate max-w-[200px]">{trimmed}</span>
                                 </button>
                               );
@@ -454,11 +454,11 @@ export const StaffView: React.FC<StaffViewProps> = ({
                             onClick={() => setUpdateStatus('PROSES')}
                             className={`p-3 rounded-xl border text-left transition-all ${
                               updateStatus === 'PROSES'
-                                ? 'bg-sky-50 border-sky-500 text-slate-900 shadow-2xs'
+                                ? 'bg-[#282974]/8 border-[#282974] text-slate-900 shadow-2xs'
                                 : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                             }`}
                           >
-                            <div className="text-xs font-bold text-sky-700">PROSES</div>
+                            <div className="text-xs font-bold text-[#282974]">PROSES</div>
                             <div className="text-[11px] text-slate-500 mt-0.5">Sedang dalam analisis / gambar</div>
                           </button>
 
@@ -481,14 +481,14 @@ export const StaffView: React.FC<StaffViewProps> = ({
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                           Upload Dokumen Hasil Engineering (Kalkulasi / Drawing / SSP):
                         </label>
-                        <div className="border border-dashed border-slate-300 hover:border-sky-500 rounded-xl p-4 text-center bg-slate-50 transition-colors">
+                        <div className="border border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-4 text-center bg-slate-50 transition-colors">
                           <FileUp className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                           <div className="text-xs text-slate-700 font-medium">Pilih berkas hasil teknis (PDF, DWG, XLSX)</div>
                           <input
                             type="file"
                             multiple
                             onChange={handleFileUpload}
-                            className="mt-2 text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-700 cursor-pointer"
+                            className="mt-2 text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#282974] file:text-white hover:file:bg-[#1e1f5a] cursor-pointer"
                           />
                         </div>
                       </div>
@@ -520,13 +520,13 @@ export const StaffView: React.FC<StaffViewProps> = ({
                           value={keteranganBalasan}
                           onChange={(e) => setKeteranganBalasan(e.target.value)}
                           placeholder="e.g. Analisis momen lentur dan kapasitas geser telah selesai memenuhi SNI 2847:2019. Gambar shop drawing terlampir..."
-                          className="w-full p-3 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-600"
+                          className="w-full p-3 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]"
                         />
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 px-4 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-sm shadow-sky-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-2.5 px-4 text-xs font-bold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl shadow-sm shadow-[#282974]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                       >
                         <Send className="w-4 h-4" />
                         <span>Simpan Update & Kirim Notifikasi via WhatsApp</span>
@@ -593,7 +593,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                   <tbody className="divide-y divide-slate-200">
                     {filteredCompletedTasks.map(ticket => (
                       <tr key={ticket.ID_Tiket} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3.5 font-mono font-bold text-sky-600 whitespace-nowrap">
+                        <td className="px-4 py-3.5 font-mono font-bold text-[#282974] whitespace-nowrap">
                           {ticket.ID_Tiket}
                         </td>
                         <td className="px-4 py-3.5 font-medium text-slate-900 max-w-xs">
@@ -650,7 +650,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onSelectTicketDetail(ticket)}
-                            className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-lg transition-colors inline-flex items-center gap-1"
+                            className="px-2.5 py-1 text-[11px] font-semibold text-[#282974] hover:text-white bg-[#282974]/10 hover:bg-[#282974] border border-[#282974]/25 hover:border-[#282974] rounded-lg transition-colors inline-flex items-center gap-1"
                           >
                             <Eye className="w-3 h-3" />
                             <span>Detail</span>
@@ -693,7 +693,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
               <tbody className="divide-y divide-slate-200">
                 {myTickets.map(ticket => (
                   <tr key={ticket.ID_Tiket} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-sky-600">{ticket.ID_Tiket}</td>
+                    <td className="px-4 py-3 font-mono font-bold text-[#282974]">{ticket.ID_Tiket}</td>
                     <td className="px-4 py-3 font-semibold text-slate-900 max-w-xs truncate">{ticket.Proyek}</td>
                     <td className="px-4 py-3 text-slate-700">{ticket.Peminta}</td>
                     <td className="px-4 py-3 font-mono text-slate-600">{ticket.Target_Selesai}</td>
@@ -703,7 +703,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                           ? 'bg-amber-50 text-amber-700 border border-amber-200'
                           : ticket.Status_Pengerjaan === 'CLOSED (Selesai)'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-sky-50 text-sky-700 border border-sky-200'
+                          : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
                       }`}>
                         {ticket.Status_Pengerjaan}
                       </span>
@@ -712,7 +712,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onSelectTicketDetail(ticket)}
-                        className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-lg transition-colors inline-flex items-center gap-1"
+                        className="px-2.5 py-1 text-[11px] font-semibold text-[#282974] hover:text-white bg-[#282974]/10 hover:bg-[#282974] border border-[#282974]/25 hover:border-[#282974] rounded-lg transition-colors inline-flex items-center gap-1"
                       >
                         <Eye className="w-3 h-3" />
                         <span>Lihat</span>

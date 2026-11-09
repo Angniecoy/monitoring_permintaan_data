@@ -3,6 +3,44 @@
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-brand: #282974;
+  --color-brand-hover: #1e1f5a;
+  --color-brand-light: #eef0f9;
+  --color-brand-border: #c5c6e6;
+
+  --color-blue-50: #eef0f9;
+  --color-blue-100: #dde0f3;
+  --color-blue-200: #c5c6e6;
+  --color-blue-300: #9da0d4;
+  --color-blue-400: #6f72ba;
+  --color-blue-500: #282974;
+  --color-blue-600: #282974;
+  --color-blue-700: #282974;
+  --color-blue-800: #1e1f5a;
+  --color-blue-900: #161745;
+
+  --color-indigo-50: #eef0f9;
+  --color-indigo-100: #dde0f3;
+  --color-indigo-200: #c5c6e6;
+  --color-indigo-300: #9da0d4;
+  --color-indigo-400: #6f72ba;
+  --color-indigo-500: #282974;
+  --color-indigo-600: #282974;
+  --color-indigo-700: #282974;
+  --color-indigo-800: #1e1f5a;
+  --color-indigo-900: #161745;
+
+  --color-sky-50: #eef0f9;
+  --color-sky-100: #dde0f3;
+  --color-sky-200: #c5c6e6;
+  --color-sky-300: #9da0d4;
+  --color-sky-400: #6f72ba;
+  --color-sky-500: #282974;
+  --color-sky-600: #282974;
+  --color-sky-700: #282974;
+  --color-sky-800: #1e1f5a;
+  --color-sky-900: #161745;
 }
 
 body {

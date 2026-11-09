@@ -15,7 +15,7 @@ export const LayoutGuideModal: React.FC<LayoutGuideModalProps> = ({ isOpen, onCl
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#282974]/10 text-[#282974] border border-[#282974]/25">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -74,7 +74,7 @@ export const LayoutGuideModal: React.FC<LayoutGuideModalProps> = ({ isOpen, onCl
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+                <div className="w-8 h-8 rounded-lg bg-[#282974]/10 text-[#282974] flex items-center justify-center mb-3">
                   <Layers className="w-4 h-4" />
                 </div>
                 <h5 className="font-semibold text-slate-900 text-xs mb-1">1. Progressive Disclosure</h5>
@@ -108,7 +108,7 @@ export const LayoutGuideModal: React.FC<LayoutGuideModalProps> = ({ isOpen, onCl
           {/* Visual Architecture Diagram */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
             <h5 className="text-xs font-semibold text-slate-900 mb-2.5 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-blue-600" /> Alur Lifecycle Tiket dalam Layout Baru
+              <Zap className="w-4 h-4 text-[#282974]" /> Alur Lifecycle Tiket dalam Layout Baru
             </h5>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-mono">
@@ -119,7 +119,7 @@ export const LayoutGuideModal: React.FC<LayoutGuideModalProps> = ({ isOpen, onCl
                 2. Manager Disposisi
               </span>
               <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
-              <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 font-mono">
+              <span className="px-3 py-1.5 rounded-lg bg-[#282974]/10 text-[#282974] border border-[#282974]/25 font-mono">
                 3. Staff Eksekusi (PROSES)
               </span>
               <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
@@ -134,7 +134,7 @@ export const LayoutGuideModal: React.FC<LayoutGuideModalProps> = ({ isOpen, onCl
         <div className="flex items-center justify-end px-6 py-4 bg-slate-50 border-t border-slate-200">
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
+            className="px-5 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors"
           >
             Mengerti, Lanjutkan ke Aplikasi
           </button>

@@ -179,7 +179,7 @@ export default function App() {
   // Mandatory Login Gate: If not logged in, render ONLY the Login & Registration screen
   if (!session.isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans selection:bg-blue-600 selection:text-white p-4">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans selection:bg-[#282974] selection:text-white p-4">
         <LoginModal
           isOpen={true}
           users={users}
@@ -196,7 +196,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#282974] selection:text-white">
       {/* Top Bar */}
       <Navbar
         session={session}
@@ -240,7 +240,7 @@ export default function App() {
                 onClick={() => setDashboardSubTab('analytics')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                   dashboardSubTab === 'analytics'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
@@ -253,7 +253,7 @@ export default function App() {
                 onClick={() => setDashboardSubTab('database')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                   dashboardSubTab === 'database'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >

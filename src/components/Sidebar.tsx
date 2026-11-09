@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       sublabel: 'Kalkulasi & Drawing',
       icon: Wrench,
       badgeCount: inProgressCount,
-      badgeColor: 'bg-sky-500 text-slate-950',
+      badgeColor: 'bg-[#282974] text-white',
     },
     {
       id: 'dashboard',
@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Mobile Header with close button */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-200 lg:hidden">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-blue-600 text-white font-black text-xs flex items-center justify-center">
+              <div className="w-7 h-7 rounded bg-[#282974] text-white font-black text-xs flex items-center justify-center">
                 WBP
               </div>
               <span className="font-bold text-xs text-slate-900">ENGINEERING</span>
@@ -127,14 +127,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Active Role Privilege Badge */}
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-blue-600">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#282974]">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#282974]" />
               <span>Hak Akses Terverifikasi</span>
             </div>
             <div className="text-xs font-bold text-slate-900 truncate">
               {session.userName || session.roleName}
             </div>
-            <div className="text-[11px] font-semibold text-blue-700 truncate">
+            <div className="text-[11px] font-semibold text-[#282974] truncate">
               {session.roleName}
             </div>
             {session.department && (
@@ -163,17 +163,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all group ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
+                      ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/25'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-[#282974]'}`} />
                     <div className="truncate">
                       <div className="text-xs font-semibold truncate leading-tight">
                         {item.label}
                       </div>
-                      <div className={`text-[10px] truncate ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
+                      <div className={`text-[10px] truncate ${isActive ? 'text-white/80' : 'text-slate-500'}`}>
                         {item.sublabel}
                       </div>
                     </div>
@@ -223,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="text-[9px] text-slate-500 font-medium">OPEN</div>
               </div>
               <div className="p-1.5 rounded-lg bg-white border border-slate-200">
-                <div className="text-xs font-mono font-bold text-sky-600 tabular-nums">{inProgressCount}</div>
+                <div className="text-xs font-mono font-bold text-[#282974] tabular-nums">{inProgressCount}</div>
                 <div className="text-[9px] text-slate-500 font-medium">PROSES</div>
               </div>
               <div className="p-1.5 rounded-lg bg-white border border-slate-200">
@@ -237,7 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Footer info in sidebar */}
         <div className="p-3.5 border-t border-slate-200 bg-slate-50 text-[11px]">
           <div className="flex items-center gap-2 mb-1">
-            <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <Building className="w-3.5 h-3.5 text-[#282974] shrink-0" />
             <span className="text-xs font-semibold text-slate-900 tracking-wide">Dept. Engineering</span>
           </div>
           <p className="text-[10px] text-slate-500 leading-snug">

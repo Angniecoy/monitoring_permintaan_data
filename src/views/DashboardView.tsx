@@ -82,9 +82,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-indigo-50/70 border border-slate-200 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Eksekutif & Analitik
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
@@ -117,7 +117,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">Total Permintaan</span>
-            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+            <span className="p-2 rounded-xl bg-[#282974]/10 text-[#282974] border border-[#282974]/20">
               <Layers className="w-4 h-4" />
             </span>
           </div>
@@ -149,11 +149,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">Sedang Dikerjakan</span>
-            <span className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+            <span className="p-2 rounded-xl bg-[#282974]/10 text-[#282974] border border-[#282974]/20">
               <TrendingUp className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-3xl font-mono font-bold text-sky-600 tabular-nums mt-3">
+          <div className="text-3xl font-mono font-bold text-[#282974] tabular-nums mt-3">
             {inProgressCount}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
@@ -183,7 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200">
           <div>
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-blue-600" />
+              <BarChart3 className="w-4 h-4 text-[#282974]" />
               <span>Tren Volume Permintaan Dokumen</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -196,7 +196,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
               type="button"
               onClick={() => setTimePeriod('harian')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                timePeriod === 'harian' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                timePeriod === 'harian' ? 'bg-[#282974] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               📅 Harian
@@ -205,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
               type="button"
               onClick={() => setTimePeriod('mingguan')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                timePeriod === 'mingguan' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                timePeriod === 'mingguan' ? 'bg-[#282974] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               📆 Mingguan
@@ -214,7 +214,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
               type="button"
               onClick={() => setTimePeriod('bulanan')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                timePeriod === 'bulanan' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                timePeriod === 'bulanan' ? 'bg-[#282974] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               🗓️ Bulanan
@@ -232,12 +232,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                   const heightPercent = Math.max(15, Math.round((val / dailyMax) * 85));
                   return (
                     <div key={key} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      <span className="text-[10px] font-mono text-blue-600 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-mono text-[#282974] font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {val} Tiket
                       </span>
                       <div
                         style={{ height: `${heightPercent}%` }}
-                        className="w-full max-w-[48px] bg-gradient-to-t from-blue-600 to-sky-500 rounded-t-lg transition-all group-hover:brightness-110"
+                        className="w-full max-w-[48px] bg-gradient-to-t from-[#282974] to-[#3f419e] rounded-t-lg transition-all group-hover:brightness-110"
                       />
                       <span className="text-[10px] font-mono text-slate-600 mt-2 truncate max-w-[60px]">
                         {key.split('/')[0]}/{key.split('/')[1]}
@@ -258,12 +258,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                 const heightPercent = Math.max(15, Math.round((w.count / weeklyMax) * 85));
                 return (
                   <div key={w.label} className="flex-1 flex flex-col items-center h-full justify-end group">
-                    <span className="text-[10px] font-mono text-indigo-600 font-bold mb-1">
+                    <span className="text-[10px] font-mono text-[#282974] font-bold mb-1">
                       {w.count}
                     </span>
                     <div
                       style={{ height: `${heightPercent}%` }}
-                      className="w-full max-w-[56px] bg-gradient-to-t from-indigo-600 to-blue-500 rounded-t-lg transition-all group-hover:brightness-110"
+                      className="w-full max-w-[56px] bg-gradient-to-t from-[#282974] to-[#3f419e] rounded-t-lg transition-all group-hover:brightness-110"
                     />
                     <span className="text-[11px] text-slate-700 mt-2 font-medium">
                       {w.label}
@@ -280,12 +280,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                 const heightPercent = Math.max(15, Math.round((m.count / monthlyMax) * 85));
                 return (
                   <div key={m.label} className="flex-1 flex flex-col items-center h-full justify-end group">
-                    <span className="text-[10px] font-mono text-sky-600 mb-1 font-bold">
+                    <span className="text-[10px] font-mono text-[#282974] mb-1 font-bold">
                       {m.count} Permintaan
                     </span>
                     <div
                       style={{ height: `${heightPercent}%` }}
-                      className="w-full max-w-[70px] bg-gradient-to-t from-sky-600 to-teal-500 rounded-t-lg transition-all group-hover:brightness-110"
+                      className="w-full max-w-[70px] bg-gradient-to-t from-[#282974] to-[#3f419e] rounded-t-lg transition-all group-hover:brightness-110"
                     />
                     <span className="text-[11px] text-slate-700 mt-2 font-medium">
                       {m.label}
@@ -304,7 +304,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
             <span>Distribusi per Departemen</span>
-            <Layers className="w-4 h-4 text-blue-600" />
+            <Layers className="w-4 h-4 text-[#282974]" />
           </div>
 
           <div className="space-y-3 pt-2">
@@ -317,7 +317,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
                     style={{ width: `${d.percentage}%` }}
-                    className="h-full bg-blue-600 rounded-full transition-all"
+                    className="h-full bg-[#282974] rounded-full transition-all"
                   />
                 </div>
               </div>
@@ -332,7 +332,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
               {docTypes.map(dt => (
                 <div key={dt.name} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <span className="text-slate-700 truncate font-medium">{dt.name}</span>
-                  <span className="font-mono text-blue-600 font-bold ml-1">{dt.count}</span>
+                  <span className="font-mono text-[#282974] font-bold ml-1">{dt.count}</span>
                 </div>
               ))}
             </div>
@@ -343,7 +343,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
             <span>Beban Kerja Tim Staf Engineering</span>
-            <Users className="w-4 h-4 text-sky-600" />
+            <Users className="w-4 h-4 text-[#282974]" />
           </div>
 
           <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
@@ -360,7 +360,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <span className="text-[10px] text-slate-500 block">Aktif</span>
-                    <span className="font-mono font-bold text-sky-600 tabular-nums">
+                    <span className="font-mono font-bold text-[#282974] tabular-nums">
                       {staf.active}
                     </span>
                   </div>
@@ -402,7 +402,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
             <tbody className="divide-y divide-slate-200">
               {tickets.slice(0, 5).map(t => (
                 <tr key={t.ID_Tiket} className="hover:bg-slate-50">
-                  <td className="px-3.5 py-2 font-mono font-bold text-blue-600">{t.ID_Tiket}</td>
+                  <td className="px-3.5 py-2 font-mono font-bold text-[#282974]">{t.ID_Tiket}</td>
                   <td className="px-3.5 py-2 font-semibold text-slate-900 max-w-xs truncate">{t.Proyek}</td>
                   <td className="px-3.5 py-2 text-slate-700">{t.Peminta}</td>
                   <td className="px-3.5 py-2 text-slate-600">{t.Departemen_Tujuan.replace('Engineering ', '')}</td>
@@ -413,7 +413,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                         ? 'bg-amber-50 text-amber-700 border border-amber-200'
                         : t.Status_Pengerjaan === 'CLOSED (Selesai)'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
                     }`}>
                       {t.Status_Pengerjaan}
                     </span>
@@ -422,7 +422,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                     <button
                       type="button"
                       onClick={() => onSelectTicketDetail(t)}
-                      className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-md transition-colors"
+                      className="px-2.5 py-1 text-[11px] font-semibold text-[#282974] hover:text-white bg-[#282974]/10 hover:bg-[#282974] border border-[#282974]/25 hover:border-[#282974] rounded-md transition-colors"
                     >
                       Buka
                     </button>

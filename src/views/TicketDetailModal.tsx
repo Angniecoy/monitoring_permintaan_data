@@ -43,13 +43,13 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
         );
       case 'DISPOSISI':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[#282974]/10 text-[#282974] border border-[#282974]/25">
             <ArrowRight className="w-3.5 h-3.5" /> Didisposisikan ke Staff
           </span>
         );
       case 'PROSES':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[#282974]/10 text-[#282974] border border-[#282974]/25">
             <Clock className="w-3.5 h-3.5" /> Sedang Dikerjakan Staff
           </span>
         );
@@ -85,7 +85,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
         <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-blue-600">{ticket.ID_Tiket}</span>
+              <span className="font-mono text-xs font-bold text-[#282974]">{ticket.ID_Tiket}</span>
               {getStatusBadge(ticket.Status_Pengerjaan)}
             </div>
             <h3 className="text-base font-bold text-slate-900 mt-1 line-clamp-1">
@@ -138,7 +138,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
                   isOpen 
                     ? 'bg-slate-200 text-slate-500'
                     : isDisposisi || isProses
-                    ? 'bg-sky-100 text-sky-700 border border-sky-300 animate-pulse'
+                    ? 'bg-[#282974]/15 text-[#282974] border border-[#282974]/30 animate-pulse'
                     : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                 }`}>
                   {isClosed ? '✓' : '3'}
@@ -171,7 +171,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
             {/* Detail Proyek */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
               <div className="text-xs font-bold text-slate-900 border-b border-slate-200 pb-1.5 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600" /> Informasi Proyek & Sales
+                <FileText className="w-4 h-4 text-[#282974]" /> Informasi Proyek & Sales
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Sales Order (SO):</span>
@@ -202,7 +202,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
             {/* Spesifikasi Teknis */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
               <div className="text-xs font-bold text-slate-900 border-b border-slate-200 pb-1.5 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-600" /> Spesifikasi & Dokumen
+                <CheckCircle2 className="w-4 h-4 text-[#282974]" /> Spesifikasi & Dokumen
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Departemen Tujuan:</span>
@@ -220,7 +220,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
                 <span className="text-slate-500 block mb-1">Dokumen yang Diminta:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {ticket.Dokumen.split(',').map((doc, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium">
+                    <span key={idx} className="px-2 py-0.5 rounded bg-[#282974]/10 text-[#282974] border border-[#282974]/25 text-[11px] font-medium">
                       {doc.trim()}
                     </span>
                   ))}
@@ -232,7 +232,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
           {/* Stakeholders Contact */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="text-xs font-bold text-slate-900 border-b border-slate-200 pb-1.5 mb-3 flex items-center gap-2">
-              <User className="w-4 h-4 text-blue-600" /> Penanggung Jawab & Kontak
+              <User className="w-4 h-4 text-[#282974]" /> Penanggung Jawab & Kontak
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-3 bg-white rounded-lg border border-slate-200">
@@ -296,7 +296,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
                       <button
                         type="button"
                         onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
-                        className="px-2.5 py-1 text-[10px] bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 rounded-md flex items-center gap-1 font-semibold transition-colors"
+                        className="px-2.5 py-1 text-[10px] bg-[#282974]/10 hover:bg-[#282974] text-[#282974] hover:text-white border border-[#282974]/25 hover:border-[#282974] rounded-md flex items-center gap-1 font-semibold transition-colors"
                       >
                         <Download className="w-3 h-3" /> Unduh
                       </button>

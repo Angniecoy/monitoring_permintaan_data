@@ -33,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <a href="/" className="flex items-center gap-2.5 whitespace-nowrap shrink-0 group">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-sm shadow-blue-600/25 group-hover:bg-blue-700 transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-[#282974] text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-sm shadow-[#282974]/25 group-hover:bg-[#1e1f5a] transition-colors">
             WBP
           </div>
           <span className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={onQuickSearchClick}
-          className="w-full flex items-center justify-between px-3.5 py-1.5 text-xs text-slate-500 bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/70 rounded-xl transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between px-3.5 py-1.5 text-xs text-slate-500 bg-slate-50 border border-slate-200 hover:border-[#282974]/40 hover:bg-slate-100/70 rounded-xl transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-slate-400" />
@@ -62,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Zone 3: Active User Profile + User Management + Logout */}
       <div className="flex items-center gap-2.5 shrink-0">
         <div className="hidden sm:flex items-center gap-2.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200">
-          <div className="w-6 h-6 rounded-lg bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-[#282974] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
             {(session.userName || 'WBP').slice(0, 2).toUpperCase()}
           </div>
           <div className="text-left">
@@ -74,7 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               )}
             </div>
-            <div className="text-[10px] text-blue-600 font-semibold tracking-tight">
+            <div className="text-[10px] text-[#282974] font-semibold tracking-tight">
               {session.roleName}
             </div>
           </div>
@@ -84,13 +84,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={onOpenUserManagement}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#282974] hover:text-white bg-[#282974]/8 hover:bg-[#282974] rounded-xl border border-[#282974]/25 hover:border-[#282974] transition-colors whitespace-nowrap shrink-0"
             title="Kelola Daftar User & Registrasi Akun"
           >
             <Users className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Kelola User</span>
             {totalUsersCount !== undefined && (
-              <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px] font-mono font-bold">
+              <span className="px-1.5 py-0.2 rounded-full bg-[#282974] text-white text-[10px] font-mono font-bold">
                 {totalUsersCount}
               </span>
             )}

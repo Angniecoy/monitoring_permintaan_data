@@ -117,9 +117,9 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-indigo-50/70 border border-slate-200 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Manajemen Disposisi & Delegasi
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
@@ -149,7 +149,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                 }}
                 className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   isDeptActive
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
+                    ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
@@ -170,7 +170,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
         {/* Manager Profile card (4 cols) */}
         <div className="md:col-span-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center font-bold text-sm">
+            <div className="w-10 h-10 rounded-xl bg-[#282974]/10 text-[#282974] border border-[#282974]/25 flex items-center justify-center font-bold text-sm">
               MGR
             </div>
             <div>
@@ -195,7 +195,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
         <div className="md:col-span-8 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-indigo-600" />
+              <Users className="w-3.5 h-3.5 text-[#282974]" />
               <span>Beban Kerja Staf Aktif ({activeDept})</span>
             </div>
             <span className="text-[10px] text-slate-500">
@@ -218,7 +218,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                     staff.activeTasks === 0
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       : staff.activeTasks <= 2
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      ? 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
                       : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}>
                     {staff.activeTasks} Aktif
@@ -240,7 +240,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               onClick={() => setActiveViewTab('antrean')}
               className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                 activeViewTab === 'antrean'
-                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  ? 'bg-[#282974] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -251,7 +251,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               onClick={() => setActiveViewTab('histori')}
               className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                 activeViewTab === 'histori'
-                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  ? 'bg-[#282974] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -286,12 +286,12 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                         onClick={() => setSelectedTicketId(ticket.ID_Tiket)}
                         className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
                           isSelected
-                            ? 'bg-indigo-50/70 border-indigo-600 shadow-sm'
+                            ? 'bg-[#282974]/8 border-[#282974] shadow-sm'
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-mono text-[11px] font-bold text-blue-600">
+                          <span className="font-mono text-[11px] font-bold text-[#282974]">
                             {ticket.ID_Tiket}
                           </span>
                           <span className="text-[11px] text-amber-700 font-semibold font-mono">
@@ -319,7 +319,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <div className="text-[11px] font-mono text-indigo-600 font-bold">
+                        <div className="text-[11px] font-mono text-[#282974] font-bold">
                           FORMULIR DISPOSISI RESMI
                         </div>
                         <h3 className="text-sm font-bold text-slate-900 mt-0.5">
@@ -359,7 +359,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                               idTiket: currentTicket.ID_Tiket,
                               dokumen: currentTicket.Dokumen
                             })}
-                            className="inline-flex items-center gap-1 text-[11px] font-mono text-blue-600 hover:text-blue-800 font-semibold underline"
+                            className="inline-flex items-center gap-1 text-[11px] font-mono text-[#282974] hover:text-[#1e1f5a] font-semibold underline"
                           >
                             <Download className="w-3 h-3" />
                             <span>{currentTicket.File_Pendukung.split('||')[0]?.trim()}</span>
@@ -376,7 +376,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                         <select
                           value={selectedStaff || staffList[0]}
                           onChange={(e) => setSelectedStaff(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 font-medium"
+                          className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] font-medium"
                           required
                         >
                           {staffList.map(staf => {
@@ -399,20 +399,20 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                           value={catatanManager}
                           onChange={(e) => setCatatanManager(e.target.value)}
                           placeholder="e.g. Prioritaskan kalkulasi momen lentur dan koordinasikan dengan tim marketing esok hari..."
-                          className="w-full p-3 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                          className="w-full p-3 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]"
                         />
                       </div>
 
-                      <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl text-[11px] text-slate-700 flex items-start gap-2">
-                        <Send className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                      <div className="p-3 bg-[#282974]/8 border border-[#282974]/20 rounded-xl text-[11px] text-slate-700 flex items-start gap-2">
+                        <Send className="w-4 h-4 text-[#282974] shrink-0 mt-0.5" />
                         <div>
-                          Status tiket akan otomatis berubah menjadi <strong className="text-indigo-700">DISPOSISI</strong> dan modal WhatsApp akan muncul untuk mengirim instruksi langsung ke staf.
+                          Status tiket akan otomatis berubah menjadi <strong className="text-[#282974]">DISPOSISI</strong> dan modal WhatsApp akan muncul untuk mengirim instruksi langsung ke staf.
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 px-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm shadow-indigo-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-2.5 px-4 text-xs font-bold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl shadow-sm shadow-[#282974]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                       >
                         <UserCheck className="w-4 h-4" />
                         <span>Disposisikan ke Staf & Kirim WhatsApp</span>
@@ -442,7 +442,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                 <tbody className="divide-y divide-slate-200">
                   {deptTickets.map(ticket => (
                     <tr key={ticket.ID_Tiket} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold text-blue-600">{ticket.ID_Tiket}</td>
+                      <td className="px-4 py-3 font-mono font-bold text-[#282974]">{ticket.ID_Tiket}</td>
                       <td className="px-4 py-3 font-semibold text-slate-900 max-w-xs truncate">{ticket.Proyek}</td>
                       <td className="px-4 py-3 text-slate-700">{ticket.Peminta}</td>
                       <td className="px-4 py-3 text-slate-800 font-medium">
@@ -455,7 +455,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
                             : ticket.Status_Pengerjaan === 'CLOSED (Selesai)'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
                         }`}>
                           {ticket.Status_Pengerjaan}
                         </span>
@@ -464,7 +464,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onSelectTicketDetail(ticket)}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-lg transition-colors"
+                          className="px-2.5 py-1 text-[11px] font-semibold text-[#282974] hover:text-white bg-[#282974]/10 hover:bg-[#282974] border border-[#282974]/25 hover:border-[#282974] rounded-lg transition-colors"
                         >
                           Detail
                         </button>

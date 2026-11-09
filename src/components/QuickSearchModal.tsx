@@ -67,7 +67,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({
               >
                 <div className="min-w-0 pr-3">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-mono text-xs font-bold text-blue-600">
+                    <span className="font-mono text-xs font-bold text-[#282974]">
                       {ticket.ID_Tiket}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-mono">
@@ -82,7 +82,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({
                   </div>
                 </div>
 
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0 transition-colors" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#282974] shrink-0 transition-colors" />
               </div>
             ))
           )}
