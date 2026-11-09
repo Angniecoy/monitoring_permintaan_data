@@ -176,10 +176,10 @@ export default function App() {
     });
   };
 
-  // Mandatory Login Gate: If not logged in, render ONLY the Login & Registration screen
+  // Mandatory Login Gate: If not logged in, render ONLY the Full-Screen Login & Registration view
   if (!session.isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans selection:bg-[#282974] selection:text-white p-4">
+      <div className="min-h-screen w-full bg-slate-900 text-slate-900 font-sans selection:bg-[#282974] selection:text-white">
         <LoginModal
           isOpen={true}
           users={users}

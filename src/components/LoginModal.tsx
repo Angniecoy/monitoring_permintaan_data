@@ -312,11 +312,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           onClose();
         }
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-50 w-screen h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200 overflow-y-auto"
     >
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden my-auto">
+      {/* Full-Width Precast Plant Wallpaper Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <img
+          src="/assets/aistudio/Background_Login_28eb3ddc.jpg"
+          alt="Pabrik Precast PT. Waskita Beton Precast, Tbk"
+          className="w-full h-full object-cover object-center scale-[1.01]"
+        />
+        {/* Subtle dark/brand contrast veil so the central translucent white card stands out sharply */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#282974]/50 via-slate-900/35 to-slate-950/55 backdrop-blur-[1.5px]" />
+      </div>
+
+      {/* Centered Translucent White Main Box with High-Contrast Shadow */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full max-w-2xl bg-white/92 backdrop-blur-md border border-white/80 rounded-2xl shadow-[0_25px_70px_-12px_rgba(15,23,42,0.65)] ring-1 ring-slate-900/10 overflow-hidden my-auto"
+      >
         {/* Brand Header */}
-        <div className="px-6 pt-5 pb-4 bg-gradient-to-b from-slate-50 to-white border-b border-slate-200">
+        <div className="px-6 pt-5 pb-4 bg-gradient-to-b from-white/95 to-slate-50/90 border-b border-slate-200/90">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#282974] text-white font-black text-sm tracking-tighter shadow-sm shadow-[#282974]/25">
@@ -1068,7 +1083,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+        <div className="px-6 py-3.5 bg-slate-50/90 border-t border-slate-200/90 flex items-center justify-between text-[11px] text-slate-600 font-medium">
           <span>PT. Waskita Beton Precast, Tbk · Sistem Multi-User Dinamis</span>
           {canClose && onClose && (
             <button
