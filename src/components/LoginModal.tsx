@@ -326,8 +326,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="text-[10px] font-bold tracking-widest text-blue-600 uppercase">
                   PT. Waskita Beton Precast, Tbk
                 </div>
-                <h2 className="text-[12px] font-bold text-blue-600 tracking-tight">
-                  PORTAL AKSES PERMINTAAN DATA
+                <h2 className="text-[12px] font-bold text-black-600 tracking-tight">
+                  ENGINEERING PORTAL
                 </h2>
               </div>
             </div>
