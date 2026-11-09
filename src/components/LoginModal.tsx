@@ -372,23 +372,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setActiveTab('register');
-                  setRegError('');
-                  setSuccessMsg('');
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === 'register'
-                    ? 'bg-[#282974] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Buat Akun Baru / Register</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
                   setActiveTab('manage');
                   setEditingUser(null);
                 }}
