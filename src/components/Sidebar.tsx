@@ -131,9 +131,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
               <span>Hak Akses Terverifikasi</span>
             </div>
-            <div className="text-xs font-semibold text-slate-900 truncate">
+            <div className="text-xs font-bold text-slate-900 truncate">
+              {session.userName || session.roleName}
+            </div>
+            <div className="text-[11px] font-semibold text-blue-700 truncate">
               {session.roleName}
             </div>
+            {session.department && (
+              <div className="text-[10px] font-medium text-slate-600 truncate">
+                Dept: {session.department}
+              </div>
+            )}
             <div className="text-[10px] text-slate-500 leading-tight">
               Modul dibatasi khusus untuk wewenang peran ini.
             </div>

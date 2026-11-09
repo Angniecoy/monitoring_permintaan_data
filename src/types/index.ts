@@ -53,13 +53,29 @@ export type UserRole =
   | 'staff'
   | 'dashboard';
 
+export interface UserAccount {
+  id: string;
+  fullName: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  roleName: string;
+  department?: DepartmentName;
+  whatsapp?: string;
+  createdAt: string;
+  isDefault?: boolean;
+}
+
 export interface UserSession {
   isLoggedIn: boolean;
+  userId?: string;
+  username?: string;
   role: UserRole;
   roleName: string;
   userName: string;
   department?: DepartmentName;
   staffName?: string;
+  whatsapp?: string;
 }
 
 export interface WhatsAppNotificationPayload {
@@ -69,3 +85,4 @@ export interface WhatsAppNotificationPayload {
   target_role: string;
   target_name: string;
 }
+

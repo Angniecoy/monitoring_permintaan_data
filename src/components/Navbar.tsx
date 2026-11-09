@@ -1,23 +1,27 @@
 import React from 'react';
-import { LogOut, Search, Menu } from 'lucide-react';
+import { LogOut, Search, Menu, Users, UserCheck } from 'lucide-react';
 import { UserSession } from '../types';
 
 interface NavbarProps {
   session: UserSession;
   onOpenLoginModal: () => void;
+  onOpenUserManagement?: () => void;
   onOpenGuideModal?: () => void;
   onToggleSidebarMobile: () => void;
   onQuickSearchClick: () => void;
+  totalUsersCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   session,
   onOpenLoginModal,
+  onOpenUserManagement,
   onToggleSidebarMobile,
-  onQuickSearchClick
+  onQuickSearchClick,
+  totalUsersCount
 }) => {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-6 px-4 sm:px-6 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-4 px-4 sm:px-6 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
       {/* Zone 1: Mobile Hamburger + Brand Wordmark */}
       <div className="flex items-center gap-3 shrink-0">
         <button
@@ -55,18 +59,43 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
       </div>
 
-      {/* Zone 3: Active Role Badge + Auth Action */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="hidden sm:flex items-center gap-2">
-          <div className="text-right">
-            <div className="text-[11px] font-semibold text-slate-900 leading-tight">
-              {session.roleName}
+      {/* Zone 3: Active User Profile + User Management + Logout */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div className="hidden sm:flex items-center gap-2.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="w-6 h-6 rounded-lg bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+            {(session.userName || 'WBP').slice(0, 2).toUpperCase()}
+          </div>
+          <div className="text-left">
+            <div className="text-[11px] font-bold text-slate-900 leading-tight flex items-center gap-1">
+              <span>{session.userName || session.roleName}</span>
+              {session.username && (
+                <span className="text-[10px] font-mono text-slate-500 font-normal">
+                  (@{session.username})
+                </span>
+              )}
             </div>
-            <div className="text-[10px] text-slate-500 font-medium tracking-tight">
-              PT. Waskita Beton Precast, Tbk
+            <div className="text-[10px] text-blue-600 font-semibold tracking-tight">
+              {session.roleName}
             </div>
           </div>
         </div>
+
+        {onOpenUserManagement && (
+          <button
+            type="button"
+            onClick={onOpenUserManagement}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors whitespace-nowrap shrink-0"
+            title="Kelola Daftar User & Registrasi Akun"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Kelola User</span>
+            {totalUsersCount !== undefined && (
+              <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px] font-mono font-bold">
+                {totalUsersCount}
+              </span>
+            )}
+          </button>
+        )}
 
         <button
           type="button"
@@ -81,3 +110,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+

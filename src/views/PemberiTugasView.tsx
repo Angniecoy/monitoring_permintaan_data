@@ -4,12 +4,13 @@ import {
   Clock, AlertCircle, Building2, User, Phone, MapPin, 
   Calendar, Layers, FileCheck, ArrowRight, X, Eye, Download
 } from 'lucide-react';
-import { DepartmentName, Ticket, WhatsAppNotificationPayload } from '../types';
+import { DepartmentName, Ticket, UserSession, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber, generateTicketId, formatCurrentDateTime } from '../data/mockData';
 import { saveFileToStorage, downloadFile } from '../data/fileStore';
 
 interface PemberiTugasViewProps {
   tickets: Ticket[];
+  session?: UserSession;
   onAddTicket: (ticket: Ticket) => void;
   onUpdateTicket: (ticket: Ticket) => void;
   onOpenWhatsApp: (payload: WhatsAppNotificationPayload) => void;
@@ -18,6 +19,7 @@ interface PemberiTugasViewProps {
 
 export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   tickets,
+  session,
   onAddTicket,
   onUpdateTicket,
   onOpenWhatsApp,
@@ -26,8 +28,10 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const [activeTab, setActiveTab] = useState<'baru' | 'lacak' | 'edit'>('baru');
 
   // Form State: Buat Baru
-  const [peminta, setPeminta] = useState('');
-  const [waPeminta, setWaPeminta] = useState('');
+  const [peminta, setPeminta] = useState(
+    session?.userName && !session.userName.startsWith('WBP ') ? session.userName : ''
+  );
+  const [waPeminta, setWaPeminta] = useState(session?.whatsapp || '');
   const [soNumber, setSoNumber] = useState('');
   const [pemasukanPenawaran, setPemasukanPenawaran] = useState('');
   const [tujuanPermintaan, setTujuanPermintaan] = useState('');

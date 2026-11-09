@@ -3,12 +3,14 @@ import {
   Wrench, CheckCircle2, Clock, FileUp, Send, 
   Download, AlertTriangle, ArrowRight, X, FileText, Check, Phone, Eye, Search
 } from 'lucide-react';
-import { Ticket, WhatsAppNotificationPayload } from '../types';
+import { Ticket, UserAccount, UserSession, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber, formatCurrentDateTime } from '../data/mockData';
 import { saveFileToStorage, downloadFile } from '../data/fileStore';
 
 interface StaffViewProps {
   tickets: Ticket[];
+  session?: UserSession;
+  users?: UserAccount[];
   onUpdateTicket: (ticket: Ticket) => void;
   onOpenWhatsApp: (payload: WhatsAppNotificationPayload) => void;
   onSelectTicketDetail: (ticket: Ticket) => void;
@@ -16,19 +18,36 @@ interface StaffViewProps {
 
 export const StaffView: React.FC<StaffViewProps> = ({
   tickets,
+  session,
+  users = [],
   onUpdateTicket,
   onOpenWhatsApp,
   onSelectTicketDetail
 }) => {
-  // Extract all staff
+  // Extract all staff from STRUKTUR_ORG + dynamically registered staff users
   const allStaff: { name: string; dept: string }[] = [];
   Object.entries(STRUKTUR_ORG).forEach(([dept, data]) => {
     Object.keys(data.Staff).forEach(staffName => {
       allStaff.push({ name: staffName, dept });
     });
   });
+  users
+    .filter(u => u.role === 'staff')
+    .forEach(u => {
+      if (!allStaff.some(s => s.name.toLowerCase() === u.fullName.toLowerCase())) {
+        allStaff.push({
+          name: u.fullName,
+          dept: u.department || 'Engineering Precast'
+        });
+      }
+    });
 
-  const [activeStaff, setActiveStaff] = useState<string>('Fikri R');
+  const defaultStaffName =
+    session?.userName && allStaff.some(s => s.name === session.userName)
+      ? session.userName
+      : 'Fikri R';
+
+  const [activeStaff, setActiveStaff] = useState<string>(defaultStaffName);
   const [activeTab, setActiveTab] = useState<'aktif' | 'selesai' | 'semua'>('aktif');
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
   const [updateStatus, setUpdateStatus] = useState<'PROSES' | 'CLOSED (Selesai)'>('PROSES');

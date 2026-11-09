@@ -18,13 +18,19 @@ import { StaffView } from './views/StaffView';
 import { DashboardView } from './views/DashboardView';
 import { DatabaseView } from './views/DatabaseView';
 
-import { Ticket, UserRole, UserSession, WhatsAppNotificationPayload } from './types';
-import { getStoredTickets, saveStoredTickets, resetToDefaultTickets } from './data/mockData';
+import { Ticket, UserAccount, UserRole, UserSession, WhatsAppNotificationPayload } from './types';
+import { 
+  getStoredTickets, saveStoredTickets, resetToDefaultTickets,
+  getStoredUsers, saveStoredUsers, resetToDefaultUsers, formatCurrentDateTime
+} from './data/mockData';
 import { BarChart3, Database } from 'lucide-react';
 
 export default function App() {
   // Global Tickets Data
   const [tickets, setTickets] = useState<Ticket[]>(() => getStoredTickets());
+
+  // Global Registered Users Data (Dynamic Multi-User State)
+  const [users, setUsers] = useState<UserAccount[]>(() => getStoredUsers());
 
   // User Session & Role - Mandatory Protected Login Gate
   const [session, setSession] = useState<UserSession>(() => {
@@ -53,6 +59,7 @@ export default function App() {
 
   // UI Modals State
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalInitialTab, setLoginModalInitialTab] = useState<'login' | 'register' | 'manage'>('login');
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -63,6 +70,11 @@ export default function App() {
   useEffect(() => {
     saveStoredTickets(tickets);
   }, [tickets]);
+
+  // Sync registered users with localStorage
+  useEffect(() => {
+    saveStoredUsers(users);
+  }, [users]);
 
   // Keyboard shortcut: Ctrl + K / Cmd + K for Quick Search
   useEffect(() => {
@@ -95,6 +107,50 @@ export default function App() {
     }
   };
 
+  // Handlers for Dynamic User Registration & Management
+  const handleRegisterUser = (newUser: Omit<UserAccount, 'id' | 'createdAt'>): UserAccount => {
+    const created: UserAccount = {
+      ...newUser,
+      id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      createdAt: formatCurrentDateTime()
+    };
+    setUsers(prev => [created, ...prev]);
+    return created;
+  };
+
+  const handleUpdateUser = (updatedUser: UserAccount) => {
+    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    // If updating the currently logged-in user, sync their session details
+    if (session.userId === updatedUser.id) {
+      const updatedSession: UserSession = {
+        ...session,
+        username: updatedUser.username,
+        userName: updatedUser.fullName,
+        role: updatedUser.role,
+        roleName: updatedUser.roleName,
+        department: updatedUser.department,
+        staffName: updatedUser.role === 'staff' ? updatedUser.fullName : undefined,
+        whatsapp: updatedUser.whatsapp
+      };
+      setSession(updatedSession);
+      setActiveRole(updatedSession.role);
+      try {
+        sessionStorage.setItem('wbp_sim_session', JSON.stringify(updatedSession));
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  const handleResetUsers = () => {
+    const defaults = resetToDefaultUsers();
+    setUsers(defaults);
+  };
+
   const handleLoginSuccess = (newSession: UserSession) => {
     setSession(newSession);
     setActiveRole(newSession.role);
@@ -120,14 +176,20 @@ export default function App() {
     });
   };
 
-  // Mandatory Login Gate: If not logged in, render ONLY the Login screen
+  // Mandatory Login Gate: If not logged in, render ONLY the Login & Registration screen
   if (!session.isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans selection:bg-blue-600 selection:text-white p-4">
         <LoginModal
           isOpen={true}
+          users={users}
           onLoginSuccess={handleLoginSuccess}
+          onRegisterUser={handleRegisterUser}
+          onUpdateUser={handleUpdateUser}
+          onDeleteUser={handleDeleteUser}
+          onResetUsers={handleResetUsers}
           canClose={false}
+          initialTab="login"
         />
       </div>
     );
@@ -139,8 +201,13 @@ export default function App() {
       <Navbar
         session={session}
         onOpenLoginModal={handleLogout}
+        onOpenUserManagement={() => {
+          setLoginModalInitialTab('manage');
+          setIsLoginModalOpen(true);
+        }}
         onToggleSidebarMobile={() => setIsMobileSidebarOpen(prev => !prev)}
         onQuickSearchClick={() => setIsQuickSearchOpen(true)}
+        totalUsersCount={users.length}
       />
 
       {/* Main Layout Area */}
@@ -199,7 +266,9 @@ export default function App() {
           {/* Module: Pemberi Tugas (Sales / Proyek) - STRICT RBAC */}
           {session.role === 'pemberi_tugas' && (
             <PemberiTugasView
+              key={session.userId || session.userName}
               tickets={tickets}
+              session={session}
               onAddTicket={handleAddTicket}
               onUpdateTicket={handleUpdateTicket}
               onOpenWhatsApp={setWhatsAppPayload}
@@ -210,7 +279,10 @@ export default function App() {
           {/* Module: Manager Engineering (Disposisi) - STRICT RBAC */}
           {session.role === 'manager' && (
             <ManagerView
+              key={session.userId || session.userName}
               tickets={tickets}
+              session={session}
+              users={users}
               onUpdateTicket={handleUpdateTicket}
               onOpenWhatsApp={setWhatsAppPayload}
               onSelectTicketDetail={setSelectedTicketDetail}
@@ -220,7 +292,10 @@ export default function App() {
           {/* Module: Staff Engineering (Eksekutor) - STRICT RBAC */}
           {session.role === 'staff' && (
             <StaffView
+              key={session.userId || session.userName}
               tickets={tickets}
+              session={session}
+              users={users}
               onUpdateTicket={handleUpdateTicket}
               onOpenWhatsApp={setWhatsAppPayload}
               onSelectTicketDetail={setSelectedTicketDetail}
@@ -258,12 +333,19 @@ export default function App() {
         onClose={() => setIsGuideModalOpen(false)}
       />
 
-      {/* Login & Role Switcher Modal */}
+      {/* Login, Registration & User Management Modal */}
       <LoginModal
+        key={loginModalInitialTab + String(isLoginModalOpen)}
         isOpen={isLoginModalOpen}
+        users={users}
         onLoginSuccess={handleLoginSuccess}
+        onRegisterUser={handleRegisterUser}
+        onUpdateUser={handleUpdateUser}
+        onDeleteUser={handleDeleteUser}
+        onResetUsers={handleResetUsers}
         onClose={() => setIsLoginModalOpen(false)}
         canClose={session.isLoggedIn}
+        initialTab={loginModalInitialTab}
       />
 
       {/* Ticket Details Inspector Modal */}
@@ -283,3 +365,4 @@ export default function App() {
     </div>
   );
 }
+

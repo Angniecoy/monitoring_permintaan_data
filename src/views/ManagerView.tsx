@@ -4,12 +4,14 @@ import {
   ArrowRight, MessageSquare, AlertCircle, Eye, ShieldCheck, 
   Layers, Users, Check, Download
 } from 'lucide-react';
-import { DepartmentName, Ticket, WhatsAppNotificationPayload } from '../types';
+import { DepartmentName, Ticket, UserAccount, UserSession, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber } from '../data/mockData';
 import { downloadFile } from '../data/fileStore';
 
 interface ManagerViewProps {
   tickets: Ticket[];
+  session?: UserSession;
+  users?: UserAccount[];
   onUpdateTicket: (ticket: Ticket) => void;
   onOpenWhatsApp: (payload: WhatsAppNotificationPayload) => void;
   onSelectTicketDetail: (ticket: Ticket) => void;
@@ -17,20 +19,43 @@ interface ManagerViewProps {
 
 export const ManagerView: React.FC<ManagerViewProps> = ({
   tickets,
+  session,
+  users = [],
   onUpdateTicket,
   onOpenWhatsApp,
   onSelectTicketDetail
 }) => {
-  const [activeDept, setActiveDept] = useState<DepartmentName>('Engineering Precast');
+  const [activeDept, setActiveDept] = useState<DepartmentName>(
+    session?.department || 'Engineering Precast'
+  );
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
   const [selectedStaff, setSelectedStaff] = useState<string>('');
   const [catatanManager, setCatatanManager] = useState<string>('');
   const [activeViewTab, setActiveViewTab] = useState<'antrean' | 'histori'>('antrean');
 
   const deptConfig = STRUKTUR_ORG[activeDept];
-  const managerName = deptConfig.Manager;
-  const managerWa = deptConfig.WA_Manager;
-  const staffList = Object.keys(deptConfig.Staff);
+  const dynamicManager = users.find(
+    u => u.role === 'manager' && u.department === activeDept && !u.isDefault
+  );
+  const managerName =
+    session?.role === 'manager' && session?.department === activeDept && session?.userName
+      ? session.userName
+      : dynamicManager?.fullName || deptConfig.Manager;
+  const managerWa =
+    session?.role === 'manager' && session?.department === activeDept && session?.whatsapp
+      ? session.whatsapp
+      : dynamicManager?.whatsapp || deptConfig.WA_Manager;
+
+  // Merge static department staff with dynamically registered staff in this department
+  const combinedStaffMap: Record<string, string> = { ...deptConfig.Staff };
+  users
+    .filter(u => u.role === 'staff' && (u.department || 'Engineering Precast') === activeDept)
+    .forEach(u => {
+      if (!combinedStaffMap[u.fullName]) {
+        combinedStaffMap[u.fullName] = u.whatsapp || '6281200000000';
+      }
+    });
+  const staffList = Object.keys(combinedStaffMap);
 
   // Tickets for this department
   const deptTickets = tickets.filter(t => t.Departemen_Tujuan === activeDept);
@@ -51,7 +76,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
     ).length;
     return {
       name: staff,
-      wa: deptConfig.Staff[staff],
+      wa: combinedStaffMap[staff] || '6281200000000',
       activeTasks,
       completedTasks
     };
@@ -62,7 +87,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
     if (!currentTicket) return;
 
     const staffToAssign = selectedStaff || staffList[0];
-    const staffWa = deptConfig.Staff[staffToAssign] || '';
+    const staffWa = combinedStaffMap[staffToAssign] || '';
 
     const updated: Ticket = {
       ...currentTicket,

@@ -1,4 +1,136 @@
-import { DepartmentName, DepartmentStructure, Ticket } from '../types';
+import { DepartmentName, DepartmentStructure, Ticket, UserAccount, UserRole } from '../types';
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  pemberi_tugas: 'Pemberi Tugas (Sales / Proyek)',
+  manager: 'Manager Engineering (Disposisi)',
+  staff: 'Staff Engineering (Eksekutor)',
+  dashboard: 'Dashboard Workload & Analitik'
+};
+
+export function getRoleDisplayName(role: UserRole): string {
+  return ROLE_LABELS[role] || 'Pemberi Tugas (Sales / Proyek)';
+}
+
+export const INITIAL_USERS: UserAccount[] = [
+  {
+    id: 'usr-default-sales',
+    fullName: 'Budi Santoso (Sales Tol)',
+    username: 'sales',
+    password: 'WBP456',
+    role: 'pemberi_tugas',
+    roleName: ROLE_LABELS.pemberi_tugas,
+    whatsapp: '6281234567890',
+    createdAt: '20/10/2026 08:00',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-mgr-precast',
+    fullName: 'Aryo BK',
+    username: 'aryo',
+    password: 'WBPMGR',
+    role: 'manager',
+    roleName: ROLE_LABELS.manager,
+    department: 'Engineering Precast',
+    whatsapp: '628562568659',
+    createdAt: '20/10/2026 08:05',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-mgr-readymix',
+    fullName: 'Choerul SB',
+    username: 'choerul',
+    password: 'WBPMGR',
+    role: 'manager',
+    roleName: ROLE_LABELS.manager,
+    department: 'Engineering Readymix',
+    whatsapp: '628562568659',
+    createdAt: '20/10/2026 08:10',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-mgr-konstruksi',
+    fullName: 'Simon',
+    username: 'simon',
+    password: 'WBPMGR',
+    role: 'manager',
+    roleName: ROLE_LABELS.manager,
+    department: 'Engineering Konstruksi',
+    whatsapp: '628562568659',
+    createdAt: '20/10/2026 08:15',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-fikri',
+    fullName: 'Fikri R',
+    username: 'fikri',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Precast',
+    whatsapp: '6281267044965',
+    createdAt: '20/10/2026 08:20',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-ikhsan',
+    fullName: 'Ikhsan',
+    username: 'ikhsan',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Precast',
+    whatsapp: '6282285299441',
+    createdAt: '20/10/2026 08:25',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-nisa',
+    fullName: 'Nisa',
+    username: 'nisa',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Precast',
+    whatsapp: '6281267670706',
+    createdAt: '20/10/2026 08:30',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-fani',
+    fullName: 'Fani',
+    username: 'fani',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Readymix',
+    whatsapp: '6281321804321',
+    createdAt: '20/10/2026 08:35',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-ricky',
+    fullName: 'Ricky',
+    username: 'ricky',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Konstruksi',
+    whatsapp: '6282233669400',
+    createdAt: '20/10/2026 08:40',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-dashboard',
+    fullName: 'Direksi & Manajemen WBP',
+    username: 'admin',
+    password: 'WBPVIEW',
+    role: 'dashboard',
+    roleName: ROLE_LABELS.dashboard,
+    whatsapp: '628111000222',
+    createdAt: '20/10/2026 08:45',
+    isDefault: true
+  }
+];
 
 export const STRUKTUR_ORG: Record<DepartmentName, DepartmentStructure> = {
   "Engineering Precast": {
@@ -216,6 +348,7 @@ export const INITIAL_TICKETS: Ticket[] = [
 ];
 
 const STORAGE_KEY = 'wbp_sim_teknis_tickets_v1';
+const USERS_STORAGE_KEY = 'wbp_sim_teknis_users_v1';
 
 export function getStoredTickets(): Ticket[] {
   try {
@@ -243,6 +376,34 @@ export function saveStoredTickets(tickets: Ticket[]): void {
 export function resetToDefaultTickets(): Ticket[] {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TICKETS));
   return INITIAL_TICKETS;
+}
+
+export function getStoredUsers(): UserAccount[] {
+  try {
+    const raw = localStorage.getItem(USERS_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_USERS;
+  } catch (err) {
+    console.error('Failed reading users from localStorage:', err);
+    return INITIAL_USERS;
+  }
+}
+
+export function saveStoredUsers(users: UserAccount[]): void {
+  try {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch (err) {
+    console.error('Failed saving users to localStorage:', err);
+  }
+}
+
+export function resetToDefaultUsers(): UserAccount[] {
+  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+  return INITIAL_USERS;
 }
 
 export function cleanWhatsAppNumber(phoneStr: string): string {
@@ -276,3 +437,4 @@ export function formatCurrentDateTime(): string {
   const min = String(now.getMinutes()).padStart(2, '0');
   return `${d}/${m}/${y} ${h}:${min}`;
 }
+
