@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Lock, User, KeyRound, AlertCircle, Eye, EyeOff, Check, 
-  UserPlus, Users, Trash2, Edit3, Search, 
+  UserPlus, Users, Trash2, Edit3, Search, ShieldCheck, ChevronDown,
   Phone, RotateCcw, ArrowRight, CheckCircle2, X, LogIn, Activity
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserAccount, UserRole, UserSession } from '../types';
@@ -413,57 +413,46 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             )}
 
             <form onSubmit={handleManualLogin} className="space-y-4">
-              {/* Role Selector */}
+              {/* Role Selector (Compact Dropdown) */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <label htmlFor="login-role-select" className="block text-xs font-semibold text-slate-700">
                     Pilih Peran Akses (Role):
                   </label>
-                  <span className="text-[11px] text-slate-500">
-                    Otomatis menyesuaikan hak akses akun Anda
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#282974]/8 border border-[#282974]/20 text-[10px] font-semibold text-[#282974]">
+                    <Users className="w-2.5 h-2.5 text-[#282974]" />
+                    <span>
+                      {users.filter(u => u.role === selectedRole).length} Akun Terdaftar
+                    </span>
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {roleConfigs.map((role) => {
-                    const isSelected = selectedRole === role.id;
-                    const countInRole = users.filter(u => u.role === role.id).length;
-                    return (
-                      <button
-                        key={role.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedRole(role.id);
-                          setErrorMsg('');
-                        }}
-                        className={`flex items-start justify-between p-3 rounded-xl border text-left transition-all ${
-                          isSelected
-                            ? 'bg-[#282974]/8 border-[#282974] text-slate-900 shadow-2xs'
-                            : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="pr-2">
-                          <div className={`text-xs font-semibold ${isSelected ? 'text-[#282974]' : 'text-slate-800'}`}>
-                            {role.shortTitle}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
-                            {role.desc}
-                          </div>
-                          <div className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-medium text-slate-600">
-                            <Users className="w-2.5 h-2.5 text-[#282974]" />
-                            <span>{countInRole} Akun Terdaftar</span>
-                          </div>
-                        </div>
-                        <div className="shrink-0">
-                          {isSelected && (
-                            <div className="w-5 h-5 rounded-full bg-[#282974] text-white flex items-center justify-center">
-                              <Check className="w-3 h-3" />
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+
+                <div className="relative">
+                  <ShieldCheck className="pointer-events-none absolute left-3 top-2.5 w-4 h-4 text-[#282974]" />
+                  <select
+                    id="login-role-select"
+                    value={selectedRole}
+                    onChange={(e) => {
+                      setSelectedRole(e.target.value as UserRole);
+                      setErrorMsg('');
+                    }}
+                    className="w-full appearance-none pl-9 pr-9 py-2.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#282974]/60 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    {roleConfigs.map((role) => {
+                      const countInRole = users.filter(u => u.role === role.id).length;
+                      return (
+                        <option key={role.id} value={role.id}>
+                          {role.title} ({countInRole} Akun)
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-2.5 w-4 h-4 text-slate-500" />
                 </div>
+
+                <p className="text-[11px] text-slate-500 mt-1 px-0.5 line-clamp-1">
+                  {roleConfigs.find(r => r.id === selectedRole)?.desc}
+                </p>
               </div>
 
               {/* Horizontal Running Ticker / Marquee for Active Tickets (OPEN & PROSES) */}
@@ -695,42 +684,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
-              {/* Pilih Peran / Role */}
+              {/* Pilih Peran / Role (Compact Dropdown) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="register-role-select" className="block text-xs font-semibold text-slate-700 mb-1">
                   Pilih Peran (Role Akses) <span className="text-rose-600">*</span>
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {roleConfigs.map((role) => {
-                    const isSelected = regRole === role.id;
-                    return (
-                      <button
-                        key={role.id}
-                        type="button"
-                        onClick={() => setRegRole(role.id)}
-                        className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
-                          isSelected
-                            ? 'bg-[#282974]/8 border-[#282974] text-slate-900 shadow-2xs'
-                            : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="pr-2">
-                          <div className={`text-xs font-semibold ${isSelected ? 'text-[#282974]' : 'text-slate-800'}`}>
-                            {role.title}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
-                            {role.desc}
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="w-5 h-5 rounded-full bg-[#282974] text-white flex items-center justify-center shrink-0">
-                            <Check className="w-3 h-3" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                <div className="relative">
+                  <ShieldCheck className="pointer-events-none absolute left-3 top-2.5 w-4 h-4 text-[#282974]" />
+                  <select
+                    id="register-role-select"
+                    value={regRole}
+                    onChange={(e) => setRegRole(e.target.value as UserRole)}
+                    className="w-full appearance-none pl-9 pr-9 py-2.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#282974]/60 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    {roleConfigs.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.title}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-2.5 w-4 h-4 text-slate-500" />
                 </div>
+                <p className="text-[11px] text-slate-500 mt-1 px-0.5 line-clamp-1">
+                  {roleConfigs.find(r => r.id === regRole)?.desc}
+                </p>
               </div>
 
               {/* Conditional Department & Optional WhatsApp */}
