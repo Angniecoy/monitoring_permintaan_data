@@ -23,6 +23,7 @@ import {
   getStoredTickets, saveStoredTickets, resetToDefaultTickets,
   getStoredUsers, saveStoredUsers, resetToDefaultUsers, formatCurrentDateTime
 } from './data/mockData';
+import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
 import { BarChart3, Database } from 'lucide-react';
 
 export default function App() {
@@ -155,6 +156,7 @@ export default function App() {
     setSession(newSession);
     setActiveRole(newSession.role);
     setIsLoginModalOpen(false);
+    registerOnlineUser(newSession);
     try {
       sessionStorage.setItem('wbp_sim_session', JSON.stringify(newSession));
     } catch {
@@ -163,6 +165,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    unregisterOnlineUser(session.username);
     try {
       sessionStorage.removeItem('wbp_sim_session');
     } catch {
@@ -175,6 +178,13 @@ export default function App() {
       userName: ''
     });
   };
+
+  // Sync active online status if already in session
+  useEffect(() => {
+    if (session.isLoggedIn && session.username) {
+      registerOnlineUser(session);
+    }
+  }, [session.isLoggedIn, session.username]);
 
   // Mandatory Login Gate: If not logged in, render ONLY the Full-Screen Login & Registration view
   if (!session.isLoggedIn) {

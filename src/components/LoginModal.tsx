@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, User, KeyRound, AlertCircle, Eye, EyeOff, Check, 
   UserPlus, Users, Trash2, Edit3, Search, ShieldCheck, ChevronDown,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserAccount, UserRole, UserSession } from '../types';
 import { ROLE_LABELS, cleanWhatsAppNumber, getStoredTickets } from '../data/mockData';
+import { getStoredOnlineUsers, registerOnlineUser, OnlineUserSession } from '../data/onlineStore';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -34,7 +35,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   canClose = false,
   initialTab = 'login'
 }) => {
-  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'manage'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'manage'>(
+    !canClose && initialTab === 'manage' ? 'login' : initialTab
+  );
+
+  // Online Users State (Real-Time Active Sessions Tracker)
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUserSession[]>(() => getStoredOnlineUsers());
+  const [showOnlineUsersModal, setShowOnlineUsersModal] = useState(false);
+
+  useEffect(() => {
+    const syncUsers = () => {
+      setOnlineUsers(getStoredOnlineUsers());
+    };
+    window.addEventListener('wbp_online_users_updated', syncUsers);
+    window.addEventListener('storage', syncUsers);
+    const interval = setInterval(syncUsers, 4000);
+    return () => {
+      window.removeEventListener('wbp_online_users_updated', syncUsers);
+      window.removeEventListener('storage', syncUsers);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Login State
   const [selectedRole, setSelectedRole] = useState<UserRole>('pemberi_tugas');
@@ -238,6 +259,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setRegWhatsapp('');
 
     if (autoLogin) {
+      registerOnlineUser({
+        isLoggedIn: true,
+        userId: createdUser.id,
+        username: createdUser.username,
+        role: createdUser.role,
+        roleName: createdUser.roleName,
+        userName: createdUser.fullName,
+        department: createdUser.department,
+        staffName: createdUser.role === 'staff' ? createdUser.fullName : undefined,
+        whatsapp: createdUser.whatsapp
+      });
       onLoginSuccess({
         isLoggedIn: true,
         userId: createdUser.id,
@@ -363,38 +395,56 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             </div>
 
-            {/* Mode Switcher Tabs */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-xl self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('login');
-                  setErrorMsg('');
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === 'login'
-                    ? 'bg-[#282974] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Masuk</span>
-              </button>
+            {/* Top Right Header Controls: Mode Switcher & Daftar User Online Widget */}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {activeTab === 'register' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('login');
+                    setRegError('');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-white border border-slate-200 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5 text-[#282974]" />
+                  <span>Form Masuk</span>
+                </button>
+              )}
 
+              {canClose && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(activeTab === 'manage' ? 'login' : 'manage');
+                    setEditingUser(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'manage'
+                      ? 'bg-[#282974] text-white shadow-2xs'
+                      : 'text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-white border border-slate-200'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Kelola User ({users.length})</span>
+                </button>
+              )}
+
+              {/* Widget: Daftar User Online (Real-Time Live Status) */}
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('manage');
-                  setEditingUser(null);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === 'manage'
-                    ? 'bg-[#282974] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
+                onClick={() => setShowOnlineUsersModal(true)}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                title="Lihat siapa saja pengguna yang sedang aktif/masuk ke dalam sesi aplikasi"
               >
-                <Users className="w-3.5 h-3.5" />
-                <span>Daftar User ({users.length})</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <Users className="w-3.5 h-3.5 text-emerald-700 group-hover:scale-110 transition-transform" />
+                <span className="font-bold">Daftar User Online</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px] font-mono font-bold">
+                  {onlineUsers.length}
+                </span>
               </button>
             </div>
           </div>
@@ -778,8 +828,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
         )}
 
-        {/* ==================== TAB 3: MANAJEMEN DAFTAR USER ==================== */}
-        {activeTab === 'manage' && (
+        {/* ==================== TAB 3: MANAJEMEN DAFTAR USER (PROTECTED: AUTHENTICATED ONLY) ==================== */}
+        {activeTab === 'manage' && canClose && (
           <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
               <div>
@@ -1099,6 +1149,119 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Modal / Dialog: Daftar User Online (Real-Time Live Active Sessions) */}
+      {showOnlineUsersModal && (
+        <div 
+          onClick={() => setShowOnlineUsersModal(false)}
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+          >
+            {/* Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-emerald-50/90 via-white to-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">Daftar User Online</h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>{onlineUsers.length} Sesi Aktif</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Personel terdaftar yang saat ini sedang aktif atau masuk ke dalam sesi aplikasi
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOnlineUsersModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Online Users List */}
+            <div className="p-5 space-y-2.5 max-h-[60vh] overflow-y-auto">
+              {onlineUsers.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                  Belum ada sesi pengguna lain yang sedang aktif.
+                </div>
+              ) : (
+                onlineUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="p-3 rounded-xl bg-slate-50/90 hover:bg-slate-50 border border-slate-200/90 flex items-center justify-between gap-3 transition-colors shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-[#282974] text-white font-bold text-xs flex items-center justify-center">
+                          {user.fullName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-slate-900 truncate">
+                            {user.fullName}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            (@{user.username})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500 truncate">
+                          <span className="font-medium text-[#282974]">
+                            {user.roleName || user.role}
+                          </span>
+                          {user.department && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate">{user.department.replace('Engineering ', '')}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold text-[10px]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>{user.lastActiveText || 'Online'}</span>
+                      </span>
+                      <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                        {user.loginTime}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+                <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Terhubung & terpantau secara real-time</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowOnlineUsersModal(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
