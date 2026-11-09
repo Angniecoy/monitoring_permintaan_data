@@ -33,8 +33,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <a href="/" className="flex items-center gap-2.5 whitespace-nowrap shrink-0 group">
-          <div className="w-8 h-8 rounded-lg bg-[#282974] text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-sm shadow-[#282974]/25 group-hover:bg-[#1e1f5a] transition-colors">
-            WBP
+          <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-0.5 flex items-center justify-center shadow-2xs overflow-hidden shrink-0">
+            <img
+              src="/assets/aistudio/logo_perusahaan_91bab227.jfif"
+              alt="Logo PT. Waskita Beton Precast, Tbk"
+              className="w-full h-full object-contain"
+            />
           </div>
           <span className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
             ENGINEERING WBP

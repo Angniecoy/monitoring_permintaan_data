@@ -334,14 +334,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="px-6 pt-5 pb-4 bg-gradient-to-b from-white/95 to-slate-50/90 border-b border-slate-200/90">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#282974] text-white font-black text-sm tracking-tighter shadow-sm shadow-[#282974]/25">
-                WBP
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white border border-slate-200/90 p-1 shadow-xs shrink-0 overflow-hidden">
+                <img
+                  src="/assets/aistudio/logo_perusahaan_91bab227.jfif"
+                  alt="Logo PT. Waskita Beton Precast, Tbk"
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <div>
-                <div className="text-[10px] font-bold tracking-widest text-[#282974] uppercase">
+              <div className="flex flex-col justify-center">
+                <div className="text-[10px] font-bold tracking-widest text-[#282974] uppercase leading-tight">
                   PT. Waskita Beton Precast, Tbk
                 </div>
-                <h2 className="text-[12px] font-bold text-[#282974] tracking-tight">
+                <h2 className="text-[13px] font-extrabold text-[#282974] tracking-tight leading-snug mt-0.5">
                   ENGINEERING PORTAL
                 </h2>
               </div>
