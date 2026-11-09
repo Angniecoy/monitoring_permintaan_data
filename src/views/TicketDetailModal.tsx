@@ -37,30 +37,30 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
     switch (status) {
       case 'OPEN':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
             <Clock className="w-3.5 h-3.5" /> Menunggu Disposisi Manager
           </span>
         );
       case 'DISPOSISI':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
             <ArrowRight className="w-3.5 h-3.5" /> Didisposisikan ke Staff
           </span>
         );
       case 'PROSES':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
             <Clock className="w-3.5 h-3.5" /> Sedang Dikerjakan Staff
           </span>
         );
       case 'CLOSED (Selesai)':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5" /> Selesai (CLOSED)
           </span>
         );
       default:
-        return <span className="text-xs text-slate-400">{status}</span>;
+        return <span className="text-xs text-slate-600">{status}</span>;
     }
   };
 
@@ -79,55 +79,55 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[90vh] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl max-h-[90vh] bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-800/80 border-b border-slate-700/80">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-blue-400">{ticket.ID_Tiket}</span>
+              <span className="font-mono text-xs font-bold text-blue-600">{ticket.ID_Tiket}</span>
               {getStatusBadge(ticket.Status_Pengerjaan)}
             </div>
-            <h3 className="text-base font-bold text-white mt-1 line-clamp-1">
+            <h3 className="text-base font-bold text-slate-900 mt-1 line-clamp-1">
               {ticket.Proyek}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-300">
+        <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-700">
           {/* Stepper Timeline */}
-          <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
               Tahapan Pengerjaan Dokumen
             </div>
             <div className="grid grid-cols-4 gap-2 relative">
               {/* Step 1 */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-xs font-bold mb-1.5">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center justify-center text-xs font-bold mb-1.5">
                   ✓
                 </div>
-                <div className="text-[11px] font-semibold text-white">1. Request</div>
-                <div className="text-[10px] text-slate-400 font-mono">{ticket.Waktu_Request.split(' ')[0]}</div>
+                <div className="text-[11px] font-semibold text-slate-900">1. Request</div>
+                <div className="text-[10px] text-slate-500 font-mono">{ticket.Waktu_Request.split(' ')[0]}</div>
               </div>
 
               {/* Step 2 */}
               <div className="flex flex-col items-center text-center">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 ${
                   isOpen 
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
-                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    ? 'bg-amber-100 text-amber-700 border border-amber-300 animate-pulse'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                 }`}>
                   {isOpen ? '2' : '✓'}
                 </div>
-                <div className="text-[11px] font-semibold text-white">2. Disposisi</div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[11px] font-semibold text-slate-900">2. Disposisi</div>
+                <div className="text-[10px] text-slate-500">
                   {isOpen ? 'Menunggu' : ticket.Manager_Tujuan}
                 </div>
               </div>
@@ -136,15 +136,15 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
               <div className="flex flex-col items-center text-center">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 ${
                   isOpen 
-                    ? 'bg-slate-800 text-slate-600'
+                    ? 'bg-slate-200 text-slate-500'
                     : isDisposisi || isProses
-                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 animate-pulse'
-                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    ? 'bg-sky-100 text-sky-700 border border-sky-300 animate-pulse'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                 }`}>
                   {isClosed ? '✓' : '3'}
                 </div>
-                <div className="text-[11px] font-semibold text-white">3. Pengerjaan</div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[11px] font-semibold text-slate-900">3. Pengerjaan</div>
+                <div className="text-[10px] text-slate-500">
                   {ticket.Staff_Tujuan !== '-' ? ticket.Staff_Tujuan : 'Belum Ditugaskan'}
                 </div>
               </div>
@@ -153,13 +153,13 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
               <div className="flex flex-col items-center text-center">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 ${
                   isClosed
-                    ? 'bg-emerald-500 text-slate-950 font-bold'
-                    : 'bg-slate-800 text-slate-600'
+                    ? 'bg-emerald-600 text-white font-bold'
+                    : 'bg-slate-200 text-slate-500'
                 }`}>
                   {isClosed ? '✓' : '4'}
                 </div>
-                <div className="text-[11px] font-semibold text-white">4. Hasil Terbit</div>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-[11px] font-semibold text-slate-900">4. Hasil Terbit</div>
+                <div className="text-[10px] text-slate-500 font-mono">
                   {ticket.Aktual_Selesai !== '-' ? ticket.Aktual_Selesai.split(' ')[0] : 'Target ' + ticket.Target_Selesai}
                 </div>
               </div>
@@ -169,58 +169,58 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
           {/* Grid Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Detail Proyek */}
-            <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60 space-y-2.5">
-              <div className="text-xs font-bold text-white border-b border-slate-700/60 pb-1.5 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-400" /> Informasi Proyek & Sales
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+              <div className="text-xs font-bold text-slate-900 border-b border-slate-200 pb-1.5 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" /> Informasi Proyek & Sales
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Sales Order (SO):</span>
-                <span className="font-mono text-white font-medium">{ticket.SO || '-'}</span>
+                <span className="text-slate-500">Sales Order (SO):</span>
+                <span className="font-mono text-slate-900 font-semibold">{ticket.SO || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Kode Proyek:</span>
-                <span className="font-mono text-white">{ticket.Kode_Proyek || '-'}</span>
+                <span className="text-slate-500">Kode Proyek:</span>
+                <span className="font-mono text-slate-900">{ticket.Kode_Proyek || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Lokasi:</span>
-                <span className="text-white text-right">{ticket.Lokasi || '-'}</span>
+                <span className="text-slate-500">Lokasi:</span>
+                <span className="text-slate-900 font-medium text-right">{ticket.Lokasi || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Tujuan Permintaan:</span>
-                <span className="text-white text-right">{ticket.Tujuan_Permintaan || '-'}</span>
+                <span className="text-slate-500">Tujuan Permintaan:</span>
+                <span className="text-slate-900 font-medium text-right">{ticket.Tujuan_Permintaan || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Pemasukan Penawaran:</span>
-                <span className="font-mono text-amber-300">{ticket.Pemasukan_Penawaran || '-'}</span>
+                <span className="text-slate-500">Pemasukan Penawaran:</span>
+                <span className="font-mono text-amber-700 font-semibold">{ticket.Pemasukan_Penawaran || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Target Selesai:</span>
-                <span className="font-mono text-emerald-400 font-semibold">{ticket.Target_Selesai}</span>
+                <span className="text-slate-500">Target Selesai:</span>
+                <span className="font-mono text-emerald-700 font-semibold">{ticket.Target_Selesai}</span>
               </div>
             </div>
 
             {/* Spesifikasi Teknis */}
-            <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60 space-y-2.5">
-              <div className="text-xs font-bold text-white border-b border-slate-700/60 pb-1.5 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-400" /> Spesifikasi & Dokumen
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+              <div className="text-xs font-bold text-slate-900 border-b border-slate-200 pb-1.5 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-blue-600" /> Spesifikasi & Dokumen
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Departemen Tujuan:</span>
-                <span className="text-white font-medium">{ticket.Departemen_Tujuan}</span>
+                <span className="text-slate-500">Departemen Tujuan:</span>
+                <span className="text-slate-900 font-semibold">{ticket.Departemen_Tujuan}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Jenis Produk:</span>
-                <span className="text-white text-right">{ticket.Jenis_Produk || '-'}</span>
+                <span className="text-slate-500">Jenis Produk:</span>
+                <span className="text-slate-900 font-medium text-right">{ticket.Jenis_Produk || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Dimensi / Spek:</span>
-                <span className="text-white text-right">{ticket.Dimensi || '-'}</span>
+                <span className="text-slate-500">Dimensi / Spek:</span>
+                <span className="text-slate-900 font-medium text-right">{ticket.Dimensi || '-'}</span>
               </div>
               <div className="pt-1">
-                <span className="text-slate-400 block mb-1">Dokumen yang Diminta:</span>
+                <span className="text-slate-500 block mb-1">Dokumen yang Diminta:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {ticket.Dokumen.split(',').map((doc, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[11px]">
+                    <span key={idx} className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium">
                       {doc.trim()}
                     </span>
                   ))}
@@ -230,49 +230,49 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
           </div>
 
           {/* Stakeholders Contact */}
-          <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60">
-            <div className="text-xs font-bold text-white border-b border-slate-700/60 pb-1.5 mb-3 flex items-center gap-2">
-              <User className="w-4 h-4 text-blue-400" /> Penanggung Jawab & Kontak
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="text-xs font-bold text-slate-900 border-b border-slate-200 pb-1.5 mb-3 flex items-center gap-2">
+              <User className="w-4 h-4 text-blue-600" /> Penanggung Jawab & Kontak
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800">
-                <div className="text-[10px] text-slate-400 uppercase">Pemohon / Sales</div>
-                <div className="font-semibold text-white mt-0.5">{ticket.Peminta}</div>
-                <div className="text-emerald-400 font-mono text-[11px] mt-1 flex items-center gap-1">
+              <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-medium">Pemohon / Sales</div>
+                <div className="font-semibold text-slate-900 mt-0.5">{ticket.Peminta}</div>
+                <div className="text-emerald-700 font-mono text-[11px] mt-1 flex items-center gap-1 font-medium">
                   <Phone className="w-3 h-3" /> +{ticket.WA_Peminta}
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800">
-                <div className="text-[10px] text-slate-400 uppercase">Manager Engineering</div>
-                <div className="font-semibold text-white mt-0.5">{ticket.Manager_Tujuan}</div>
-                <div className="text-emerald-400 font-mono text-[11px] mt-1 flex items-center gap-1">
+              <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-medium">Manager Engineering</div>
+                <div className="font-semibold text-slate-900 mt-0.5">{ticket.Manager_Tujuan}</div>
+                <div className="text-emerald-700 font-mono text-[11px] mt-1 flex items-center gap-1 font-medium">
                   <Phone className="w-3 h-3" /> +{ticket.WA_Manager}
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800">
-                <div className="text-[10px] text-slate-400 uppercase">Staff Eksekutor</div>
-                <div className="font-semibold text-white mt-0.5">
+              <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-medium">Staff Eksekutor</div>
+                <div className="font-semibold text-slate-900 mt-0.5">
                   {ticket.Staff_Tujuan !== '-' ? ticket.Staff_Tujuan : 'Menunggu Delegasi'}
                 </div>
                 {ticket.WA_Staff && ticket.WA_Staff !== '-' ? (
-                  <div className="text-emerald-400 font-mono text-[11px] mt-1 flex items-center gap-1">
+                  <div className="text-emerald-700 font-mono text-[11px] mt-1 flex items-center gap-1 font-medium">
                     <Phone className="w-3 h-3" /> +{ticket.WA_Staff}
                   </div>
                 ) : (
-                  <div className="text-slate-500 text-[11px] mt-1">-</div>
+                  <div className="text-slate-400 text-[11px] mt-1">-</div>
                 )}
               </div>
             </div>
           </div>
 
           {/* Feedback Notes */}
-          <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60">
-            <div className="text-xs font-bold text-white mb-2">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="text-xs font-bold text-slate-900 mb-2">
               💬 Catatan & Pesan Balasan Engineering:
             </div>
-            <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 text-slate-200">
+            <div className="p-3 bg-white rounded-lg border border-slate-200 text-slate-800 font-medium">
               {ticket.Keterangan_Penerima && ticket.Keterangan_Penerima !== '-' 
                 ? ticket.Keterangan_Penerima 
                 : 'Belum ada catatan tambahan dari tim engineering.'}
@@ -282,21 +282,21 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
           {/* Files List */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* File Pendukung */}
-            <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60">
-              <div className="text-xs font-bold text-white mb-2">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="text-xs font-bold text-slate-900 mb-2">
                 📎 Berkas Pendukung (TOR/Gambar/Data Lapangan)
               </div>
               {filesPendukung.length > 0 ? (
                 <div className="space-y-1.5">
                   {filesPendukung.map((file, i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded bg-slate-900/70 border border-slate-800">
-                      <span className="font-mono text-[11px] text-slate-300 truncate max-w-[200px]">
+                    <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
+                      <span className="font-mono text-[11px] text-slate-700 truncate max-w-[200px]">
                         {file.name}
                       </span>
                       <button
                         type="button"
                         onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
-                        className="px-2.5 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white rounded flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1 text-[10px] bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 rounded-md flex items-center gap-1 font-semibold transition-colors"
                       >
                         <Download className="w-3 h-3" /> Unduh
                       </button>
@@ -309,21 +309,21 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
             </div>
 
             {/* File Hasil */}
-            <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60">
-              <div className="text-xs font-bold text-white mb-2">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="text-xs font-bold text-slate-900 mb-2">
                 📁 Dokumen Hasil Engineering
               </div>
               {filesHasil.length > 0 ? (
                 <div className="space-y-1.5">
                   {filesHasil.map((file, i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded bg-emerald-950/20 border border-emerald-900/30">
-                      <span className="font-mono text-[11px] text-emerald-300 truncate max-w-[200px]">
+                    <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/70 border border-emerald-200">
+                      <span className="font-mono text-[11px] text-emerald-800 font-medium truncate max-w-[200px]">
                         {file.name}
                       </span>
                       <button
                         type="button"
                         onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
-                        className="px-2.5 py-1 text-[10px] bg-emerald-700 hover:bg-emerald-600 text-white rounded flex items-center gap-1 transition-colors shadow-sm"
+                        className="px-2.5 py-1 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center gap-1 font-semibold transition-colors shadow-2xs"
                       >
                         <Download className="w-3 h-3" /> Unduh Hasil
                       </button>
@@ -338,11 +338,11 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-800/80 border-t border-slate-700/80">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
           <button
             type="button"
             onClick={handleNotifyRequester}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-300 bg-emerald-950/50 hover:bg-emerald-900/60 rounded-xl border border-emerald-700/50 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Kirim Update via WhatsApp</span>
@@ -350,7 +350,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
 
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors"
+            className="px-5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-300 transition-colors"
           >
             Tutup
           </button>

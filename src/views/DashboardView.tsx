@@ -82,26 +82,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-indigo-50/70 border border-slate-200 shadow-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
             Eksekutif & Analitik
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight mt-0.5">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
             Dashboard Workload & Analitik Dokumen Teknis
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 mt-1">
             Pantau volume permohonan proyek, rasio penyelesaian dokumen, dan distribusi beban kerja personel lintas divisi engineering WBP.
           </p>
         </div>
 
         {/* Filter Department */}
-        <div className="flex items-center gap-2 p-1.5 bg-slate-950/80 rounded-xl border border-slate-800 shrink-0">
-          <Filter className="w-3.5 h-3.5 text-slate-400 ml-2" />
+        <div className="flex items-center gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 shrink-0">
+          <Filter className="w-3.5 h-3.5 text-slate-500 ml-2" />
           <select
             value={filterDept}
             onChange={(e) => setFilterDept(e.target.value)}
-            className="px-2.5 py-1 text-xs font-semibold bg-slate-900 border-0 rounded-lg text-white focus:outline-none"
+            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none"
           >
             <option value="all">Semua Departemen (Global)</option>
             <option value="Engineering Precast">Engineering Precast</option>
@@ -114,89 +114,89 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Permintaan */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Total Permintaan</span>
-            <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+            <span className="text-xs font-semibold text-slate-600">Total Permintaan</span>
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
               <Layers className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-3xl font-mono font-bold text-white tabular-nums mt-3">
+          <div className="text-3xl font-mono font-bold text-slate-900 tabular-nums mt-3">
             {totalCount}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">
+          <div className="text-[11px] text-slate-500 mt-1">
             Terdaftar di basis data
           </div>
         </div>
 
         {/* Menunggu Disposisi */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Menunggu Manager</span>
-            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+            <span className="text-xs font-semibold text-slate-600">Menunggu Manager</span>
+            <span className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
               <Clock className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-3xl font-mono font-bold text-amber-300 tabular-nums mt-3">
+          <div className="text-3xl font-mono font-bold text-amber-600 tabular-nums mt-3">
             {openCount}
           </div>
-          <div className="text-[11px] text-amber-400/90 mt-1">
+          <div className="text-[11px] text-amber-700 font-medium mt-1">
             Status: OPEN
           </div>
         </div>
 
         {/* Sedang Berjalan */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Sedang Dikerjakan</span>
-            <span className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
+            <span className="text-xs font-semibold text-slate-600">Sedang Dikerjakan</span>
+            <span className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
               <TrendingUp className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-3xl font-mono font-bold text-sky-400 tabular-nums mt-3">
+          <div className="text-3xl font-mono font-bold text-sky-600 tabular-nums mt-3">
             {inProgressCount}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">
+          <div className="text-[11px] text-slate-500 mt-1">
             DISPOSISI & PROSES
           </div>
         </div>
 
         {/* Selesai / CLOSED */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Selesai (CLOSED)</span>
-            <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+            <span className="text-xs font-semibold text-slate-600">Selesai (CLOSED)</span>
+            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
               <CheckCircle2 className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-3xl font-mono font-bold text-emerald-400 tabular-nums mt-3">
+          <div className="text-3xl font-mono font-bold text-emerald-600 tabular-nums mt-3">
             {closedCount}
           </div>
-          <div className="text-[11px] text-emerald-400/90 mt-1">
+          <div className="text-[11px] text-emerald-700 font-medium mt-1">
             Tingkat Penyelesaian: {completionRate}%
           </div>
         </div>
       </div>
 
       {/* Interactive Trends Chart Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-800">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-blue-400" />
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-600" />
               <span>Tren Volume Permintaan Dokumen</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Grafik intensitas permintaan per periode waktu (Harian, Mingguan, Bulanan)
             </p>
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 self-start sm:self-auto">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 self-start sm:self-auto">
             <button
               type="button"
               onClick={() => setTimePeriod('harian')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                timePeriod === 'harian' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                timePeriod === 'harian' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               📅 Harian
@@ -205,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
               type="button"
               onClick={() => setTimePeriod('mingguan')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                timePeriod === 'mingguan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                timePeriod === 'mingguan' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               📆 Mingguan
@@ -214,7 +214,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
               type="button"
               onClick={() => setTimePeriod('bulanan')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                timePeriod === 'bulanan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                timePeriod === 'bulanan' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               🗓️ Bulanan
@@ -226,20 +226,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="pt-2">
           {timePeriod === 'harian' && (
             <div className="space-y-3">
-              <div className="h-56 flex items-end gap-3 sm:gap-6 pt-6 px-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
+              <div className="h-56 flex items-end gap-3 sm:gap-6 pt-6 px-4 bg-slate-50 rounded-xl border border-slate-200">
                 {dailyKeys.map(key => {
                   const val = dailyMap[key];
                   const heightPercent = Math.max(15, Math.round((val / dailyMax) * 85));
                   return (
                     <div key={key} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      <span className="text-[10px] font-mono text-blue-400 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-mono text-blue-600 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {val} Tiket
                       </span>
                       <div
                         style={{ height: `${heightPercent}%` }}
-                        className="w-full max-w-[48px] bg-gradient-to-t from-blue-600 to-sky-400 rounded-t-lg transition-all group-hover:brightness-125"
+                        className="w-full max-w-[48px] bg-gradient-to-t from-blue-600 to-sky-500 rounded-t-lg transition-all group-hover:brightness-110"
                       />
-                      <span className="text-[10px] font-mono text-slate-400 mt-2 truncate max-w-[60px]">
+                      <span className="text-[10px] font-mono text-slate-600 mt-2 truncate max-w-[60px]">
                         {key.split('/')[0]}/{key.split('/')[1]}
                       </span>
                     </div>
@@ -253,19 +253,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
           )}
 
           {timePeriod === 'mingguan' && (
-            <div className="h-56 flex items-end gap-4 sm:gap-8 pt-6 px-6 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <div className="h-56 flex items-end gap-4 sm:gap-8 pt-6 px-6 bg-slate-50 rounded-xl border border-slate-200">
               {weeklyData.map(w => {
                 const heightPercent = Math.max(15, Math.round((w.count / weeklyMax) * 85));
                 return (
                   <div key={w.label} className="flex-1 flex flex-col items-center h-full justify-end group">
-                    <span className="text-[10px] font-mono text-indigo-400 mb-1">
+                    <span className="text-[10px] font-mono text-indigo-600 font-bold mb-1">
                       {w.count}
                     </span>
                     <div
                       style={{ height: `${heightPercent}%` }}
-                      className="w-full max-w-[56px] bg-gradient-to-t from-indigo-600 to-blue-500 rounded-t-lg transition-all group-hover:brightness-125"
+                      className="w-full max-w-[56px] bg-gradient-to-t from-indigo-600 to-blue-500 rounded-t-lg transition-all group-hover:brightness-110"
                     />
-                    <span className="text-[11px] text-slate-300 mt-2 font-medium">
+                    <span className="text-[11px] text-slate-700 mt-2 font-medium">
                       {w.label}
                     </span>
                   </div>
@@ -275,19 +275,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
           )}
 
           {timePeriod === 'bulanan' && (
-            <div className="h-56 flex items-end gap-6 sm:gap-12 pt-6 px-8 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <div className="h-56 flex items-end gap-6 sm:gap-12 pt-6 px-8 bg-slate-50 rounded-xl border border-slate-200">
               {monthlyData.map(m => {
                 const heightPercent = Math.max(15, Math.round((m.count / monthlyMax) * 85));
                 return (
                   <div key={m.label} className="flex-1 flex flex-col items-center h-full justify-end group">
-                    <span className="text-[10px] font-mono text-sky-400 mb-1 font-bold">
+                    <span className="text-[10px] font-mono text-sky-600 mb-1 font-bold">
                       {m.count} Permintaan
                     </span>
                     <div
                       style={{ height: `${heightPercent}%` }}
-                      className="w-full max-w-[70px] bg-gradient-to-t from-sky-600 to-teal-400 rounded-t-lg transition-all group-hover:brightness-125"
+                      className="w-full max-w-[70px] bg-gradient-to-t from-sky-600 to-teal-500 rounded-t-lg transition-all group-hover:brightness-110"
                     />
-                    <span className="text-[11px] text-slate-300 mt-2 font-medium">
+                    <span className="text-[11px] text-slate-700 mt-2 font-medium">
                       {m.label}
                     </span>
                   </div>
@@ -301,38 +301,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
       {/* Grid: Department Share & Staff Workload */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Department Share (5 cols) */}
-        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between">
+        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
             <span>Distribusi per Departemen</span>
-            <Layers className="w-4 h-4 text-blue-400" />
+            <Layers className="w-4 h-4 text-blue-600" />
           </div>
 
           <div className="space-y-3 pt-2">
             {deptStats.map(d => (
               <div key={d.dept} className="space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-300 font-medium">{d.dept}</span>
-                  <span className="font-mono text-white font-bold">{d.count} tiket ({d.percentage}%)</span>
+                  <span className="text-slate-700 font-medium">{d.dept}</span>
+                  <span className="font-mono text-slate-900 font-bold">{d.count} tiket ({d.percentage}%)</span>
                 </div>
-                <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
                     style={{ width: `${d.percentage}%` }}
-                    className="h-full bg-blue-500 rounded-full transition-all"
+                    className="h-full bg-blue-600 rounded-full transition-all"
                   />
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="pt-4 border-t border-slate-800">
-            <div className="text-xs font-semibold text-slate-400 mb-2.5">
+          <div className="pt-4 border-t border-slate-200">
+            <div className="text-xs font-semibold text-slate-600 mb-2.5">
               Jenis Dokumen Diminta:
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {docTypes.map(dt => (
-                <div key={dt.name} className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-300 truncate">{dt.name}</span>
-                  <span className="font-mono text-blue-400 font-bold ml-1">{dt.count}</span>
+                <div key={dt.name} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <span className="text-slate-700 truncate font-medium">{dt.name}</span>
+                  <span className="font-mono text-blue-600 font-bold ml-1">{dt.count}</span>
                 </div>
               ))}
             </div>
@@ -340,33 +340,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         </div>
 
         {/* Staff Workload Ranking (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between">
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
             <span>Beban Kerja Tim Staf Engineering</span>
-            <Users className="w-4 h-4 text-sky-400" />
+            <Users className="w-4 h-4 text-sky-600" />
           </div>
 
           <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
             {staffLoadList.map(staf => (
               <div
                 key={staf.name}
-                className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs"
+                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
               >
                 <div>
-                  <div className="font-semibold text-white">{staf.name}</div>
+                  <div className="font-semibold text-slate-900">{staf.name}</div>
                   <div className="text-[10px] text-slate-500">{staf.dept}</div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block">Aktif</span>
-                    <span className="font-mono font-bold text-sky-400 tabular-nums">
+                    <span className="text-[10px] text-slate-500 block">Aktif</span>
+                    <span className="font-mono font-bold text-sky-600 tabular-nums">
                       {staf.active}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block">Selesai</span>
-                    <span className="font-mono font-bold text-emerald-400 tabular-nums">
+                    <span className="text-[10px] text-slate-500 block">Selesai</span>
+                    <span className="font-mono font-bold text-emerald-600 tabular-nums">
                       {staf.closed}
                     </span>
                   </div>
@@ -378,17 +378,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
       </div>
 
       {/* Mini Recent Activity Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
             Aktivitas Registrasi Tiket Terkini
           </h3>
-          <span className="text-xs text-slate-400">Total {tickets.length} Tiket</span>
+          <span className="text-xs text-slate-500 font-medium">Total {tickets.length} Tiket</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
               <tr>
                 <th className="px-3.5 py-2.5 font-semibold">ID Tiket</th>
                 <th className="px-3.5 py-2.5 font-semibold">Nama Proyek</th>
@@ -399,21 +399,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                 <th className="px-3.5 py-2.5 font-semibold text-right">Detail</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-slate-200">
               {tickets.slice(0, 5).map(t => (
-                <tr key={t.ID_Tiket} className="hover:bg-slate-800/40">
-                  <td className="px-3.5 py-2 font-mono font-bold text-blue-400">{t.ID_Tiket}</td>
-                  <td className="px-3.5 py-2 font-medium text-white max-w-xs truncate">{t.Proyek}</td>
-                  <td className="px-3.5 py-2 text-slate-300">{t.Peminta}</td>
-                  <td className="px-3.5 py-2 text-slate-400">{t.Departemen_Tujuan.replace('Engineering ', '')}</td>
-                  <td className="px-3.5 py-2 text-slate-300">{t.Staff_Tujuan}</td>
+                <tr key={t.ID_Tiket} className="hover:bg-slate-50">
+                  <td className="px-3.5 py-2 font-mono font-bold text-blue-600">{t.ID_Tiket}</td>
+                  <td className="px-3.5 py-2 font-semibold text-slate-900 max-w-xs truncate">{t.Proyek}</td>
+                  <td className="px-3.5 py-2 text-slate-700">{t.Peminta}</td>
+                  <td className="px-3.5 py-2 text-slate-600">{t.Departemen_Tujuan.replace('Engineering ', '')}</td>
+                  <td className="px-3.5 py-2 text-slate-700">{t.Staff_Tujuan}</td>
                   <td className="px-3.5 py-2">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                       t.Status_Pengerjaan === 'OPEN'
-                        ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
                         : t.Status_Pengerjaan === 'CLOSED (Selesai)'
-                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                        : 'bg-blue-500/10 text-blue-300 border border-blue-500/20'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200'
                     }`}>
                       {t.Status_Pengerjaan}
                     </span>
@@ -422,7 +422,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                     <button
                       type="button"
                       onClick={() => onSelectTicketDetail(t)}
-                      className="px-2 py-1 text-[11px] text-blue-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded transition-colors"
+                      className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-md transition-colors"
                     >
                       Buka
                     </button>

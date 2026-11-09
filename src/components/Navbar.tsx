@@ -17,22 +17,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   onQuickSearchClick
 }) => {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-6 px-4 sm:px-6 py-3.5 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-6 px-4 sm:px-6 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
       {/* Zone 1: Mobile Hamburger + Brand Wordmark */}
       <div className="flex items-center gap-3 shrink-0">
         <button
           type="button"
           onClick={onToggleSidebarMobile}
-          className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+          className="lg:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <a href="/" className="flex items-center gap-2.5 whitespace-nowrap shrink-0 group">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-md shadow-blue-900/40 group-hover:bg-blue-500 transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-sm shadow-blue-600/25 group-hover:bg-blue-700 transition-colors">
             WBP
           </div>
-          <span className="text-base font-bold tracking-tight text-white whitespace-nowrap">
+          <span className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
             ENGINEERING WBP
           </span>
         </a>
@@ -43,13 +43,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={onQuickSearchClick}
-          className="w-full flex items-center justify-between px-3.5 py-1.5 text-xs text-slate-400 bg-slate-950/70 border border-slate-800 hover:border-slate-700 rounded-xl transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between px-3.5 py-1.5 text-xs text-slate-500 bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/70 rounded-xl transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-slate-500" />
+            <Search className="w-3.5 h-3.5 text-slate-400" />
             <span>Pencarian cepat nomor tiket / proyek...</span>
           </div>
-          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-slate-900 border border-slate-800 rounded">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-white border border-slate-200 rounded shadow-2xs">
             Ctrl K
           </kbd>
         </button>
@@ -59,10 +59,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center gap-3 shrink-0">
         <div className="hidden sm:flex items-center gap-2">
           <div className="text-right">
-            <div className="text-[11px] font-semibold text-white leading-tight">
+            <div className="text-[11px] font-semibold text-slate-900 leading-tight">
               {session.roleName}
             </div>
-            <div className="text-[10px] text-slate-400 font-medium tracking-tight">
+            <div className="text-[10px] text-slate-500 font-medium tracking-tight">
               PT. Waskita Beton Precast, Tbk
             </div>
           </div>
@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={onOpenLoginModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-rose-300 bg-slate-800 hover:bg-slate-700/80 rounded-xl border border-slate-700/60 transition-colors whitespace-nowrap shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-rose-700 bg-slate-100 hover:bg-rose-50 rounded-xl border border-slate-200 hover:border-rose-200 transition-colors whitespace-nowrap shrink-0"
           title="Keluar dari Aplikasi"
         >
           <LogOut className="w-3.5 h-3.5" />

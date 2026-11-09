@@ -7,8 +7,8 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #0b1120;
-  color: #f1f5f9;
+  background-color: #f8fafc;
+  color: #0f172a;
   min-height: 100vh;
   margin: 0;
   -webkit-font-smoothing: antialiased;
@@ -20,12 +20,12 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.8);
+  background: #94a3b8;
 }

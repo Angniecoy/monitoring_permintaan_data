@@ -123,7 +123,7 @@ export default function App() {
   // Mandatory Login Gate: If not logged in, render ONLY the Login screen
   if (!session.isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center font-sans selection:bg-blue-600 selection:text-white p-4">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans selection:bg-blue-600 selection:text-white p-4">
         <LoginModal
           isOpen={true}
           onLoginSuccess={handleLoginSuccess}
@@ -134,7 +134,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* Top Bar */}
       <Navbar
         session={session}
@@ -167,14 +167,14 @@ export default function App() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           {/* Dashboard Mode Selector - STRICTLY EXCLUSIVE to dashboard role */}
           {session.role === 'dashboard' && (
-            <div className="flex items-center gap-2 mb-6 p-1 bg-slate-900 border border-slate-800 rounded-xl w-fit">
+            <div className="flex items-center gap-2 mb-6 p-1 bg-white border border-slate-200 rounded-xl w-fit shadow-xs">
               <button
                 type="button"
                 onClick={() => setDashboardSubTab('analytics')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                   dashboardSubTab === 'analytics'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
@@ -186,11 +186,11 @@ export default function App() {
                 onClick={() => setDashboardSubTab('database')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                   dashboardSubTab === 'database'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Database className="w-3.5 h-3.5 text-emerald-400" />
+                <Database className={`w-3.5 h-3.5 ${dashboardSubTab === 'database' ? 'text-white' : 'text-emerald-600'}`} />
                 <span>Basis Data & Rekapitulasi ({tickets.length})</span>
               </button>
             </div>

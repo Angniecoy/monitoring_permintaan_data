@@ -98,43 +98,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpenMobile && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs lg:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:sticky top-0 lg:top-[57px] left-0 z-40 w-64 h-screen lg:h-[calc(100vh-57px)] bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:sticky top-0 lg:top-[57px] left-0 z-40 w-64 h-screen lg:h-[calc(100vh-57px)] bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out ${
           isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         <div className="p-4 space-y-5 overflow-y-auto">
           {/* Mobile Header with close button */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800 lg:hidden">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200 lg:hidden">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded bg-blue-600 text-white font-black text-xs flex items-center justify-center">
                 WBP
               </div>
-              <span className="font-bold text-xs text-white">ENGINEERING</span>
+              <span className="font-bold text-xs text-slate-900">ENGINEERING</span>
             </div>
             <button
               onClick={onCloseMobile}
-              className="p-1 text-slate-400 hover:text-white"
+              className="p-1 text-slate-500 hover:text-slate-900"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Active Role Privilege Badge */}
-          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-blue-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-blue-600">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
               <span>Hak Akses Terverifikasi</span>
             </div>
-            <div className="text-xs font-semibold text-white truncate">
+            <div className="text-xs font-semibold text-slate-900 truncate">
               {session.roleName}
             </div>
-            <div className="text-[10px] text-slate-400 leading-tight">
+            <div className="text-[10px] text-slate-500 leading-tight">
               Modul dibatasi khusus untuk wewenang peran ini.
             </div>
           </div>
@@ -155,17 +155,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all group ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'}`} />
                     <div className="truncate">
                       <div className="text-xs font-semibold truncate leading-tight">
                         {item.label}
                       </div>
-                      <div className={`text-[10px] truncate ${isActive ? 'text-blue-200' : 'text-slate-500'}`}>
+                      <div className={`text-[10px] truncate ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
                         {item.sublabel}
                       </div>
                     </div>
@@ -183,18 +183,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Database & Archive Navigation Item - EXCLUSIVE to Dashboard/Executive Role */}
           {userRole === 'dashboard' && (
-            <div className="pt-2 border-t border-slate-800">
+            <div className="pt-2 border-t border-slate-200">
               <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase px-3 mb-2">
                 Sistem Basis Data
               </div>
               <button
                 type="button"
                 onClick={() => handleNavClick('dashboard')}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Database className="w-4 h-4 text-emerald-400" />
-                  <span>Basis Data & Rekap</span>
+                  <Database className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium">Basis Data & Rekap</span>
                 </div>
                 <span className="text-[10px] font-mono text-slate-500">
                   {tickets.length} Data
@@ -204,36 +204,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
 
           {/* Quick Metrics Badge Widget - Filtered contextually per role */}
-          <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
               <span>Ringkasan Tiket</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
             </div>
 
             <div className="grid grid-cols-3 gap-1.5 text-center pt-1">
-              <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                <div className="text-xs font-mono font-bold text-amber-300">{openCount}</div>
-                <div className="text-[9px] text-slate-400">OPEN</div>
+              <div className="p-1.5 rounded-lg bg-white border border-slate-200">
+                <div className="text-xs font-mono font-bold text-amber-600 tabular-nums">{openCount}</div>
+                <div className="text-[9px] text-slate-500 font-medium">OPEN</div>
               </div>
-              <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                <div className="text-xs font-mono font-bold text-sky-400">{inProgressCount}</div>
-                <div className="text-[9px] text-slate-400">PROSES</div>
+              <div className="p-1.5 rounded-lg bg-white border border-slate-200">
+                <div className="text-xs font-mono font-bold text-sky-600 tabular-nums">{inProgressCount}</div>
+                <div className="text-[9px] text-slate-500 font-medium">PROSES</div>
               </div>
-              <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                <div className="text-xs font-mono font-bold text-emerald-400">{closedCount}</div>
-                <div className="text-[9px] text-slate-400">CLOSED</div>
+              <div className="p-1.5 rounded-lg bg-white border border-slate-200">
+                <div className="text-xs font-mono font-bold text-emerald-600 tabular-nums">{closedCount}</div>
+                <div className="text-[9px] text-slate-500 font-medium">CLOSED</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer info in sidebar */}
-        <div className="p-3.5 border-t border-slate-800 bg-slate-950/60 rounded-b-2xl text-[11px]">
+        <div className="p-3.5 border-t border-slate-200 bg-slate-50 text-[11px]">
           <div className="flex items-center gap-2 mb-1">
-            <Building className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span className="text-xs font-semibold text-white tracking-wide">Dept. Engineering</span>
+            <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="text-xs font-semibold text-slate-900 tracking-wide">Dept. Engineering</span>
           </div>
-          <p className="text-[10px] text-slate-400 leading-snug">
+          <p className="text-[10px] text-slate-500 leading-snug">
             PT Waskita Beton Precast, Tbk · ISO 9001, 14001 & 45001
           </p>
         </div>
