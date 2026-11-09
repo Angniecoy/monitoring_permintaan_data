@@ -102,13 +102,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Fixed Sidebar Container */}
       <aside
-        className={`fixed lg:sticky top-0 lg:top-[57px] left-0 z-40 w-64 h-screen lg:h-[calc(100vh-57px)] bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 shrink-0 h-screen lg:h-full bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out ${
           isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="p-4 space-y-5 overflow-y-auto">
+        <div className="p-4 space-y-5 overflow-y-auto flex-1">
           {/* Mobile Header with close button */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-200 lg:hidden">
             <div className="flex items-center gap-2">

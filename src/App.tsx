@@ -207,8 +207,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#282974] selection:text-white">
-      {/* Top Bar */}
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#282974] selection:text-white">
+      {/* Top Bar (Fixed at Top of App Shell) */}
       <Navbar
         session={session}
         onOpenLoginModal={handleLogout}
@@ -221,9 +221,9 @@ export default function App() {
         totalUsersCount={users.length}
       />
 
-      {/* Main Layout Area */}
-      <div className="flex-1 flex max-w-[1600px] w-full mx-auto">
-        {/* Sidebar Nav */}
+      {/* Main Layout Area (Fixed Sidebar + Independently Scrollable Right Content Panel) */}
+      <div className="flex-1 flex min-h-0 overflow-hidden max-w-[1600px] w-full mx-auto relative">
+        {/* Fixed Left Sidebar Nav */}
         <Sidebar
           currentRole={session.role}
           userRole={session.role}
@@ -241,8 +241,8 @@ export default function App() {
           tickets={tickets}
         />
 
-        {/* Content Viewport */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        {/* Independently Scrollable Right Content Viewport */}
+        <main className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
           {/* Dashboard Mode Selector - STRICTLY EXCLUSIVE to dashboard role */}
           {session.role === 'dashboard' && (
             <div className="flex items-center gap-2 mb-6 p-1 bg-white border border-slate-200 rounded-xl w-fit shadow-xs">
