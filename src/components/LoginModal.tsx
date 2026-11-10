@@ -249,15 +249,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    const roleObj = roleConfigs.find(r => r.id === regRole);
-    const roleTitle = roleObj ? roleObj.title : ROLE_LABELS[regRole];
-    const needsDept = regRole === 'manager' || regRole === 'staff';
+    const safeRole: UserRole = regRole === 'dashboard' ? 'pemberi_tugas' : regRole;
+    const roleObj = loginRoleConfigs.find(r => r.id === safeRole);
+    const roleTitle = roleObj ? roleObj.title : ROLE_LABELS[safeRole];
+    const needsDept = safeRole === 'manager' || safeRole === 'staff';
 
     const createdUser = onRegisterUser({
       fullName: cleanName,
       username: cleanUser,
       password: regPassword,
-      role: regRole,
+      role: safeRole,
       roleName: roleTitle,
       department: needsDept ? regDept : undefined,
       whatsapp: cleanWhatsAppNumber(cleanWa)
@@ -764,7 +765,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <ShieldCheck className="pointer-events-none absolute left-3 top-2.5 w-4 h-4 text-[#282974]" />
                   <select
                     id="register-role-select"
-                    value={regRole}
+                    value={regRole === 'dashboard' ? 'pemberi_tugas' : regRole}
                     onChange={(e) => setRegRole(e.target.value as UserRole)}
                     className="w-full appearance-none pl-9 pr-9 py-2.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#282974]/60 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors cursor-pointer shadow-2xs"
                   >
@@ -777,7 +778,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <ChevronDown className="pointer-events-none absolute right-3 top-2.5 w-4 h-4 text-slate-500" />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1 px-0.5 line-clamp-1">
-                  {roleConfigs.find(r => r.id === regRole)?.desc}
+                  {loginRoleConfigs.find(r => r.id === regRole)?.desc}
                 </p>
               </div>
 
@@ -951,14 +952,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Peran / Role</label>
                     <select
-                      value={editingUser.role}
+                      value={editingUser.role === 'dashboard' ? 'pemberi_tugas' : editingUser.role}
                       onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
                       className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900"
                     >
                       <option value="pemberi_tugas">Pemberi Tugas (Sales / Proyek)</option>
                       <option value="manager">Manager Engineering (Disposisi)</option>
                       <option value="staff">Staff Engineering (Eksekutor)</option>
-                      <option value="dashboard">Dashboard Workload & Analitik</option>
                     </select>
                   </div>
 
