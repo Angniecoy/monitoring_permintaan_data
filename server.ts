@@ -60,7 +60,7 @@ const ROLE_LABELS: Record<string, string> = {
   pemberi_tugas: 'Pemberi Tugas (Sales / Proyek)',
   manager: 'Manager Engineering (Disposisi)',
   staff: 'Staff Engineering (Eksekutor)',
-  dashboard: 'Administrator / Dashboard & Analitik'
+  dashboard: 'Dashboard & Analitik'
 };
 
 const INITIAL_USERS: ServerUserAccount[] = [
