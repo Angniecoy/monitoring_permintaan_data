@@ -1447,7 +1447,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Footer */}
         <div className="px-6 py-3.5 bg-slate-50/90 border-t border-slate-200/90 flex items-center justify-between text-[11px] text-slate-600 font-medium">
-          <span>PT. Waskita Beton Precast, Tbk · 2026</span>
+          <span>PT. Waskita Beton Precast, Tbk · @2026</span>
           {canClose && onClose && (
             <button
               type="button"

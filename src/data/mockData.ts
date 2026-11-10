@@ -416,7 +416,7 @@ export function getGasWebAppUrl(): string {
 }
 
 export const GAS_BACKEND_SCRIPT_TEMPLATE = `/**
- * GOOGLE APPS SCRIPT BACKEND - PT WASKITA BETON PRECAST TBK
+ * GOOGLE APPS SCRIPT BACKEND - PT. WASKITA BETON PRECAST TBK
  * Terhubung langsung ke Google Drive Folder ID: ${GOOGLE_DRIVE_FOLDER_ID}
  * Cara Pakai: Buka script.google.com -> Proyek Baru -> Tempel kode ini -> Deploy sebagai Web App (Who has access: Anyone)
  */

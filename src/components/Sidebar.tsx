@@ -277,7 +277,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-xs font-semibold text-slate-900 tracking-wide">Dept. Engineering</span>
             </div>
             <p className="text-[10px] text-slate-500 leading-snug">
-              PT Waskita Beton Precast, Tbk · ISO 9001, 14001 & 45001
+              PT. Waskita Beton Precast, Tbk · @2026
             </p>
           </div>
         </div>
