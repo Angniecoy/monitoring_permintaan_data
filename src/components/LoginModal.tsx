@@ -134,6 +134,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   ];
 
+  // Public role dropdown options (strictly 3 roles: Pemberi Tugas, Manager Engineering, Staff Engineering)
+  const loginRoleConfigs = roleConfigs.filter(r => r.id !== 'dashboard');
+
   const handleManualLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -156,7 +159,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     );
 
     if (matchingUsers.length > 0) {
-      // Find user with matching password (prefer matching selectedRole if multiple exist)
       const exactRoleMatch = matchingUsers.find(
         u => u.password === password && u.role === selectedRole
       );
@@ -186,17 +188,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     }
 
-    // 2. Fallback support for legacy universal 'WBP' username per role
+    // 2. Fallback support for legacy universal 'WBP' username
     if (trimmedUsername.toUpperCase() === 'WBP') {
-      const currentConfig = roleConfigs.find(r => r.id === selectedRole);
-      if (currentConfig && password === currentConfig.pass) {
+      const currentConfig =
+        roleConfigs.find(r => r.id === selectedRole && r.pass === password) ||
+        roleConfigs.find(r => r.pass === password);
+      if (currentConfig) {
         onLoginSuccess({
           isLoggedIn: true,
           username: 'WBP',
-          role: selectedRole,
+          role: currentConfig.id,
           roleName: currentConfig.title,
           userName: `WBP ${currentConfig.badge}`,
-          isAdmin: selectedRole === 'dashboard'
+          isAdmin: currentConfig.id === 'dashboard'
         });
         return;
       } else {
@@ -205,7 +209,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     }
 
-    setErrorMsg(`Akun dengan username "${trimmedUsername}" belum terdaftar. Silakan klik "Buat Akun Baru / Register" untuk mendaftar.`);
+    setErrorMsg(`Kredensial username "${trimmedUsername}" atau password tidak ditemukan.`);
   };
 
   const validateAndCreateAccount = (autoLogin: boolean) => {
@@ -290,7 +294,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       });
     } else {
       // Pre-fill login form so user can immediately sign in
-      setSelectedRole(createdUser.role);
+      if (createdUser.role !== 'dashboard') {
+        setSelectedRole(createdUser.role);
+      }
       setUsername(createdUser.username);
       setPassword(createdUser.password);
       setErrorMsg('');
@@ -475,7 +481,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             )}
 
             <form onSubmit={handleManualLogin} className="space-y-4">
-              {/* Role Selector (Compact Dropdown) */}
+              {/* Role Selector (Compact Dropdown - 3 Roles Only) */}
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <label htmlFor="login-role-select" className="block text-xs font-semibold text-slate-700">
@@ -500,7 +506,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     }}
                     className="w-full appearance-none pl-9 pr-9 py-2.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#282974]/60 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors cursor-pointer shadow-2xs"
                   >
-                    {roleConfigs.map((role) => {
+                    {loginRoleConfigs.map((role) => {
                       const countInRole = users.filter(u => u.role === role.id).length;
                       return (
                         <option key={role.id} value={role.id}>
@@ -513,7 +519,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
 
                 <p className="text-[11px] text-slate-500 mt-1 px-0.5 line-clamp-1">
-                  {roleConfigs.find(r => r.id === selectedRole)?.desc}
+                  {loginRoleConfigs.find(r => r.id === selectedRole)?.desc}
                 </p>
               </div>
 
@@ -762,7 +768,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     onChange={(e) => setRegRole(e.target.value as UserRole)}
                     className="w-full appearance-none pl-9 pr-9 py-2.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#282974]/60 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors cursor-pointer shadow-2xs"
                   >
-                    {roleConfigs.map((role) => (
+                    {loginRoleConfigs.map((role) => (
                       <option key={role.id} value={role.id}>
                         {role.title}
                       </option>
@@ -1094,7 +1100,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedRole(u.role);
                             setUsername(u.username);
                             setPassword(u.password);
                             setErrorMsg('');
