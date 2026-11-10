@@ -771,7 +771,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {/* Call-to-Action for Registration & User Management */}
             <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span className="text-xs text-slate-600">
-                Pengguna baru atau belum memiliki akun personel?
               </span>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
