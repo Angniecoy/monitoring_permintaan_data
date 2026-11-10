@@ -60,7 +60,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   }, []);
 
   // Login State
-  const [selectedRole, setSelectedRole] = useState<UserRole>('pemberi_tugas');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -159,11 +158,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     );
 
     if (matchingUsers.length > 0) {
-      const exactRoleMatch = matchingUsers.find(
-        u => u.password === password && u.role === selectedRole
-      );
-      const anyMatch = matchingUsers.find(u => u.password === password);
-      const matchedUser = exactRoleMatch || anyMatch;
+      const matchedUser = matchingUsers.find(u => u.password === password);
 
       if (matchedUser) {
         onLoginSuccess({
@@ -188,11 +183,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     }
 
-    // 2. Fallback support for legacy universal 'WBP' username
+    // 2. Fallback support for legacy universal 'WBP' username matched by role password
     if (trimmedUsername.toUpperCase() === 'WBP') {
-      const currentConfig =
-        roleConfigs.find(r => r.id === selectedRole && r.pass === password) ||
-        roleConfigs.find(r => r.pass === password);
+      const currentConfig = roleConfigs.find(r => r.pass === password);
       if (currentConfig) {
         onLoginSuccess({
           isLoggedIn: true,
@@ -204,7 +197,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         });
         return;
       } else {
-        setErrorMsg('Password tidak sesuai untuk akses role yang dipilih!');
+        setErrorMsg('Password tidak sesuai untuk kredensial akses resmi!');
         return;
       }
     }
@@ -295,9 +288,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       });
     } else {
       // Pre-fill login form so user can immediately sign in
-      if (createdUser.role !== 'dashboard') {
-        setSelectedRole(createdUser.role);
-      }
       setUsername(createdUser.username);
       setPassword(createdUser.password);
       setErrorMsg('');
@@ -482,48 +472,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             )}
 
             <form onSubmit={handleManualLogin} className="space-y-4">
-              {/* Role Selector (Compact Dropdown - 3 Roles Only) */}
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <label htmlFor="login-role-select" className="block text-xs font-semibold text-slate-700">
-                    Pilih Peran Akses (Role):
-                  </label>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#282974]/8 border border-[#282974]/20 text-[10px] font-semibold text-[#282974]">
-                    <Users className="w-2.5 h-2.5 text-[#282974]" />
-                    <span>
-                      {users.filter(u => u.role === selectedRole).length} Akun Terdaftar
-                    </span>
-                  </span>
-                </div>
-
-                <div className="relative">
-                  <ShieldCheck className="pointer-events-none absolute left-3 top-2.5 w-4 h-4 text-[#282974]" />
-                  <select
-                    id="login-role-select"
-                    value={selectedRole}
-                    onChange={(e) => {
-                      setSelectedRole(e.target.value as UserRole);
-                      setErrorMsg('');
-                    }}
-                    className="w-full appearance-none pl-9 pr-9 py-2.5 text-xs font-semibold bg-white border border-slate-300 hover:border-[#282974]/60 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:ring-2 focus:ring-[#282974]/15 transition-colors cursor-pointer shadow-2xs"
-                  >
-                    {loginRoleConfigs.map((role) => {
-                      const countInRole = users.filter(u => u.role === role.id).length;
-                      return (
-                        <option key={role.id} value={role.id}>
-                          {role.title} ({countInRole} Akun)
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-2.5 w-4 h-4 text-slate-500" />
-                </div>
-
-                <p className="text-[11px] text-slate-500 mt-1 px-0.5 line-clamp-1">
-                  {loginRoleConfigs.find(r => r.id === selectedRole)?.desc}
-                </p>
-              </div>
-
               {/* Horizontal Running Ticker / Marquee for Active Tickets (OPEN & PROSES) */}
               <div className="p-3 rounded-xl bg-slate-50/95 border border-slate-200/90 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between gap-2">
