@@ -1,0 +1,895 @@
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const GOOGLE_DRIVE_FOLDER_ID = '1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF';
+const DRIVE_USERS_DB_FILENAME = 'wbp_users_database.json';
+const DRIVE_USER_FILE_PREFIX = 'WBP_USER_';
+
+interface ServerUserAccount {
+  id: string;
+  fullName: string;
+  username: string;
+  password: string;
+  role: 'pemberi_tugas' | 'manager' | 'staff' | 'dashboard';
+  roleName: string;
+  department?: string;
+  whatsapp?: string;
+  createdAt: string;
+  isDefault?: boolean;
+  isAdmin?: boolean;
+}
+
+interface CentralizedCloudDB {
+  folderId: string;
+  updatedAt: string;
+  users: ServerUserAccount[];
+  deletedUsernames: string[];
+  gasWebAppUrl?: string;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  pemberi_tugas: 'Pemberi Tugas (Sales / Proyek)',
+  manager: 'Manager Engineering (Disposisi)',
+  staff: 'Staff Engineering (Eksekutor)',
+  dashboard: 'Administrator / Dashboard & Analitik'
+};
+
+const INITIAL_USERS: ServerUserAccount[] = [
+  {
+    id: 'usr-default-sales',
+    fullName: 'Budi Santoso (Sales Tol)',
+    username: 'sales',
+    password: 'WBP456',
+    role: 'pemberi_tugas',
+    roleName: ROLE_LABELS.pemberi_tugas,
+    whatsapp: '6281234567890',
+    createdAt: '20/10/2026 08:00',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-mgr-precast',
+    fullName: 'Aryo BK',
+    username: 'aryo',
+    password: 'WBPMGR',
+    role: 'manager',
+    roleName: ROLE_LABELS.manager,
+    department: 'Engineering Precast',
+    whatsapp: '628562568659',
+    createdAt: '20/10/2026 08:05',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-mgr-readymix',
+    fullName: 'Choerul SB',
+    username: 'choerul',
+    password: 'WBPMGR',
+    role: 'manager',
+    roleName: ROLE_LABELS.manager,
+    department: 'Engineering Readymix',
+    whatsapp: '628562568659',
+    createdAt: '20/10/2026 08:10',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-mgr-konstruksi',
+    fullName: 'Simon',
+    username: 'simon',
+    password: 'WBPMGR',
+    role: 'manager',
+    roleName: ROLE_LABELS.manager,
+    department: 'Engineering Konstruksi',
+    whatsapp: '628562568659',
+    createdAt: '20/10/2026 08:15',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-fikri',
+    fullName: 'Fikri R',
+    username: 'fikri',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Precast',
+    whatsapp: '6281267044965',
+    createdAt: '20/10/2026 08:20',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-ikhsan',
+    fullName: 'Ikhsan',
+    username: 'ikhsan',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Precast',
+    whatsapp: '6282285299441',
+    createdAt: '20/10/2026 08:25',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-nisa',
+    fullName: 'Nisa',
+    username: 'nisa',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Precast',
+    whatsapp: '6281267670706',
+    createdAt: '20/10/2026 08:30',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-fani',
+    fullName: 'Fani',
+    username: 'fani',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Readymix',
+    whatsapp: '6281321804321',
+    createdAt: '20/10/2026 08:35',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-staff-ricky',
+    fullName: 'Ricky',
+    username: 'ricky',
+    password: 'WBP123',
+    role: 'staff',
+    roleName: ROLE_LABELS.staff,
+    department: 'Engineering Konstruksi',
+    whatsapp: '6282233669400',
+    createdAt: '20/10/2026 08:40',
+    isDefault: true
+  },
+  {
+    id: 'usr-default-dashboard',
+    fullName: 'Administrator & Direksi WBP',
+    username: 'admin',
+    password: 'WBPVIEW',
+    role: 'dashboard',
+    roleName: ROLE_LABELS.dashboard,
+    whatsapp: '628111000222',
+    createdAt: '20/10/2026 08:45',
+    isDefault: true,
+    isAdmin: true
+  }
+];
+
+const DATA_DIR = path.join(__dirname, 'data');
+const DB_FILE_PATH = path.join(DATA_DIR, 'wbp_cloud_database.json');
+
+// In-memory Google Drive access token (bridged from authenticated client session; never written to disk)
+let activeDriveAccessToken: string | null = null;
+
+function formatCurrentDateTime(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  const h = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return `${d}/${m}/${y} ${h}:${min}`;
+}
+
+function cleanWhatsAppNumber(phoneStr?: string): string {
+  if (!phoneStr || phoneStr.trim() === '-' || phoneStr.trim() === '') return '';
+  let clean = phoneStr.replace(/\D/g, '');
+  if (clean.startsWith('0')) {
+    clean = '62' + clean.slice(1);
+  } else if (!clean.startsWith('62') && clean !== '') {
+    clean = '62' + clean;
+  }
+  return clean;
+}
+
+function normalizeUserAccount(u: Partial<ServerUserAccount>, index: number): ServerUserAccount {
+  const safeRole =
+    u.role === 'pemberi_tugas' ||
+    u.role === 'manager' ||
+    u.role === 'staff' ||
+    u.role === 'dashboard'
+      ? u.role
+      : 'pemberi_tugas';
+  const cleanUser = (u.username || `user_${index}`).trim();
+  const isDefaultAccount =
+    typeof u.isDefault === 'boolean'
+      ? u.isDefault
+      : INITIAL_USERS.some(
+          (init) => init.id === u.id || init.username.toLowerCase() === cleanUser.toLowerCase()
+        );
+
+  return {
+    id: u.id || `usr-${Date.now()}-${index}`,
+    fullName: (u.fullName || cleanUser).trim(),
+    username: cleanUser,
+    password: u.password || 'WBP123',
+    role: safeRole,
+    roleName: u.roleName || ROLE_LABELS[safeRole],
+    department: u.department,
+    whatsapp: u.whatsapp ? cleanWhatsAppNumber(u.whatsapp) : '',
+    createdAt: u.createdAt || formatCurrentDateTime(),
+    isDefault: isDefaultAccount,
+    isAdmin:
+      u.isAdmin === true || cleanUser.toLowerCase() === 'admin' || safeRole === 'dashboard'
+  };
+}
+
+function sortUsersCustomFirst(users: ServerUserAccount[]): ServerUserAccount[] {
+  const normalized = users.map((u, idx) => normalizeUserAccount(u, idx));
+  const hasAdmin = normalized.some(
+    (u) => u.username.toLowerCase() === 'admin' || u.role === 'dashboard' || u.isAdmin
+  );
+  const defaultAdmin = INITIAL_USERS.find((u) => u.username.toLowerCase() === 'admin');
+  const complete = !hasAdmin && defaultAdmin ? [...normalized, defaultAdmin] : normalized;
+
+  const custom = complete.filter((u) => !u.isDefault);
+  const defaults = complete.filter((u) => u.isDefault);
+  return [...custom, ...defaults];
+}
+
+function readCloudDB(): CentralizedCloudDB {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(DB_FILE_PATH)) {
+      const initial: CentralizedCloudDB = {
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        updatedAt: new Date().toISOString(),
+        users: INITIAL_USERS,
+        deletedUsernames: [],
+        gasWebAppUrl: process.env.GAS_WEB_APP_URL || ''
+      };
+      fs.writeFileSync(DB_FILE_PATH, JSON.stringify(initial, null, 2), 'utf-8');
+      return initial;
+    }
+    const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
+    const parsed = JSON.parse(raw) as Partial<CentralizedCloudDB>;
+    const users =
+      Array.isArray(parsed.users) && parsed.users.length > 0
+        ? sortUsersCustomFirst(parsed.users)
+        : INITIAL_USERS;
+    return {
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      updatedAt: parsed.updatedAt || new Date().toISOString(),
+      users,
+      deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
+      gasWebAppUrl: parsed.gasWebAppUrl || process.env.GAS_WEB_APP_URL || ''
+    };
+  } catch (err) {
+    console.error('Error reading centralized cloud DB:', err);
+    return {
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      updatedAt: new Date().toISOString(),
+      users: INITIAL_USERS,
+      deletedUsernames: [],
+      gasWebAppUrl: process.env.GAS_WEB_APP_URL || ''
+    };
+  }
+}
+
+function writeCloudDB(db: CentralizedCloudDB): CentralizedCloudDB {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const ordered: CentralizedCloudDB = {
+      ...db,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      updatedAt: new Date().toISOString(),
+      users: sortUsersCustomFirst(db.users)
+    };
+    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(ordered, null, 2), 'utf-8');
+    return ordered;
+  } catch (err) {
+    console.error('Error writing centralized cloud DB:', err);
+    return db;
+  }
+}
+
+function extractToken(req: express.Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7).trim();
+    if (token) {
+      activeDriveAccessToken = token;
+      return token;
+    }
+  }
+  return activeDriveAccessToken;
+}
+
+/**
+ * Google Drive REST API v3 Helper on Server:
+ * Lists files in folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+ */
+async function listDriveFilesServer(
+  token: string
+): Promise<Array<{ id: string; name: string }>> {
+  const combined = new Map<string, { id: string; name: string }>();
+
+  const folderQ = encodeURIComponent(
+    `'${GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed = false`
+  );
+  const nameQ = encodeURIComponent(
+    `(name = '${DRIVE_USERS_DB_FILENAME}' or name contains '${DRIVE_USER_FILE_PREFIX}') and trashed = false`
+  );
+
+  for (const q of [folderQ, nameQ]) {
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name)&orderBy=modifiedTime desc&pageSize=100`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { files?: Array<{ id: string; name: string }> };
+        if (Array.isArray(data.files)) {
+          for (const f of data.files) {
+            if (!combined.has(f.id)) combined.set(f.id, f);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return Array.from(combined.values());
+}
+
+/**
+ * Saves or updates a JSON file inside Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF from the server
+ */
+async function saveJsonToDriveServer(
+  token: string,
+  fileName: string,
+  payload: unknown,
+  existingFileId?: string
+): Promise<boolean> {
+  const boundary = '-------wbpDriveBoundary' + Date.now();
+  const jsonContent = JSON.stringify(payload, null, 2);
+
+  const buildMultipartBody = (includeParent: boolean) => {
+    const metadata: Record<string, unknown> = {
+      name: fileName,
+      mimeType: 'application/json'
+    };
+    if (includeParent) {
+      metadata.parents = [GOOGLE_DRIVE_FOLDER_ID];
+    }
+    return (
+      `--${boundary}\r\n` +
+      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+      `${JSON.stringify(metadata)}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+      `${jsonContent}\r\n` +
+      `--${boundary}--`
+    );
+  };
+
+  try {
+    if (existingFileId) {
+      const patchRes = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart&supportsAllDrives=true`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body: buildMultipartBody(false)
+        }
+      );
+      if (patchRes.ok) return true;
+    }
+
+    let createRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: buildMultipartBody(true)
+      }
+    );
+
+    if (!createRes.ok && (createRes.status === 403 || createRes.status === 404)) {
+      createRes = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body: buildMultipartBody(false)
+        }
+      );
+    }
+
+    return createRes.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Syncs with Google Apps Script Web App URL (if configured) and Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+ */
+async function pushCloudDBToDriveAndGAS(
+  db: CentralizedCloudDB,
+  token: string | null,
+  newOrUpdatedUser?: ServerUserAccount,
+  deletedUsername?: string
+): Promise<boolean> {
+  let synced = false;
+
+  // 1. Forward to Google Apps Script Web App bridge if configured
+  if (db.gasWebAppUrl && db.gasWebAppUrl.startsWith('https://script.google.com/')) {
+    try {
+      const gasRes = await fetch(db.gasWebAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: deletedUsername
+            ? 'deleteUser'
+            : newOrUpdatedUser
+            ? 'registerUser'
+            : 'syncUsers',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          user: newOrUpdatedUser,
+          deletedUsername,
+          users: db.users,
+          deletedUsernames: db.deletedUsernames
+        })
+      });
+      if (gasRes.ok) synced = true;
+    } catch (err) {
+      console.warn('GAS webhook push warning:', err);
+    }
+  }
+
+  // 2. Write directly to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF if OAuth token is available
+  if (token) {
+    try {
+      const files = await listDriveFilesServer(token);
+      const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
+
+      if (deletedUsername) {
+        const singleName = `${DRIVE_USER_FILE_PREFIX}${deletedUsername.toLowerCase()}.json`;
+        const matches = files.filter((f) => f.name.toLowerCase() === singleName);
+        for (const m of matches) {
+          await fetch(
+            `https://www.googleapis.com/drive/v3/files/${m.id}?supportsAllDrives=true`,
+            {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+        }
+      }
+
+      if (newOrUpdatedUser) {
+        const singleName = `${DRIVE_USER_FILE_PREFIX}${newOrUpdatedUser.username.toLowerCase()}.json`;
+        const existingSingle = files.find(
+          (f) => f.name.toLowerCase() === singleName
+        );
+        await saveJsonToDriveServer(
+          token,
+          singleName,
+          {
+            type: 'WBP_USER_REGISTRATION_RECORD',
+            folderId: GOOGLE_DRIVE_FOLDER_ID,
+            registeredAt: new Date().toISOString(),
+            user: newOrUpdatedUser
+          },
+          existingSingle?.id
+        );
+      }
+
+      const dbSaved = await saveJsonToDriveServer(
+        token,
+        DRIVE_USERS_DB_FILENAME,
+        {
+          type: 'WBP_USERS_DATABASE',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames: db.deletedUsernames,
+          users: db.users
+        },
+        existingDb?.id
+      );
+
+      if (dbSaved) synced = true;
+    } catch (err) {
+      console.warn('Drive API server push warning:', err);
+    }
+  }
+
+  return synced;
+}
+
+/**
+ * Pulls and merges users from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF or GAS Web App into the centralized server DB
+ */
+async function pullFromDriveAndGASIntoServerDB(
+  token: string | null
+): Promise<CentralizedCloudDB> {
+  const currentDB = readCloudDB();
+  const remoteUsers: ServerUserAccount[] = [];
+  const remoteDeleted: string[] = [];
+
+  // 1. Pull from Google Apps Script Web App if configured
+  if (
+    currentDB.gasWebAppUrl &&
+    currentDB.gasWebAppUrl.startsWith('https://script.google.com/')
+  ) {
+    try {
+      const url = `${currentDB.gasWebAppUrl}${
+        currentDB.gasWebAppUrl.includes('?') ? '&' : '?'
+      }action=getUsers&folderId=${GOOGLE_DRIVE_FOLDER_ID}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = (await res.json()) as {
+          users?: ServerUserAccount[];
+          deletedUsernames?: string[];
+        };
+        if (Array.isArray(data.users)) remoteUsers.push(...data.users);
+        if (Array.isArray(data.deletedUsernames)) {
+          remoteDeleted.push(...data.deletedUsernames);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Pull from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF if token available
+  if (token) {
+    try {
+      const files = await listDriveFilesServer(token);
+      const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
+      const singleFiles = files.filter(
+        (f) => f.name.startsWith(DRIVE_USER_FILE_PREFIX) && f.name.endsWith('.json')
+      );
+
+      if (existingDb) {
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${existingDb.id}?alt=media&supportsAllDrives=true`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.ok) {
+          const parsed = (await res.json()) as
+            | ServerUserAccount[]
+            | { users?: ServerUserAccount[]; deletedUsernames?: string[] };
+          if (Array.isArray(parsed)) {
+            remoteUsers.push(...parsed);
+          } else if (parsed && Array.isArray(parsed.users)) {
+            remoteUsers.push(...parsed.users);
+            if (Array.isArray(parsed.deletedUsernames)) {
+              remoteDeleted.push(...parsed.deletedUsernames);
+            }
+          }
+        }
+      }
+
+      for (const sf of singleFiles) {
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${sf.id}?alt=media&supportsAllDrives=true`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.ok) {
+          const parsed = (await res.json()) as
+            | ServerUserAccount
+            | { user?: ServerUserAccount };
+          if (parsed && 'user' in parsed && parsed.user) {
+            remoteUsers.push(parsed.user);
+          } else if (parsed && 'username' in parsed) {
+            remoteUsers.push(parsed as ServerUserAccount);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (remoteUsers.length === 0 && remoteDeleted.length === 0) {
+    return currentDB;
+  }
+
+  const deletedSet = new Set(
+    [...currentDB.deletedUsernames, ...remoteDeleted].map((u) => u.toLowerCase())
+  );
+
+  const map = new Map<string, ServerUserAccount>();
+  // Put server users first, then merge any new remote users
+  for (const u of [...remoteUsers, ...currentDB.users]) {
+    if (!u || !u.username) continue;
+    const key = u.username.toLowerCase();
+    if (deletedSet.has(key)) continue;
+    map.set(key, normalizeUserAccount(u, 0));
+  }
+
+  const mergedDB: CentralizedCloudDB = {
+    ...currentDB,
+    users: sortUsersCustomFirst(Array.from(map.values())),
+    deletedUsernames: Array.from(deletedSet),
+    updatedAt: new Date().toISOString()
+  };
+
+  return writeCloudDB(mergedDB);
+}
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  app.use(express.json({ limit: '15mb' }));
+
+  // ==================== CENTRALIZED CLOUD USER DATABASE API ====================
+
+  // 1. Register / cache active Google Drive OAuth token in server memory so cross-device registrations automatically write to Drive
+  app.post('/api/drive/token', async (req, res) => {
+    const token = extractToken(req) || req.body?.accessToken;
+    if (token && typeof token === 'string') {
+      activeDriveAccessToken = token;
+      const merged = await pullFromDriveAndGASIntoServerDB(token);
+      await pushCloudDBToDriveAndGAS(merged, token);
+      res.json({
+        ok: true,
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        usersCount: merged.users.length,
+        users: merged.users
+      });
+      return;
+    }
+    res.json({ ok: false });
+  });
+
+  // 2. Get all users from centralized cloud JSON database (optionally pulling latest from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
+  app.get('/api/users', async (req, res) => {
+    const token = extractToken(req);
+    const shouldSyncDrive = req.query.syncDrive === 'true';
+    const db = shouldSyncDrive
+      ? await pullFromDriveAndGASIntoServerDB(token)
+      : readCloudDB();
+
+    res.json({
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      updatedAt: db.updatedAt,
+      users: db.users,
+      deletedUsernames: db.deletedUsernames,
+      gasWebAppUrl: db.gasWebAppUrl || '',
+      hasServerDriveToken: Boolean(activeDriveAccessToken)
+    });
+  });
+
+  // 3. Register a new user account from ANY device -> saves to centralized cloud JSON + writes WBP_USER_<username>.json to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  app.post('/api/users/register', async (req, res) => {
+    const token = extractToken(req);
+    const body = req.body as Partial<ServerUserAccount>;
+
+    if (!body || !body.username || !body.fullName || !body.password) {
+      res.status(400).json({ error: 'Data pendaftaran tidak lengkap.' });
+      return;
+    }
+
+    const db = readCloudDB();
+    const created = normalizeUserAccount(
+      {
+        ...body,
+        id: body.id || `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        createdAt: body.createdAt || formatCurrentDateTime(),
+        isDefault: false
+      },
+      0
+    );
+
+    const withoutDuplicate = db.users.filter(
+      (u) => u.username.toLowerCase() !== created.username.toLowerCase()
+    );
+    const updatedDeleted = db.deletedUsernames.filter(
+      (uname) => uname.toLowerCase() !== created.username.toLowerCase()
+    );
+
+    const updatedDB = writeCloudDB({
+      ...db,
+      users: [created, ...withoutDuplicate],
+      deletedUsernames: updatedDeleted
+    });
+
+    // Asynchronously push to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF & GAS Web App
+    const driveSynced = await pushCloudDBToDriveAndGAS(updatedDB, token, created);
+
+    res.json({
+      ok: true,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      driveSynced,
+      created,
+      users: updatedDB.users
+    });
+  });
+
+  // 4. Update an existing user account
+  app.put('/api/users/:id', async (req, res) => {
+    const token = extractToken(req);
+    const userId = req.params.id;
+    const body = req.body as Partial<ServerUserAccount>;
+
+    const db = readCloudDB();
+    const normalizedTarget = normalizeUserAccount({ ...body, id: userId }, 0);
+    const exists = db.users.some((u) => u.id === userId);
+    const updatedUsers = exists
+      ? db.users.map((u) => (u.id === userId ? normalizedTarget : u))
+      : [normalizedTarget, ...db.users];
+
+    const updatedDB = writeCloudDB({
+      ...db,
+      users: updatedUsers
+    });
+
+    const driveSynced = await pushCloudDBToDriveAndGAS(
+      updatedDB,
+      token,
+      normalizedTarget
+    );
+
+    res.json({
+      ok: true,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      driveSynced,
+      users: updatedDB.users
+    });
+  });
+
+  // 5. Delete a user account
+  app.delete('/api/users/:id', async (req, res) => {
+    const token = extractToken(req);
+    const userId = req.params.id;
+
+    const db = readCloudDB();
+    const targetUser = db.users.find((u) => u.id === userId);
+    const updatedUsers = db.users.filter((u) => u.id !== userId);
+    const updatedDeleted = targetUser
+      ? Array.from(
+          new Set([...db.deletedUsernames, targetUser.username.toLowerCase()])
+        )
+      : db.deletedUsernames;
+
+    const updatedDB = writeCloudDB({
+      ...db,
+      users: updatedUsers,
+      deletedUsernames: updatedDeleted
+    });
+
+    const driveSynced = await pushCloudDBToDriveAndGAS(
+      updatedDB,
+      token,
+      undefined,
+      targetUser?.username
+    );
+
+    res.json({
+      ok: true,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      driveSynced,
+      users: updatedDB.users
+    });
+  });
+
+  // 6. Reset user accounts to default
+  app.post('/api/users/reset', async (req, res) => {
+    const token = extractToken(req);
+    const db = readCloudDB();
+    const updatedDB = writeCloudDB({
+      ...db,
+      users: INITIAL_USERS,
+      deletedUsernames: []
+    });
+
+    const driveSynced = await pushCloudDBToDriveAndGAS(updatedDB, token);
+    res.json({
+      ok: true,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      driveSynced,
+      users: updatedDB.users
+    });
+  });
+
+  // 7. Manual / Real-time full bidirectional sync with Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF & Google Apps Script
+  app.post('/api/users/sync', async (req, res) => {
+    const token = extractToken(req);
+    const clientUsers = Array.isArray(req.body?.users)
+      ? (req.body.users as ServerUserAccount[])
+      : [];
+
+    // First merge any custom users sent by client
+    const currentDB = readCloudDB();
+    const deletedSet = new Set(
+      currentDB.deletedUsernames.map((u) => u.toLowerCase())
+    );
+    const mergedMap = new Map<string, ServerUserAccount>();
+    for (const u of [...clientUsers, ...currentDB.users]) {
+      if (!u || !u.username) continue;
+      const key = u.username.toLowerCase();
+      if (!deletedSet.has(key) && !mergedMap.has(key)) {
+        mergedMap.set(key, normalizeUserAccount(u, 0));
+      }
+    }
+    writeCloudDB({
+      ...currentDB,
+      users: Array.from(mergedMap.values())
+    });
+
+    // Pull from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF & GAS
+    const pulledDB = await pullFromDriveAndGASIntoServerDB(token);
+    // Push unified list back to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF & GAS
+    const driveSynced = await pushCloudDBToDriveAndGAS(pulledDB, token);
+
+    res.json({
+      ok: true,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      driveSynced,
+      users: pulledDB.users,
+      deletedUsernames: pulledDB.deletedUsernames
+    });
+  });
+
+  // 8. Configure optional Google Apps Script Web App URL bridge
+  app.post('/api/gas/config', async (req, res) => {
+    const token = extractToken(req);
+    const gasWebAppUrl =
+      typeof req.body?.gasWebAppUrl === 'string' ? req.body.gasWebAppUrl.trim() : '';
+    const db = readCloudDB();
+    const updatedDB = writeCloudDB({
+      ...db,
+      gasWebAppUrl
+    });
+
+    if (gasWebAppUrl) {
+      await pullFromDriveAndGASIntoServerDB(token);
+      await pushCloudDBToDriveAndGAS(readCloudDB(), token);
+    }
+
+    const finalDB = readCloudDB();
+    res.json({
+      ok: true,
+      gasWebAppUrl: finalDB.gasWebAppUrl,
+      users: finalDB.users
+    });
+  });
+
+  // Vite middleware for development / static serving for production
+  if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa'
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(__dirname, 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(
+      `[WBP Cloud Server] Running on http://0.0.0.0:${PORT} (Google Drive Folder ID: ${GOOGLE_DRIVE_FOLDER_ID})`
+    );
+  });
+}
+
+startServer();

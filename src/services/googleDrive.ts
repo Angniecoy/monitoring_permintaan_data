@@ -126,6 +126,17 @@ export const googleSignIn = async (): Promise<{
 
     cachedAccessToken = credential.accessToken;
     cachedGoogleUser = result.user;
+
+    // Register token in centralized backend memory so cross-device user registrations can immediately write to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+    void fetch('/api/drive/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${cachedAccessToken}`
+      },
+      body: JSON.stringify({})
+    }).catch(() => {});
+
     notifyListeners();
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error) {

@@ -23,7 +23,7 @@ import {
   getStoredTickets, saveStoredTickets, resetToDefaultTickets,
   getStoredUsers, addStoredUser, updateStoredUser, deleteStoredUser,
   resetToDefaultUsers, USERS_STORAGE_KEY, isAdminSession,
-  pullAndMergeUsersFromDrive, pullAndMergeTicketsFromDrive
+  pullAndMergeUsersFromDrive, pullAndMergeTicketsFromDrive, fetchCloudUsers
 } from './data/mockData';
 import { subscribeDriveAuth, syncTicketsWithDriveFolder } from './services/googleDrive';
 import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
@@ -33,7 +33,7 @@ export default function App() {
   // Global Tickets Data
   const [tickets, setTickets] = useState<Ticket[]>(() => getStoredTickets());
 
-  // Global Registered Users Data (Dynamic Multi-User State backed by Google Drive + localStorage)
+  // Global Registered Users Data (Centralized Cloud JSON + Google Drive 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
   const [users, setUsers] = useState<UserAccount[]>(() => getStoredUsers());
 
   // User Session & Role - Mandatory Protected Login Gate
@@ -75,6 +75,21 @@ export default function App() {
     saveStoredTickets(tickets);
   }, [tickets]);
 
+  // Continuously pull centralized cloud users across all devices + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  useEffect(() => {
+    void fetchCloudUsers(false).then((cloudList) => {
+      setUsers(cloudList);
+    });
+    const interval = setInterval(() => {
+      void fetchCloudUsers(false).then((cloudList) => {
+        setUsers((prev) =>
+          JSON.stringify(prev) === JSON.stringify(cloudList) ? prev : cloudList
+        );
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Automatically pull & merge users and tickets from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF when Drive is connected
   useEffect(() => {
     let wasConnected = false;
@@ -94,9 +109,9 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Listen for real-time user updates from localStorage (same tab & cross-tab)
+  // Listen for real-time user updates from cloud store events
   useEffect(() => {
-    const syncUsersFromStorage = (e?: Event) => {
+    const syncUsersFromCloudStore = (e?: Event) => {
       if (e && 'key' in e) {
         const storageEvent = e as StorageEvent;
         if (storageEvent.key && storageEvent.key !== USERS_STORAGE_KEY) return;
@@ -107,11 +122,9 @@ export default function App() {
         return latest;
       });
     };
-    window.addEventListener('storage', syncUsersFromStorage);
-    window.addEventListener('wbp_users_updated', syncUsersFromStorage);
+    window.addEventListener('wbp_users_updated', syncUsersFromCloudStore);
     return () => {
-      window.removeEventListener('storage', syncUsersFromStorage);
-      window.removeEventListener('wbp_users_updated', syncUsersFromStorage);
+      window.removeEventListener('wbp_users_updated', syncUsersFromCloudStore);
     };
   }, []);
 

@@ -1,9 +1,11 @@
 import { DepartmentName, DepartmentStructure, Ticket, UserAccount, UserRole, UserSession } from '../types';
 import {
+  getAccessToken,
   writeUserRegistrationToDrive,
   pushUsersDatabaseToDrive,
   syncUsersFromDriveFolder,
-  syncTicketsWithDriveFolder
+  syncTicketsWithDriveFolder,
+  GOOGLE_DRIVE_FOLDER_ID
 } from '../services/googleDrive';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -368,28 +370,97 @@ export const INITIAL_TICKETS: Ticket[] = [
 ];
 
 const STORAGE_KEY = 'wbp_sim_teknis_tickets_v1';
-export const USERS_STORAGE_KEY = 'wbp_sim_teknis_users_v1';
-export const DELETED_USERS_STORAGE_KEY = 'wbp_sim_teknis_deleted_users_v1';
+export const USERS_STORAGE_KEY = 'wbp_cloud_users_sync_event';
+
+// Clean up any legacy browser localStorage user cache so all user accounts come strictly from the centralized cloud database & Google Drive
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem('wbp_sim_teknis_users_v1');
+    window.localStorage.removeItem('wbp_sim_teknis_deleted_users_v1');
+  }
+} catch {
+  // ignore
+}
+
+// In-memory runtime cache synchronized with the centralized backend (/api/users) & Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+let cloudUsersMemoryStore: UserAccount[] = [...INITIAL_USERS];
+let cloudDeletedUsernamesStore: string[] = [];
+let cloudGasWebAppUrlStore = '';
 
 export function getDeletedUsernames(): string[] {
-  try {
-    const raw = localStorage.getItem(DELETED_USERS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
-  } catch {
-    return [];
-  }
+  return [...cloudDeletedUsernamesStore];
 }
 
 export function saveDeletedUsernames(usernames: string[]): void {
-  try {
-    const unique = Array.from(new Set(usernames.map(u => u.toLowerCase())));
-    localStorage.setItem(DELETED_USERS_STORAGE_KEY, JSON.stringify(unique));
-  } catch {
-    // ignore
-  }
+  cloudDeletedUsernamesStore = Array.from(
+    new Set(usernames.map((u) => u.toLowerCase()))
+  );
 }
+
+export function getGasWebAppUrl(): string {
+  return cloudGasWebAppUrlStore;
+}
+
+export const GAS_BACKEND_SCRIPT_TEMPLATE = `/**
+ * GOOGLE APPS SCRIPT BACKEND - PT WASKITA BETON PRECAST TBK
+ * Terhubung langsung ke Google Drive Folder ID: ${GOOGLE_DRIVE_FOLDER_ID}
+ * Cara Pakai: Buka script.google.com -> Proyek Baru -> Tempel kode ini -> Deploy sebagai Web App (Who has access: Anyone)
+ */
+const FOLDER_ID = '${GOOGLE_DRIVE_FOLDER_ID}';
+const DB_FILENAME = 'wbp_users_database.json';
+
+function doGet(e) {
+  const folder = DriveApp.getFolderById(FOLDER_ID);
+  const files = folder.getFilesByName(DB_FILENAME);
+  let db = { folderId: FOLDER_ID, users: [], deletedUsernames: [] };
+  if (files.hasNext()) {
+    db = JSON.parse(files.next().getBlob().getDataAsString());
+  }
+  return ContentService.createTextOutput(JSON.stringify(db))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const payload = JSON.parse(e.postData.contents || '{}');
+  const folder = DriveApp.getFolderById(FOLDER_ID);
+
+  // Simpan berkas catatan JSON individu untuk user baru (WBP_USER_<username>.json)
+  if (payload.user && payload.user.username) {
+    const singleName = 'WBP_USER_' + payload.user.username.toLowerCase() + '.json';
+    const existingSingle = folder.getFilesByName(singleName);
+    const singleContent = JSON.stringify({
+      type: 'WBP_USER_REGISTRATION_RECORD',
+      folderId: FOLDER_ID,
+      registeredAt: new Date().toISOString(),
+      user: payload.user
+    }, null, 2);
+    if (existingSingle.hasNext()) {
+      existingSingle.next().setContent(singleContent);
+    } else {
+      folder.createFile(singleName, singleContent, MimeType.PLAIN_TEXT);
+    }
+  }
+
+  // Simpan basis data utama (wbp_users_database.json)
+  if (Array.isArray(payload.users)) {
+    const dbFiles = folder.getFilesByName(DB_FILENAME);
+    const dbContent = JSON.stringify({
+      type: 'WBP_USERS_DATABASE',
+      folderId: FOLDER_ID,
+      updatedAt: new Date().toISOString(),
+      deletedUsernames: payload.deletedUsernames || [],
+      users: payload.users
+    }, null, 2);
+    if (dbFiles.hasNext()) {
+      dbFiles.next().setContent(dbContent);
+    } else {
+      folder.createFile(DB_FILENAME, dbContent, MimeType.PLAIN_TEXT);
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, folderId: FOLDER_ID }))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
 
 export function getStoredTickets(): Ticket[] {
   try {
@@ -459,68 +530,146 @@ function normalizeUserAccount(u: Partial<UserAccount>, index: number): UserAccou
   };
 }
 
+function orderUsersList(list: Partial<UserAccount>[]): UserAccount[] {
+  const normalized = list
+    .filter((item): item is Partial<UserAccount> => Boolean(item && typeof item === 'object'))
+    .map((item, idx) => normalizeUserAccount(item, idx));
+
+  const hasAdmin = normalized.some(
+    u => u.username.toLowerCase() === 'admin' || u.role === 'dashboard' || u.isAdmin
+  );
+  const defaultAdmin = INITIAL_USERS.find(u => u.username.toLowerCase() === 'admin');
+  const completeList = !hasAdmin && defaultAdmin ? [...normalized, defaultAdmin] : normalized;
+
+  const customUsers = completeList.filter(u => !u.isDefault);
+  const defaultUsers = completeList.filter(u => u.isDefault);
+  return [...customUsers, ...defaultUsers];
+}
+
 export function getStoredUsers(): UserAccount[] {
-  try {
-    const raw = localStorage.getItem(USERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
-    }
-
-    const normalized = parsed
-      .filter((item): item is Partial<UserAccount> => Boolean(item && typeof item === 'object'))
-      .map((item, idx) => normalizeUserAccount(item, idx));
-
-    // Ensure the default Administrator account is always present so admin can always log in
-    const hasAdmin = normalized.some(
-      u => u.username.toLowerCase() === 'admin' || u.role === 'dashboard' || u.isAdmin
-    );
-    const defaultAdmin = INITIAL_USERS.find(u => u.username.toLowerCase() === 'admin');
-    const completeList =
-      !hasAdmin && defaultAdmin ? [...normalized, defaultAdmin] : normalized;
-
-    // Keep newly registered custom accounts (!isDefault) at the top so they immediately stand out in Kelola User
-    const customUsers = completeList.filter(u => !u.isDefault);
-    const defaultUsers = completeList.filter(u => u.isDefault);
-    return [...customUsers, ...defaultUsers];
-  } catch (err) {
-    console.error('Failed reading users from localStorage:', err);
-    return INITIAL_USERS;
-  }
+  return cloudUsersMemoryStore;
 }
 
 export function saveStoredUsers(users: UserAccount[]): void {
-  try {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    window.dispatchEvent(new Event('wbp_users_updated'));
-  } catch (err) {
-    console.error('Failed saving users to localStorage:', err);
+  cloudUsersMemoryStore = orderUsersList(users);
+  window.dispatchEvent(new Event('wbp_users_updated'));
+}
+
+async function buildAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  const token = await getAccessToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
+  return headers;
 }
 
 /**
- * Pulls all registered users from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
- * (both wbp_users_database.json and WBP_USER_*.json files) and merges them with local state.
+ * Fetches the authoritative centralized user database from the backend server (/api/users)
+ * which is connected to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF and Google Apps Script.
+ */
+export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]> {
+  try {
+    const headers = await buildAuthHeaders();
+    const res = await fetch(`/api/users${syncDrive ? '?syncDrive=true' : ''}`, {
+      method: 'GET',
+      headers
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof data.gasWebAppUrl === 'string') {
+        cloudGasWebAppUrlStore = data.gasWebAppUrl;
+      }
+      if (Array.isArray(data.deletedUsernames)) {
+        saveDeletedUsernames(data.deletedUsernames);
+      }
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        const ordered = orderUsersList(data.users);
+        if (JSON.stringify(ordered) !== JSON.stringify(cloudUsersMemoryStore)) {
+          saveStoredUsers(ordered);
+        }
+        return ordered;
+      }
+    }
+  } catch (err) {
+    console.warn('Cloud user fetch warning:', err);
+  }
+  return cloudUsersMemoryStore;
+}
+
+export async function saveGasWebAppUrl(gasWebAppUrl: string): Promise<UserAccount[]> {
+  cloudGasWebAppUrlStore = gasWebAppUrl.trim();
+  try {
+    const headers = await buildAuthHeaders();
+    const res = await fetch('/api/gas/config', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ gasWebAppUrl: cloudGasWebAppUrlStore })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        const ordered = orderUsersList(data.users);
+        saveStoredUsers(ordered);
+        return ordered;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed saving GAS Web App URL:', err);
+  }
+  return cloudUsersMemoryStore;
+}
+
+/**
+ * Pulls all registered users from the centralized cloud database AND Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+ * (reading both wbp_users_database.json and WBP_USER_*.json files) so Admin sees all registrations from any device in real time.
  */
 export async function pullAndMergeUsersFromDrive(): Promise<UserAccount[]> {
+  // 1. First sync with centralized server (/api/users/sync)
+  try {
+    const headers = await buildAuthHeaders();
+    const syncRes = await fetch('/api/users/sync', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ users: cloudUsersMemoryStore })
+    });
+    if (syncRes.ok) {
+      const data = await syncRes.json();
+      if (Array.isArray(data.deletedUsernames)) {
+        saveDeletedUsernames(data.deletedUsernames);
+      }
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        saveStoredUsers(data.users);
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Also run direct Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF sync if client OAuth token is active
   const currentLocal = getStoredUsers();
   const currentDeleted = getDeletedUsernames();
   const res = await syncUsersFromDriveFolder(currentLocal, currentDeleted);
   if (res && res.users.length > 0) {
-    const normalized = res.users.map((u, idx) => normalizeUserAccount(u, idx));
-    const custom = normalized.filter(u => !u.isDefault);
-    const defaults = normalized.filter(u => u.isDefault);
-    const ordered = [...custom, ...defaults];
+    const ordered = orderUsersList(res.users);
     saveDeletedUsernames(res.deletedUsernames);
     saveStoredUsers(ordered);
+
+    // Push merged Drive users back to centralized server so all other devices see them too
+    void buildAuthHeaders().then((headers) =>
+      fetch('/api/users/sync', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ users: ordered })
+      }).catch(() => {})
+    );
+
     return ordered;
   }
-  return currentLocal;
+
+  return getStoredUsers();
 }
 
 export function addStoredUser(
@@ -536,7 +685,6 @@ export function addStoredUser(
     },
     0
   );
-  // Prepend new user at the very top of the persisted list
   const withoutDuplicate = current.filter(
     u => u.username.toLowerCase() !== created.username.toLowerCase()
   );
@@ -547,7 +695,23 @@ export function addStoredUser(
   saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
 
-  // Immediately write WBP_USER_<username>.json and wbp_users_database.json to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // 1. Immediately persist to centralized Cloud JSON backend (/api/users/register) so ANY device & Admin see it in real time
+  void buildAuthHeaders().then((headers) =>
+    fetch('/api/users/register', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(created)
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.users)) {
+          saveStoredUsers(data.users);
+        }
+      })
+      .catch(() => {})
+  );
+
+  // 2. Also write WBP_USER_<username>.json and wbp_users_database.json directly to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
   void writeUserRegistrationToDrive(created, updatedList, updatedDeleted);
 
   return { created, users: updatedList };
@@ -562,7 +726,23 @@ export function updateStoredUser(updatedUser: UserAccount): UserAccount[] {
     : [normalizedTarget, ...current];
   saveStoredUsers(updatedList);
 
-  // Sync updated user record and database JSON to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // 1. Update in centralized Cloud JSON backend
+  void buildAuthHeaders().then((headers) =>
+    fetch(`/api/users/${encodeURIComponent(normalizedTarget.id)}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(normalizedTarget)
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.users)) {
+          saveStoredUsers(data.users);
+        }
+      })
+      .catch(() => {})
+  );
+
+  // 2. Sync updated user record and database JSON to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
   void writeUserRegistrationToDrive(normalizedTarget, updatedList, getDeletedUsernames());
 
   return updatedList;
@@ -578,7 +758,22 @@ export function deleteStoredUser(userId: string): UserAccount[] {
   saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
 
-  // Sync deletion to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // 1. Delete from centralized Cloud JSON backend
+  void buildAuthHeaders().then((headers) =>
+    fetch(`/api/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+      headers
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.users)) {
+          saveStoredUsers(data.users);
+        }
+      })
+      .catch(() => {})
+  );
+
+  // 2. Sync deletion to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
   void pushUsersDatabaseToDrive(updatedList, updatedDeleted, targetUser?.username);
 
   return updatedList;
@@ -586,8 +781,22 @@ export function deleteStoredUser(userId: string): UserAccount[] {
 
 export function resetToDefaultUsers(): UserAccount[] {
   saveDeletedUsernames([]);
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-  window.dispatchEvent(new Event('wbp_users_updated'));
+  saveStoredUsers(INITIAL_USERS);
+
+  void buildAuthHeaders().then((headers) =>
+    fetch('/api/users/reset', {
+      method: 'POST',
+      headers
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.users)) {
+          saveStoredUsers(data.users);
+        }
+      })
+      .catch(() => {})
+  );
+
   void pushUsersDatabaseToDrive(INITIAL_USERS, []);
   return INITIAL_USERS;
 }

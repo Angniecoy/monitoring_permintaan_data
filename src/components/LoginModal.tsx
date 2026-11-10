@@ -11,7 +11,11 @@ import {
   cleanWhatsAppNumber,
   getStoredTickets,
   getStoredUsers,
-  pullAndMergeUsersFromDrive
+  pullAndMergeUsersFromDrive,
+  fetchCloudUsers,
+  getGasWebAppUrl,
+  saveGasWebAppUrl,
+  GAS_BACKEND_SCRIPT_TEMPLATE
 } from '../data/mockData';
 import {
   subscribeDriveAuth,
@@ -56,11 +60,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     (!canClose || !isAdmin) && initialTab === 'manage' ? 'login' : initialTab
   );
 
-  // Persistent Users State synced directly with Google Drive + localStorage + parent state
+  // Persistent Users State synced directly with Centralized Cloud JSON + Google Drive + Google Apps Script
   const [persistedUsers, setPersistedUsers] = useState<UserAccount[]>(() => getStoredUsers());
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [driveSyncState, setDriveSyncState] = useState<DriveSyncState>(() => getDriveSyncState());
   const [isPullingDrive, setIsPullingDrive] = useState(false);
+  const [showGasConfig, setShowGasConfig] = useState(false);
+  const [gasUrlInput, setGasUrlInput] = useState<string>(() => getGasWebAppUrl());
+  const [copiedGasScript, setCopiedGasScript] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeDriveAuth((state) => {
@@ -75,13 +82,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return unsubscribe;
   }, []);
 
+  // Real-time cloud polling (every 2.5s) so registrations from ANY device appear immediately in Kelola User & Login
   useEffect(() => {
-    setPersistedUsers(getStoredUsers());
+    if (!isOpen) return;
+    void fetchCloudUsers(false).then((cloudUsers) => {
+      setPersistedUsers(cloudUsers);
+      setGasUrlInput(getGasWebAppUrl());
+    });
     if (isDriveConnected && (activeTab === 'manage' || activeTab === 'login')) {
       void pullAndMergeUsersFromDrive().then((merged) => {
         setPersistedUsers(merged);
       });
     }
+    const timer = setInterval(() => {
+      void fetchCloudUsers(false).then((cloudUsers) => {
+        setPersistedUsers((prev) =>
+          JSON.stringify(prev) === JSON.stringify(cloudUsers) ? prev : cloudUsers
+        );
+      });
+    }, 2500);
+    return () => clearInterval(timer);
   }, [users, activeTab, isOpen, isDriveConnected]);
 
   const handleManualDriveSync = async () => {
@@ -94,12 +114,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setPersistedUsers(merged);
       if (activeTab === 'manage') {
         setManageNotice(
-          `Sinkronisasi Google Drive selesai (${merged.length} akun aktif dari folder ${GOOGLE_DRIVE_FOLDER_ID}).`
+          `Sinkronisasi Cloud & Google Drive selesai (${merged.length} akun aktif dari folder ${GOOGLE_DRIVE_FOLDER_ID}).`
         );
         setTimeout(() => setManageNotice(''), 4000);
       }
     } catch (err) {
       console.warn('Drive sync warning:', err);
+      const cloudFallback = await fetchCloudUsers(true);
+      setPersistedUsers(cloudFallback);
+    } finally {
+      setIsPullingDrive(false);
+    }
+  };
+
+  const handleSaveGasConfig = async () => {
+    setIsPullingDrive(true);
+    try {
+      const updated = await saveGasWebAppUrl(gasUrlInput);
+      setPersistedUsers(updated);
+      setManageNotice(
+        gasUrlInput.trim()
+          ? 'Endpoint Google Apps Script berhasil dihubungkan & disinkronkan dengan Google Drive!'
+          : 'Menggunakan Backend Cloud JSON Terpusat & Google Drive API langsung.'
+      );
+      setTimeout(() => setManageNotice(''), 4000);
+      setShowGasConfig(false);
     } finally {
       setIsPullingDrive(false);
     }
@@ -110,10 +149,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setPersistedUsers(getStoredUsers());
     };
     window.addEventListener('wbp_users_updated', syncStoredUsers);
-    window.addEventListener('storage', syncStoredUsers);
     return () => {
       window.removeEventListener('wbp_users_updated', syncStoredUsers);
-      window.removeEventListener('storage', syncStoredUsers);
     };
   }, []);
 
@@ -326,8 +363,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Check username uniqueness against persisted localStorage & state
-    const exists = effectiveUsers.some(
+    // Check username uniqueness against centralized cloud database
+    const latestFromCloud = await fetchCloudUsers(false);
+    const exists = [...effectiveUsers, ...latestFromCloud].some(
       u => u.username.toLowerCase() === cleanUser.toLowerCase()
     );
     if (exists) {
@@ -335,20 +373,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Ensure Google Drive connection so WBP_USER_<username>.json and wbp_users_database.json are written directly to folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
-    if (!isDriveConnected) {
-      try {
-        await googleSignIn();
-      } catch {
-        // Proceed with local persistence; will auto-sync to Drive folder as soon as connected
-      }
-    }
-
     const safeRole: UserRole = regRole === 'dashboard' ? 'pemberi_tugas' : regRole;
     const roleObj = loginRoleConfigs.find(r => r.id === safeRole);
     const roleTitle = roleObj ? roleObj.title : ROLE_LABELS[safeRole];
     const needsDept = safeRole === 'manager' || safeRole === 'staff';
 
+    // Immediately saves to centralized Cloud JSON backend (/api/users/register) + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF + Google Apps Script
     const createdUser = onRegisterUser({
       fullName: cleanName,
       username: cleanUser,
@@ -994,6 +1024,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                 <button
                   type="button"
+                  onClick={() => setShowGasConfig(!showGasConfig)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 border border-[#282974]/25 transition-colors cursor-pointer"
+                  title="Konfigurasi Google Apps Script Web App / Cloud JSON"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Apps Script / Cloud</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setActiveTab('register')}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shadow-2xs transition-colors"
                 >
@@ -1005,7 +1045,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     type="button"
                     onClick={() => {
                       const confirmed = window.confirm(
-                        'Apakah Anda yakin ingin mengembalikan daftar user ke pengaturan default dan memperbarui wbp_users_database.json di Google Drive?'
+                        'Apakah Anda yakin ingin mengembalikan daftar user ke pengaturan default dan memperbarui wbp_users_database.json di Cloud & Google Drive?'
                       );
                       if (!confirmed) return;
                       onResetUsers();
@@ -1022,6 +1062,58 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Expandable Panel: Google Apps Script & Cloud JSON Bridge (Folder ID: 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF) */}
+            {showGasConfig && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <Cloud className="w-4 h-4 text-[#282974]" />
+                    <span>
+                      Backend Cloud JSON Terpusat & Google Apps Script (Folder ID: {GOOGLE_DRIVE_FOLDER_ID})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowGasConfig(false)}
+                    className="text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Penyimpanan akun pengguna sudah terhubung otomatis ke <strong>Server Cloud JSON Terpusat (`/api/users`)</strong> dan <strong>Google Drive Folder `{GOOGLE_DRIVE_FOLDER_ID}`</strong> tanpa menggunakan `localStorage` browser. Anda juga dapat menghubungkan URL Web App <strong>Google Apps Script (`script.google.com`)</strong> opsional di bawah ini:
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="url"
+                    value={gasUrlInput}
+                    onChange={(e) => setGasUrlInput(e.target.value)}
+                    placeholder="https://script.google.com/macros/s/.../exec (Opsional)"
+                    className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:border-[#282974]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveGasConfig()}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shrink-0 cursor-pointer"
+                  >
+                    Simpan & Sinkronkan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(GAS_BACKEND_SCRIPT_TEMPLATE);
+                      setCopiedGasScript(true);
+                      setTimeout(() => setCopiedGasScript(false), 3000);
+                    }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 shrink-0 cursor-pointer inline-flex items-center gap-1"
+                  >
+                    {copiedGasScript ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : null}
+                    <span>{copiedGasScript ? 'Kode Code.gs Disalin!' : 'Salin Kode Code.gs'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {manageNotice && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
