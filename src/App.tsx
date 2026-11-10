@@ -72,10 +72,23 @@ export default function App() {
     saveStoredTickets(tickets);
   }, [tickets]);
 
-  // Sync registered users with localStorage
+  // Sync registered users with localStorage & listen for real-time cross-tab updates
   useEffect(() => {
     saveStoredUsers(users);
   }, [users]);
+
+  useEffect(() => {
+    const syncUsersFromStorage = (e?: StorageEvent) => {
+      if (e && e.key && e.key !== 'wbp_sim_teknis_users_v1') return;
+      const latest = getStoredUsers();
+      setUsers(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(latest)) return prev;
+        return latest;
+      });
+    };
+    window.addEventListener('storage', syncUsersFromStorage);
+    return () => window.removeEventListener('storage', syncUsersFromStorage);
+  }, []);
 
   // Keyboard shortcut: Ctrl + K / Cmd + K for Quick Search
   useEffect(() => {
@@ -108,19 +121,28 @@ export default function App() {
     }
   };
 
-  // Handlers for Dynamic User Registration & Management
+  // Handlers for Dynamic User Registration & Management (Immediate State + Storage Persistence)
   const handleRegisterUser = (newUser: Omit<UserAccount, 'id' | 'createdAt'>): UserAccount => {
     const created: UserAccount = {
       ...newUser,
       id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      createdAt: formatCurrentDateTime()
+      createdAt: formatCurrentDateTime(),
+      isDefault: false
     };
-    setUsers(prev => [created, ...prev]);
+    setUsers(prev => {
+      const updatedList = [created, ...prev];
+      saveStoredUsers(updatedList);
+      return updatedList;
+    });
     return created;
   };
 
   const handleUpdateUser = (updatedUser: UserAccount) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setUsers(prev => {
+      const updatedList = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+      saveStoredUsers(updatedList);
+      return updatedList;
+    });
     // If updating the currently logged-in user, sync their session details
     if (session.userId === updatedUser.id) {
       const updatedSession: UserSession = {
@@ -144,7 +166,11 @@ export default function App() {
   };
 
   const handleDeleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
+    setUsers(prev => {
+      const updatedList = prev.filter(u => u.id !== userId);
+      saveStoredUsers(updatedList);
+      return updatedList;
+    });
   };
 
   const handleResetUsers = () => {

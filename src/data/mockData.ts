@@ -410,6 +410,7 @@ export function getStoredUsers(): UserAccount[] {
 export function saveStoredUsers(users: UserAccount[]): void {
   try {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    window.dispatchEvent(new Event('wbp_users_updated'));
   } catch (err) {
     console.error('Failed saving users to localStorage:', err);
   }
@@ -417,6 +418,7 @@ export function saveStoredUsers(users: UserAccount[]): void {
 
 export function resetToDefaultUsers(): UserAccount[] {
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+  window.dispatchEvent(new Event('wbp_users_updated'));
   return INITIAL_USERS;
 }
 

@@ -286,13 +286,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         staffName: createdUser.role === 'staff' ? createdUser.fullName : undefined,
         whatsapp: createdUser.whatsapp
       });
+    } else if (canClose && isAdmin) {
+      // Admin added a new user from Kelola User -> return directly to the real-time management table
+      setFilterRole('ALL');
+      setSearchUserQuery('');
+      setManageNotice(
+        `Akun baru "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke basis data utama!`
+      );
+      setTimeout(() => setManageNotice(''), 4500);
+      setActiveTab('manage');
     } else {
       // Pre-fill login form so user can immediately sign in
       setUsername(createdUser.username);
       setPassword(createdUser.password);
       setErrorMsg('');
       setSuccessMsg(
-        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil didaftarkan sebagai ${createdUser.roleName}. Silakan masuk!`
+        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke basis data sebagai ${createdUser.roleName}. Silakan masuk!`
       );
       setActiveTab('login');
     }
@@ -982,115 +991,144 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </select>
             </div>
 
-            {/* User List */}
-            <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-              {filteredUsers.length === 0 ? (
-                <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
-                  Tidak ada akun pengguna yang sesuai dengan pencarian.
-                </div>
-              ) : (
-                filteredUsers.map((u) => {
-                  const roleMeta = roleConfigs.find(r => r.id === u.role);
-                  const isPassShown = !!revealedPasswords[u.id];
+            {/* Real-Time Registered Users Management Table */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+              <div className="max-h-[340px] overflow-y-auto overflow-x-auto">
+                {filteredUsers.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50 text-xs text-slate-500">
+                    Tidak ada akun pengguna yang sesuai dengan pencarian.
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Nama Lengkap</th>
+                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Username</th>
+                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Password</th>
+                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Peran (Role)</th>
+                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">No. WhatsApp</th>
+                        <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {filteredUsers.map((u) => {
+                        const roleMeta = roleConfigs.find(r => r.id === u.role);
+                        const isPassShown = !!revealedPasswords[u.id];
 
-                  return (
-                    <div
-                      key={u.id}
-                      className="p-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-[#282974]/8 border border-[#282974]/25 text-[#282974] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                          {u.fullName.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900 truncate">
-                              {u.fullName}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${roleMeta?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                              {roleMeta?.shortTitle || u.roleName}
-                            </span>
-                            {u.department && (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                {u.department.replace('Engineering ', '')}
-                              </span>
-                            )}
-                          </div>
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-50/90 transition-colors">
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-[#282974]/8 border border-[#282974]/25 text-[#282974] font-bold text-[10px] flex items-center justify-center shrink-0">
+                                  {u.fullName.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <span className="truncate max-w-[140px]">{u.fullName}</span>
+                                    {!u.isDefault && (
+                                      <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 text-[9px] font-bold uppercase shrink-0">
+                                        Baru
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono">
+                                    {u.createdAt}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
 
-                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 font-mono">
-                            <span>
-                              user: <strong className="text-slate-900">@{u.username}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              pass:{' '}
-                              <strong className="text-slate-900">
-                                {isPassShown ? u.password : '••••••'}
-                              </strong>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setRevealedPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))
-                                }
-                                className="text-slate-400 hover:text-slate-700"
-                                title={isPassShown ? 'Sembunyikan' : 'Tampilkan password'}
-                              >
-                                {isPassShown ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                              </button>
-                            </span>
-                            {u.whatsapp && (
-                              <span className="text-emerald-700">WA: +{u.whatsapp}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                            <td className="px-3 py-2.5 font-mono font-semibold text-[#282974] whitespace-nowrap">
+                              @{u.username}
+                            </td>
 
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUsername(u.username);
-                            setPassword(u.password);
-                            setErrorMsg('');
-                            setActiveTab('login');
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 border border-[#282974]/25 transition-colors flex items-center gap-1"
-                          title="Isi ke form login"
-                        >
-                          <LogIn className="w-3 h-3" />
-                          <span>Gunakan</span>
-                        </button>
+                            <td className="px-3 py-2.5 font-mono whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                                <span className="text-slate-900 font-semibold text-[11px]">
+                                  {isPassShown ? u.password : '••••••'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setRevealedPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))
+                                  }
+                                  className="text-slate-400 hover:text-slate-700"
+                                  title={isPassShown ? 'Sembunyikan' : 'Tampilkan password'}
+                                >
+                                  {isPassShown ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </td>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingUser({ ...u });
-                            setEditError('');
-                          }}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-[#282974] hover:bg-slate-100 border border-slate-200 transition-colors"
-                          title="Edit User"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
+                            <td className="px-3 py-2.5 whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <span className={`inline-flex w-fit px-2 py-0.5 rounded-md text-[10px] font-semibold border ${roleMeta?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                  {roleMeta?.shortTitle || u.roleName}
+                                </span>
+                                {u.department && (
+                                  <span className="text-[10px] text-slate-500 font-medium">
+                                    {u.department}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                        {users.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onDeleteUser(u.id);
-                              setManageNotice(`Akun "${u.fullName}" telah dihapus.`);
-                              setTimeout(() => setManageNotice(''), 3000);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors"
-                            title="Hapus User"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+                            <td className="px-3 py-2.5 font-mono text-[11px] text-emerald-700 font-semibold whitespace-nowrap">
+                              {u.whatsapp ? `+${u.whatsapp}` : '-'}
+                            </td>
+
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setUsername(u.username);
+                                    setPassword(u.password);
+                                    setErrorMsg('');
+                                    setActiveTab('login');
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974] hover:text-white border border-[#282974]/25 transition-colors inline-flex items-center gap-1"
+                                  title="Isi ke form login"
+                                >
+                                  <LogIn className="w-3 h-3" />
+                                  <span>Gunakan</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUser({ ...u });
+                                    setEditError('');
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-600 hover:text-[#282974] hover:bg-slate-100 border border-slate-200 transition-colors"
+                                  title="Edit User"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+
+                                {users.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onDeleteUser(u.id);
+                                      setManageNotice(`Akun "${u.fullName}" telah dihapus.`);
+                                      setTimeout(() => setManageNotice(''), 3000);
+                                    }}
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors"
+                                    title="Hapus User"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           </div>
         )}
