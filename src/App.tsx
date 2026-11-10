@@ -22,8 +22,10 @@ import { Ticket, UserAccount, UserRole, UserSession, WhatsAppNotificationPayload
 import { 
   getStoredTickets, saveStoredTickets, resetToDefaultTickets,
   getStoredUsers, addStoredUser, updateStoredUser, deleteStoredUser,
-  resetToDefaultUsers, USERS_STORAGE_KEY, isAdminSession
+  resetToDefaultUsers, USERS_STORAGE_KEY, isAdminSession,
+  pullAndMergeUsersFromDrive, pullAndMergeTicketsFromDrive
 } from './data/mockData';
+import { subscribeDriveAuth, syncTicketsWithDriveFolder } from './services/googleDrive';
 import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
 import { BarChart3, Database } from 'lucide-react';
 
@@ -31,7 +33,7 @@ export default function App() {
   // Global Tickets Data
   const [tickets, setTickets] = useState<Ticket[]>(() => getStoredTickets());
 
-  // Global Registered Users Data (Dynamic Multi-User State backed by localStorage)
+  // Global Registered Users Data (Dynamic Multi-User State backed by Google Drive + localStorage)
   const [users, setUsers] = useState<UserAccount[]>(() => getStoredUsers());
 
   // User Session & Role - Mandatory Protected Login Gate
@@ -73,6 +75,25 @@ export default function App() {
     saveStoredTickets(tickets);
   }, [tickets]);
 
+  // Automatically pull & merge users and tickets from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF when Drive is connected
+  useEffect(() => {
+    let wasConnected = false;
+    const unsubscribe = subscribeDriveAuth((state) => {
+      if (state.isConnected && !wasConnected) {
+        wasConnected = true;
+        void pullAndMergeUsersFromDrive().then((mergedUsers) => {
+          setUsers(mergedUsers);
+        });
+        void pullAndMergeTicketsFromDrive().then((mergedTickets) => {
+          setTickets(mergedTickets);
+        });
+      } else if (!state.isConnected) {
+        wasConnected = false;
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   // Listen for real-time user updates from localStorage (same tab & cross-tab)
   useEffect(() => {
     const syncUsersFromStorage = (e?: Event) => {
@@ -106,26 +127,36 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handlers for Ticket updates
+  // Handlers for Ticket updates (persists to localStorage + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
   const handleAddTicket = (newTicket: Ticket) => {
-    setTickets(prev => [newTicket, ...prev]);
+    setTickets(prev => {
+      const updated = [newTicket, ...prev];
+      saveStoredTickets(updated);
+      void syncTicketsWithDriveFolder(updated, false);
+      return updated;
+    });
   };
 
   const handleUpdateTicket = (updatedTicket: Ticket) => {
-    setTickets(prev => prev.map(t => t.ID_Tiket === updatedTicket.ID_Tiket ? updatedTicket : t));
+    setTickets(prev => {
+      const updated = prev.map(t => t.ID_Tiket === updatedTicket.ID_Tiket ? updatedTicket : t);
+      saveStoredTickets(updated);
+      void syncTicketsWithDriveFolder(updated, false);
+      return updated;
+    });
     if (selectedTicketDetail?.ID_Tiket === updatedTicket.ID_Tiket) {
       setSelectedTicketDetail(updatedTicket);
     }
   };
 
   const handleResetData = () => {
-    if (window.confirm('Apakah Anda yakin ingin mereset seluruh data kembali ke tiket demo awal?')) {
+    if (window.confirm('Apakah Anda yakin ingin mereset seluruh data kembali ke tiket demo awal (termasuk memperbarui wbp_tickets_database.json di Google Drive)?')) {
       const reset = resetToDefaultTickets();
       setTickets(reset);
     }
   };
 
-  // Handlers for Dynamic User Registration & Management (Synchronous localStorage + Immediate State Persistence)
+  // Handlers for Dynamic User Registration & Management (Google Drive + localStorage Persistence)
   const handleRegisterUser = (newUser: Omit<UserAccount, 'id' | 'createdAt'>): UserAccount => {
     const { created, users: updatedList } = addStoredUser(newUser);
     setUsers(updatedList);
@@ -169,6 +200,9 @@ export default function App() {
 
   const handleLoginSuccess = (newSession: UserSession) => {
     setUsers(getStoredUsers());
+    void pullAndMergeUsersFromDrive().then((merged) => {
+      setUsers(merged);
+    });
     setSession(newSession);
     setActiveRole(newSession.role);
     setIsLoginModalOpen(false);
@@ -232,6 +266,9 @@ export default function App() {
           isAdminSession(session)
             ? () => {
                 setUsers(getStoredUsers());
+                void pullAndMergeUsersFromDrive().then((merged) => {
+                  setUsers(merged);
+                });
                 setLoginModalInitialTab('manage');
                 setIsLoginModalOpen(true);
               }
@@ -265,6 +302,9 @@ export default function App() {
             isAdminSession(session)
               ? () => {
                   setUsers(getStoredUsers());
+                  void pullAndMergeUsersFromDrive().then((merged) => {
+                    setUsers(merged);
+                  });
                   setLoginModalInitialTab('manage');
                   setIsLoginModalOpen(true);
                 }

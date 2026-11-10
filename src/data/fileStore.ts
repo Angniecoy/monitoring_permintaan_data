@@ -1,7 +1,7 @@
 /**
  * File Store & Google Drive Storage Integration for PT Waskita Beton Precast
- * Primary Cloud Directory: https://drive.google.com/drive/folders/1ysQDvgj60TqAcFsZvQ2FWzd9J0NU9euA?usp=sharing
- * Supports real Google Drive API v3 uploads into folder 1ysQDvgj60TqAcFsZvQ2FWzd9J0NU9euA,
+ * Primary Cloud Directory: https://drive.google.com/drive/folders/1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF?usp=sharing
+ * Supports real Google Drive API v3 uploads into folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF,
  * plus IndexedDB / Memory caching and real download links.
  */
 
@@ -98,7 +98,7 @@ export function parseTicketFileEntry(rawEntry: string): ParsedTicketFile {
 }
 
 /**
- * Saves a browser File object to Google Drive folder (1ysQDvgj60TqAcFsZvQ2FWzd9J0NU9euA)
+ * Saves a browser File object to Google Drive folder (1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
  * as well as IndexedDB and in-memory cache.
  */
 export async function saveFileToStorage(file: File): Promise<AppFileRecord> {
@@ -116,7 +116,7 @@ export async function saveFileToStorage(file: File): Promise<AppFileRecord> {
   let driveViewUrl: string | undefined;
   let driveDownloadUrl: string | undefined;
 
-  // Upload to Google Drive folder 1ysQDvgj60TqAcFsZvQ2FWzd9J0NU9euA if token is available
+  // Upload to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF if token is available
   const token = await getAccessToken();
   if (token) {
     try {

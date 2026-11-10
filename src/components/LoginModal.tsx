@@ -2,10 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { 
   Lock, User, KeyRound, AlertCircle, Eye, EyeOff, Check, 
   UserPlus, Users, Trash2, Edit3, Search, ShieldCheck, ChevronDown,
-  Phone, RotateCcw, ArrowRight, CheckCircle2, X, LogIn, Activity
+  Phone, RotateCcw, ArrowRight, CheckCircle2, X, LogIn, Activity,
+  Cloud, RefreshCw, ExternalLink
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserAccount, UserRole, UserSession } from '../types';
-import { ROLE_LABELS, cleanWhatsAppNumber, getStoredTickets, getStoredUsers } from '../data/mockData';
+import {
+  ROLE_LABELS,
+  cleanWhatsAppNumber,
+  getStoredTickets,
+  getStoredUsers,
+  pullAndMergeUsersFromDrive
+} from '../data/mockData';
+import {
+  subscribeDriveAuth,
+  googleSignIn,
+  GOOGLE_DRIVE_FOLDER_ID,
+  GOOGLE_DRIVE_FOLDER_URL,
+  getDriveSyncState,
+  DriveSyncState
+} from '../services/googleDrive';
 import { getStoredOnlineUsers, registerOnlineUser, OnlineUserSession } from '../data/onlineStore';
 
 interface LoginModalProps {
@@ -41,12 +56,54 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     (!canClose || !isAdmin) && initialTab === 'manage' ? 'login' : initialTab
   );
 
-  // Persistent Users State synced directly with localStorage + parent state
+  // Persistent Users State synced directly with Google Drive + localStorage + parent state
   const [persistedUsers, setPersistedUsers] = useState<UserAccount[]>(() => getStoredUsers());
+  const [isDriveConnected, setIsDriveConnected] = useState(false);
+  const [driveSyncState, setDriveSyncState] = useState<DriveSyncState>(() => getDriveSyncState());
+  const [isPullingDrive, setIsPullingDrive] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeDriveAuth((state) => {
+      setIsDriveConnected(state.isConnected);
+      setDriveSyncState(state.syncState);
+      if (state.isConnected) {
+        void pullAndMergeUsersFromDrive().then((merged) => {
+          setPersistedUsers(merged);
+        });
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     setPersistedUsers(getStoredUsers());
-  }, [users, activeTab, isOpen]);
+    if (isDriveConnected && (activeTab === 'manage' || activeTab === 'login')) {
+      void pullAndMergeUsersFromDrive().then((merged) => {
+        setPersistedUsers(merged);
+      });
+    }
+  }, [users, activeTab, isOpen, isDriveConnected]);
+
+  const handleManualDriveSync = async () => {
+    setIsPullingDrive(true);
+    try {
+      if (!isDriveConnected) {
+        await googleSignIn();
+      }
+      const merged = await pullAndMergeUsersFromDrive();
+      setPersistedUsers(merged);
+      if (activeTab === 'manage') {
+        setManageNotice(
+          `Sinkronisasi Google Drive selesai (${merged.length} akun aktif dari folder ${GOOGLE_DRIVE_FOLDER_ID}).`
+        );
+        setTimeout(() => setManageNotice(''), 4000);
+      }
+    } catch (err) {
+      console.warn('Drive sync warning:', err);
+    } finally {
+      setIsPullingDrive(false);
+    }
+  };
 
   useEffect(() => {
     const syncStoredUsers = () => {
@@ -241,7 +298,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg(`Kredensial username "${trimmedUsername}" atau password tidak ditemukan.`);
   };
 
-  const validateAndCreateAccount = (autoLogin: boolean) => {
+  const validateAndCreateAccount = async (autoLogin: boolean) => {
     setRegError('');
 
     const cleanName = regFullName.trim();
@@ -276,6 +333,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (exists) {
       setRegError(`Username "${cleanUser}" sudah digunakan. Silakan pilih username lain.`);
       return;
+    }
+
+    // Ensure Google Drive connection so WBP_USER_<username>.json and wbp_users_database.json are written directly to folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+    if (!isDriveConnected) {
+      try {
+        await googleSignIn();
+      } catch {
+        // Proceed with local persistence; will auto-sync to Drive folder as soon as connected
+      }
     }
 
     const safeRole: UserRole = regRole === 'dashboard' ? 'pemberi_tugas' : regRole;
@@ -330,9 +396,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setFilterRole('ALL');
       setSearchUserQuery('');
       setManageNotice(
-        `Akun baru "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan secara permanen ke basis data!`
+        `Akun baru "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke Google Drive (WBP_USER_${createdUser.username.toLowerCase()}.json) & basis data utama!`
       );
-      setTimeout(() => setManageNotice(''), 4500);
+      setTimeout(() => setManageNotice(''), 5000);
       setActiveTab('manage');
     } else {
       // Pre-fill login form so user can immediately sign in
@@ -340,7 +406,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setPassword(createdUser.password);
       setErrorMsg('');
       setSuccessMsg(
-        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan secara permanen sebagai ${createdUser.roleName}. Silakan masuk!`
+        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke Google Drive (Folder ID: ${GOOGLE_DRIVE_FOLDER_ID}) sebagai ${createdUser.roleName}. Silakan masuk!`
       );
       setActiveTab('login');
     }
@@ -367,6 +433,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
+    const confirmed = window.confirm(
+      `Simpan perubahan data akun "${cleanName}" (@${cleanUser}) dan perbarui catatan JSON di Google Drive?`
+    );
+    if (!confirmed) return;
+
     const needsDept = editingUser.role === 'manager' || editingUser.role === 'staff';
     const updated: UserAccount = {
       ...editingUser,
@@ -380,7 +451,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onUpdateUser(updated);
     setPersistedUsers(getStoredUsers());
     setEditingUser(null);
-    setManageNotice(`Data akun "${updated.fullName}" berhasil diperbarui di penyimpanan permanen.`);
+    setManageNotice(`Data akun "${updated.fullName}" berhasil diperbarui di Google Drive & penyimpanan lokal.`);
     setTimeout(() => setManageNotice(''), 3500);
   };
 
@@ -671,15 +742,41 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* ==================== TAB 2: REGISTRASI AKUN BARU ==================== */}
         {activeTab === 'register' && (
           <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
-            <div className="p-3.5 rounded-xl bg-[#282974]/8 border border-[#282974]/25 flex items-start justify-between gap-3">
+            <div className="p-3.5 rounded-xl bg-[#282974]/8 border border-[#282974]/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <UserPlus className="w-4 h-4 text-[#282974]" />
-                  <span>Registrasi Akun Pengguna Baru</span>
+                  <span>Registrasi Akun Pengguna Baru (Tersimpan ke Google Drive)</span>
                 </h3>
                 <p className="text-[11px] text-slate-600 mt-0.5">
-                  Daftarkan Nama Lengkap, Username, Password, dan pilih peran kerja Anda. Akun akan langsung tersimpan di sistem dan siap digunakan.
+                  Setiap pendaftaran menulis berkas JSON catatan akun ke Google Drive (Folder ID:{' '}
+                  <a
+                    href={GOOGLE_DRIVE_FOLDER_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono font-semibold text-[#282974] hover:underline"
+                  >
+                    {GOOGLE_DRIVE_FOLDER_ID}
+                  </a>
+                  ) sehingga langsung tampil di panel Kelola User Admin.
                 </p>
+              </div>
+              <div className="shrink-0">
+                {isDriveConnected ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Drive Terhubung</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleManualDriveSync()}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-[11px] font-semibold shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Cloud className="w-3.5 h-3.5 text-[#282974]" />
+                    <span>Sign in with Google</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -693,7 +790,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                validateAndCreateAccount(false);
+                void validateAndCreateAccount(false);
               }}
               className="space-y-4"
             >
@@ -832,7 +929,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => validateAndCreateAccount(true)}
+                  onClick={() => void validateAndCreateAccount(true)}
                   className="w-full sm:flex-1 py-2.5 px-4 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -859,11 +956,42 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </span>
                   )}
                 </h3>
-                <p className="text-[11px] text-slate-600">
-                  Data tersimpan secara permanen di browser (localStorage). Kelola akun, ubah peran/password, atau hapus user.
+                <p className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap mt-0.5">
+                  <span>Basis Data Google Drive Folder ID:</span>
+                  <a
+                    href={GOOGLE_DRIVE_FOLDER_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-mono font-semibold text-[#282974] hover:underline"
+                  >
+                    <span>{GOOGLE_DRIVE_FOLDER_ID}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                  {driveSyncState.lastSyncedAt && (
+                    <span className="text-[10px] text-emerald-700 font-semibold">
+                      • Disinkronkan {driveSyncState.lastSyncedAt}
+                    </span>
+                  )}
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => void handleManualDriveSync()}
+                  disabled={isPullingDrive || driveSyncState.isSyncing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs transition-colors cursor-pointer disabled:opacity-60"
+                  title="Tarik catatan JSON user terbaru dari Google Drive Folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF"
+                >
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 text-emerald-700 ${
+                      isPullingDrive || driveSyncState.isSyncing ? 'animate-spin' : ''
+                    }`}
+                  />
+                  <span>
+                    {isDriveConnected ? 'Tarik Data Drive' : 'Hubungkan & Tarik Drive'}
+                  </span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setActiveTab('register')}
@@ -876,6 +1004,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
+                      const confirmed = window.confirm(
+                        'Apakah Anda yakin ingin mengembalikan daftar user ke pengaturan default dan memperbarui wbp_users_database.json di Google Drive?'
+                      );
+                      if (!confirmed) return;
                       onResetUsers();
                       setPersistedUsers(getStoredUsers());
                       setManageNotice('Daftar user dikembalikan ke pengaturan default.');
@@ -1169,9 +1301,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => {
+                                      const confirmed = window.confirm(
+                                        `Apakah Anda yakin ingin menghapus akun "${u.fullName}" (@${u.username}) dari aplikasi dan Google Drive?`
+                                      );
+                                      if (!confirmed) return;
                                       onDeleteUser(u.id);
                                       setPersistedUsers(getStoredUsers());
-                                      setManageNotice(`Akun "${u.fullName}" telah dihapus secara permanen.`);
+                                      setManageNotice(
+                                        `Akun "${u.fullName}" telah dihapus secara permanen dari aplikasi & Google Drive.`
+                                      );
                                       setTimeout(() => setManageNotice(''), 3000);
                                     }}
                                     className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors"

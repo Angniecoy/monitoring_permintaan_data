@@ -1,4 +1,10 @@
 import { DepartmentName, DepartmentStructure, Ticket, UserAccount, UserRole, UserSession } from '../types';
+import {
+  writeUserRegistrationToDrive,
+  pushUsersDatabaseToDrive,
+  syncUsersFromDriveFolder,
+  syncTicketsWithDriveFolder
+} from '../services/googleDrive';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   pemberi_tugas: 'Pemberi Tugas (Sales / Proyek)',
@@ -363,6 +369,27 @@ export const INITIAL_TICKETS: Ticket[] = [
 
 const STORAGE_KEY = 'wbp_sim_teknis_tickets_v1';
 export const USERS_STORAGE_KEY = 'wbp_sim_teknis_users_v1';
+export const DELETED_USERS_STORAGE_KEY = 'wbp_sim_teknis_deleted_users_v1';
+
+export function getDeletedUsernames(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_USERS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDeletedUsernames(usernames: string[]): void {
+  try {
+    const unique = Array.from(new Set(usernames.map(u => u.toLowerCase())));
+    localStorage.setItem(DELETED_USERS_STORAGE_KEY, JSON.stringify(unique));
+  } catch {
+    // ignore
+  }
+}
 
 export function getStoredTickets(): Ticket[] {
   try {
@@ -389,7 +416,18 @@ export function saveStoredTickets(tickets: Ticket[]): void {
 
 export function resetToDefaultTickets(): Ticket[] {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TICKETS));
+  void syncTicketsWithDriveFolder(INITIAL_TICKETS, true);
   return INITIAL_TICKETS;
+}
+
+export async function pullAndMergeTicketsFromDrive(): Promise<Ticket[]> {
+  const local = getStoredTickets();
+  const merged = await syncTicketsWithDriveFolder(local, false);
+  if (merged && merged.length > 0) {
+    saveStoredTickets(merged);
+    return merged;
+  }
+  return local;
 }
 
 function normalizeUserAccount(u: Partial<UserAccount>, index: number): UserAccount {
@@ -465,6 +503,26 @@ export function saveStoredUsers(users: UserAccount[]): void {
   }
 }
 
+/**
+ * Pulls all registered users from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+ * (both wbp_users_database.json and WBP_USER_*.json files) and merges them with local state.
+ */
+export async function pullAndMergeUsersFromDrive(): Promise<UserAccount[]> {
+  const currentLocal = getStoredUsers();
+  const currentDeleted = getDeletedUsernames();
+  const res = await syncUsersFromDriveFolder(currentLocal, currentDeleted);
+  if (res && res.users.length > 0) {
+    const normalized = res.users.map((u, idx) => normalizeUserAccount(u, idx));
+    const custom = normalized.filter(u => !u.isDefault);
+    const defaults = normalized.filter(u => u.isDefault);
+    const ordered = [...custom, ...defaults];
+    saveDeletedUsernames(res.deletedUsernames);
+    saveStoredUsers(ordered);
+    return ordered;
+  }
+  return currentLocal;
+}
+
 export function addStoredUser(
   newUser: Omit<UserAccount, 'id' | 'createdAt'>
 ): { created: UserAccount; users: UserAccount[] } {
@@ -483,7 +541,15 @@ export function addStoredUser(
     u => u.username.toLowerCase() !== created.username.toLowerCase()
   );
   const updatedList = [created, ...withoutDuplicate];
+  const updatedDeleted = getDeletedUsernames().filter(
+    uname => uname.toLowerCase() !== created.username.toLowerCase()
+  );
+  saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
+
+  // Immediately write WBP_USER_<username>.json and wbp_users_database.json to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  void writeUserRegistrationToDrive(created, updatedList, updatedDeleted);
+
   return { created, users: updatedList };
 }
 
@@ -495,19 +561,34 @@ export function updateStoredUser(updatedUser: UserAccount): UserAccount[] {
     ? current.map(u => (u.id === normalizedTarget.id ? normalizedTarget : u))
     : [normalizedTarget, ...current];
   saveStoredUsers(updatedList);
+
+  // Sync updated user record and database JSON to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  void writeUserRegistrationToDrive(normalizedTarget, updatedList, getDeletedUsernames());
+
   return updatedList;
 }
 
 export function deleteStoredUser(userId: string): UserAccount[] {
   const current = getStoredUsers();
+  const targetUser = current.find(u => u.id === userId);
   const updatedList = current.filter(u => u.id !== userId);
+  const updatedDeleted = targetUser
+    ? Array.from(new Set([...getDeletedUsernames(), targetUser.username.toLowerCase()]))
+    : getDeletedUsernames();
+  saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
+
+  // Sync deletion to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  void pushUsersDatabaseToDrive(updatedList, updatedDeleted, targetUser?.username);
+
   return updatedList;
 }
 
 export function resetToDefaultUsers(): UserAccount[] {
+  saveDeletedUsernames([]);
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
   window.dispatchEvent(new Event('wbp_users_updated'));
+  void pushUsersDatabaseToDrive(INITIAL_USERS, []);
   return INITIAL_USERS;
 }
 
