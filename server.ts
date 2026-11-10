@@ -173,7 +173,7 @@ const INITIAL_USERS: ServerUserAccount[] = [
   },
   {
     id: 'usr-default-dashboard',
-    fullName: 'Administrator & Direksi WBP',
+    fullName: 'Administrator',
     username: 'admin',
     password: 'WBPVIEW',
     role: 'dashboard',
