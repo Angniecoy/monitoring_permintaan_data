@@ -64,6 +64,7 @@ export interface UserAccount {
   whatsapp?: string;
   createdAt: string;
   isDefault?: boolean;
+  isAdmin?: boolean;
 }
 
 export interface UserSession {
@@ -76,6 +77,7 @@ export interface UserSession {
   department?: DepartmentName;
   staffName?: string;
   whatsapp?: string;
+  isAdmin?: boolean;
 }
 
 export interface WhatsAppNotificationPayload {

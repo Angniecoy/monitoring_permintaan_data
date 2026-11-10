@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { 
   PlusCircle, Search, Edit3, Send, CheckCircle2, FileUp, 
   Clock, AlertCircle, Building2, User, Phone, MapPin, 
-  Calendar, Layers, FileCheck, ArrowRight, X, Eye, Download
+  Calendar, Layers, FileCheck, ArrowRight, X, Eye, Download, ExternalLink, Loader2
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserSession, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber, generateTicketId, formatCurrentDateTime } from '../data/mockData';
-import { saveFileToStorage, downloadFile } from '../data/fileStore';
+import { saveFileToStorage, downloadFile, parseTicketFileEntry } from '../data/fileStore';
+import { GoogleDriveStatusBanner } from '../components/GoogleDriveStatusBanner';
+import { getAccessToken, googleSignIn, GOOGLE_DRIVE_FOLDER_URL } from '../services/googleDrive';
 
 interface PemberiTugasViewProps {
   tickets: Ticket[];
@@ -50,8 +52,10 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const [docOthers, setDocOthers] = useState(false);
   const [detailOthers, setDetailOthers] = useState('');
 
-  // Simulated uploaded files
+  // Uploaded files (stored as "filename.ext::DRIVE_FILE_ID" when synced to Google Drive)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState('');
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
 
@@ -80,11 +84,37 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
-      for (const file of filesArray) {
-        await saveFileToStorage(file);
+      setIsUploading(true);
+      setUploadNotice('Mengunggah berkas ke folder Google Drive WBP...');
+
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          try {
+            await googleSignIn();
+          } catch {
+            // User closed or skipped popup; saveFileToStorage will handle local fallback
+          }
+        }
+
+        const newEntries: string[] = [];
+        let syncedCount = 0;
+        for (const file of filesArray) {
+          const record = await saveFileToStorage(file);
+          newEntries.push(record.formattedEntry);
+          if (record.driveFileId) syncedCount++;
+        }
+
+        setUploadedFiles(prev => [...prev, ...newEntries]);
+        if (syncedCount > 0) {
+          setUploadNotice(`${syncedCount} berkas berhasil disimpan langsung ke folder Google Drive utama!`);
+        } else {
+          setUploadNotice('Berkas dilampirkan. Hubungkan akun Google Drive di atas agar otomatis tersimpan ke cloud.');
+        }
+      } finally {
+        setIsUploading(false);
+        e.target.value = '';
       }
-      const names = filesArray.map(f => f.name);
-      setUploadedFiles(prev => [...prev, ...names]);
     }
   };
 
@@ -614,42 +644,96 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               {/* STEP 3: LAMPIRAN & SUBMIT */}
               {formStep === 3 && (
                 <div className="space-y-4 animate-in fade-in duration-150">
+                  <GoogleDriveStatusBanner />
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Upload Dokumen Pendukung (TOR, Gambar Referensi, Data Tanah)
+                      Upload Dokumen Pendukung ke Google Drive (TOR, Gambar Referensi, Data Tanah)
                     </label>
                     <div className="border-2 border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-5 text-center transition-colors bg-slate-50">
-                      <FileUp className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                      <div className="text-xs text-slate-700 font-medium">
-                        Klik untuk memilih berkas atau seret berkas ke sini
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1">
-                        Format didukung: PDF, DWG, XLSX, DOCX (Maks. 25MB)
-                      </div>
+                      {isUploading ? (
+                        <div className="py-3 flex flex-col items-center justify-center gap-2">
+                          <Loader2 className="w-7 h-7 text-[#282974] animate-spin" />
+                          <div className="text-xs font-semibold text-[#282974]">
+                            Mengunggah berkas ke Google Drive...
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <FileUp className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                          <div className="text-xs text-slate-700 font-medium">
+                            Klik untuk memilih berkas — otomatis diunggah ke Folder Google Drive WBP
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-1">
+                            Format didukung: PDF, DWG, XLSX, DOCX, ZIP
+                          </div>
+                        </>
+                      )}
                       <input
                         type="file"
                         multiple
+                        disabled={isUploading}
                         onChange={handleFileUpload}
-                        className="mt-3 text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#282974] file:text-white hover:file:bg-[#1e1f5a] cursor-pointer"
+                        className="mt-3 text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#282974] file:text-white hover:file:bg-[#1e1f5a] cursor-pointer disabled:opacity-50"
                       />
                     </div>
+                    {uploadNotice && (
+                      <div className="mt-2 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center justify-between gap-2">
+                        <span>{uploadNotice}</span>
+                        <a
+                          href={GOOGLE_DRIVE_FOLDER_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-semibold underline shrink-0"
+                        >
+                          <span>Buka Folder Drive</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {uploadedFiles.length > 0 && (
                     <div className="space-y-1.5">
-                      <div className="text-xs font-semibold text-slate-600">Berkas Terlampir:</div>
-                      {uploadedFiles.map((fn, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                          <span className="font-mono text-slate-700 truncate max-w-sm">{fn}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeUploadedFile(idx)}
-                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
+                      <div className="text-xs font-semibold text-slate-600">Berkas Terlampir di Google Drive:</div>
+                      {uploadedFiles.map((fn, idx) => {
+                        const parsed = parseTicketFileEntry(fn);
+                        return (
+                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-mono text-slate-800 font-semibold truncate">{parsed.name}</span>
+                              {parsed.isDriveSynced ? (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-semibold shrink-0">
+                                  Tersimpan di Google Drive
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold shrink-0">
+                                  Lokal / Folder Drive
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <a
+                                href={parsed.driveViewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#282974]/10 text-[#282974] hover:bg-[#282974] hover:text-white text-[11px] font-semibold transition-colors"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Tautan Google Drive</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => removeUploadedFile(idx)}
+                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                                title="Hapus lampiran"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -878,25 +962,50 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               {/* Files */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="font-bold text-slate-800 mb-2">Berkas Pendukung Awal:</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-slate-800">Berkas Pendukung Awal:</span>
+                    <a
+                      href={GOOGLE_DRIVE_FOLDER_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#282974] hover:underline"
+                    >
+                      <span>Folder Google Drive</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                   {displayedTicket.File_Pendukung !== '-' ? (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {displayedTicket.File_Pendukung.split('||').map((fn, idx) => {
                         const cleanFn = fn.trim();
+                        const parsed = parseTicketFileEntry(cleanFn);
                         return (
-                          <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
-                            <span className="font-mono text-[11px] text-slate-700 truncate max-w-[200px]">{cleanFn}</span>
-                            <button
-                              type="button"
-                              onClick={() => downloadFile(cleanFn, {
-                                proyek: displayedTicket.Proyek,
-                                idTiket: displayedTicket.ID_Tiket,
-                                dokumen: displayedTicket.Dokumen
-                              })}
-                              className="px-2.5 py-1 text-[10px] bg-[#282974]/8 hover:bg-[#282974] text-[#282974] hover:text-white border border-[#282974]/25 hover:border-[#282974] rounded-md flex items-center gap-1 font-semibold transition-colors"
-                            >
-                              <Download className="w-3 h-3" /> Unduh
-                            </button>
+                          <div key={idx} className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-[11px] font-semibold text-slate-800 truncate">{parsed.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(cleanFn, {
+                                  proyek: displayedTicket.Proyek,
+                                  idTiket: displayedTicket.ID_Tiket,
+                                  dokumen: displayedTicket.Dokumen
+                                })}
+                                className="px-2.5 py-1 text-[10px] bg-[#282974]/8 hover:bg-[#282974] text-[#282974] hover:text-white border border-[#282974]/25 hover:border-[#282974] rounded-md flex items-center gap-1 font-semibold transition-colors shrink-0"
+                              >
+                                <Download className="w-3 h-3" /> Unduh
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[10px]">
+                              <a
+                                href={parsed.driveViewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[#282974] hover:underline font-mono truncate"
+                              >
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{parsed.driveViewUrl}</span>
+                              </a>
+                            </div>
                           </div>
                         );
                       })}
@@ -907,25 +1016,50 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="font-bold text-slate-800 mb-2">Dokumen Hasil Engineering:</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-slate-800">Dokumen Hasil Engineering:</span>
+                    <a
+                      href={GOOGLE_DRIVE_FOLDER_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 hover:underline"
+                    >
+                      <span>Folder Google Drive</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                   {displayedTicket.File_Hasil !== '-' ? (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {displayedTicket.File_Hasil.split('||').map((fn, idx) => {
                         const cleanFn = fn.trim();
+                        const parsed = parseTicketFileEntry(cleanFn);
                         return (
-                          <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 border border-emerald-200">
-                            <span className="text-emerald-800 font-mono text-[11px] font-medium truncate max-w-[200px]">{cleanFn}</span>
-                            <button
-                              type="button"
-                              onClick={() => downloadFile(cleanFn, {
-                                proyek: displayedTicket.Proyek,
-                                idTiket: displayedTicket.ID_Tiket,
-                                dokumen: displayedTicket.Dokumen
-                              })}
-                              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors flex items-center gap-1 shadow-2xs"
-                            >
-                              <Download className="w-3 h-3" /> Unduh Hasil
-                            </button>
+                          <div key={idx} className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-emerald-900 font-mono text-[11px] font-semibold truncate">{parsed.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(cleanFn, {
+                                  proyek: displayedTicket.Proyek,
+                                  idTiket: displayedTicket.ID_Tiket,
+                                  dokumen: displayedTicket.Dokumen
+                                })}
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors flex items-center gap-1 shadow-2xs shrink-0"
+                              >
+                                <Download className="w-3 h-3" /> Unduh Hasil
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-emerald-200/70 text-[10px]">
+                              <a
+                                href={parsed.driveViewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-800 hover:underline font-mono truncate"
+                              >
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{parsed.driveViewUrl}</span>
+                              </a>
+                            </div>
                           </div>
                         );
                       })}

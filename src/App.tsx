@@ -21,7 +21,7 @@ import { DatabaseView } from './views/DatabaseView';
 import { Ticket, UserAccount, UserRole, UserSession, WhatsAppNotificationPayload } from './types';
 import { 
   getStoredTickets, saveStoredTickets, resetToDefaultTickets,
-  getStoredUsers, saveStoredUsers, resetToDefaultUsers, formatCurrentDateTime
+  getStoredUsers, saveStoredUsers, resetToDefaultUsers, formatCurrentDateTime, isAdminSession
 } from './data/mockData';
 import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
 import { BarChart3, Database } from 'lucide-react';
@@ -212,10 +212,14 @@ export default function App() {
       <Navbar
         session={session}
         onOpenLoginModal={handleLogout}
-        onOpenUserManagement={() => {
-          setLoginModalInitialTab('manage');
-          setIsLoginModalOpen(true);
-        }}
+        onOpenUserManagement={
+          isAdminSession(session)
+            ? () => {
+                setLoginModalInitialTab('manage');
+                setIsLoginModalOpen(true);
+              }
+            : undefined
+        }
         onToggleSidebarMobile={() => setIsMobileSidebarOpen(prev => !prev)}
         onQuickSearchClick={() => setIsQuickSearchOpen(true)}
         totalUsersCount={users.length}
@@ -357,7 +361,8 @@ export default function App() {
         onResetUsers={handleResetUsers}
         onClose={() => setIsLoginModalOpen(false)}
         canClose={session.isLoggedIn}
-        initialTab={loginModalInitialTab}
+        isAdmin={isAdminSession(session)}
+        initialTab={isAdminSession(session) ? loginModalInitialTab : 'login'}
       />
 
       {/* Ticket Details Inspector Modal */}

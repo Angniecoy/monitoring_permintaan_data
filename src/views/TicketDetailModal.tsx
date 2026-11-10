@@ -1,8 +1,9 @@
 import React from 'react';
-import { X, Calendar, User, Phone, FileText, CheckCircle2, Clock, AlertTriangle, ArrowRight, Download, Send } from 'lucide-react';
+import { X, Calendar, User, Phone, FileText, CheckCircle2, Clock, AlertTriangle, ArrowRight, Download, Send, ExternalLink } from 'lucide-react';
 import { Ticket } from '../types';
 import { cleanWhatsAppNumber } from '../data/mockData';
-import { downloadFile } from '../data/fileStore';
+import { downloadFile, parseTicketFileEntry } from '../data/fileStore';
+import { GOOGLE_DRIVE_FOLDER_URL } from '../services/googleDrive';
 
 interface TicketDetailModalProps {
   ticket: Ticket | null;
@@ -20,14 +21,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
 
   const parseFiles = (fileStr: string) => {
     if (!fileStr || fileStr === '-' || fileStr === 'nan') return [];
-    return fileStr.split('||').map(f => {
-      const trimmed = f.trim();
-      const parts = trimmed.split('::');
-      return {
-        name: parts[0] || trimmed,
-        id: parts[1] || ''
-      };
-    });
+    return fileStr.split('||').map(f => parseTicketFileEntry(f.trim()));
   };
 
   const filesPendukung = parseFiles(ticket.File_Pendukung);
@@ -283,23 +277,47 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* File Pendukung */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="text-xs font-bold text-slate-900 mb-2">
-                📎 Berkas Pendukung (TOR/Gambar/Data Lapangan)
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-bold text-slate-900">
+                  📎 Berkas Pendukung (TOR/Gambar/Data)
+                </div>
+                <a
+                  href={GOOGLE_DRIVE_FOLDER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#282974] hover:underline"
+                >
+                  <span>Folder Drive</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
               {filesPendukung.length > 0 ? (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {filesPendukung.map((file, i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
-                      <span className="font-mono text-[11px] text-slate-700 truncate max-w-[200px]">
-                        {file.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
-                        className="px-2.5 py-1 text-[10px] bg-[#282974]/10 hover:bg-[#282974] text-[#282974] hover:text-white border border-[#282974]/25 hover:border-[#282974] rounded-md flex items-center gap-1 font-semibold transition-colors"
-                      >
-                        <Download className="w-3 h-3" /> Unduh
-                      </button>
+                    <div key={i} className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[11px] font-semibold text-slate-800 truncate">
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadFile(file.raw, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
+                          className="px-2.5 py-1 text-[10px] bg-[#282974]/10 hover:bg-[#282974] text-[#282974] hover:text-white border border-[#282974]/25 hover:border-[#282974] rounded-md flex items-center gap-1 font-semibold transition-colors shrink-0"
+                        >
+                          <Download className="w-3 h-3" /> Unduh
+                        </button>
+                      </div>
+                      <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                        <a
+                          href={file.driveViewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[#282974] hover:underline font-mono truncate"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{file.driveViewUrl}</span>
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -310,23 +328,47 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
 
             {/* File Hasil */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="text-xs font-bold text-slate-900 mb-2">
-                📁 Dokumen Hasil Engineering
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-bold text-slate-900">
+                  📁 Dokumen Hasil Engineering
+                </div>
+                <a
+                  href={GOOGLE_DRIVE_FOLDER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 hover:underline"
+                >
+                  <span>Folder Drive</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
               {filesHasil.length > 0 ? (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {filesHasil.map((file, i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/70 border border-emerald-200">
-                      <span className="font-mono text-[11px] text-emerald-800 font-medium truncate max-w-[200px]">
-                        {file.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => downloadFile(file.name, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
-                        className="px-2.5 py-1 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center gap-1 font-semibold transition-colors shadow-2xs"
-                      >
-                        <Download className="w-3 h-3" /> Unduh Hasil
-                      </button>
+                    <div key={i} className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[11px] text-emerald-900 font-semibold truncate">
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadFile(file.raw, { proyek: ticket.Proyek, idTiket: ticket.ID_Tiket, dokumen: ticket.Dokumen })}
+                          className="px-2.5 py-1 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center gap-1 font-semibold transition-colors shadow-2xs shrink-0"
+                        >
+                          <Download className="w-3 h-3" /> Unduh Hasil
+                        </button>
+                      </div>
+                      <div className="pt-1 border-t border-emerald-200/70 flex items-center justify-between text-[10px]">
+                        <a
+                          href={file.driveViewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-emerald-800 hover:underline font-mono truncate"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{file.driveViewUrl}</span>
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>

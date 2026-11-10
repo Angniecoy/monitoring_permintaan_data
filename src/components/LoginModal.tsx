@@ -19,6 +19,7 @@ interface LoginModalProps {
   onResetUsers?: () => void;
   onClose?: () => void;
   canClose?: boolean;
+  isAdmin?: boolean;
   initialTab?: 'login' | 'register' | 'manage';
 }
 
@@ -33,10 +34,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onResetUsers,
   onClose,
   canClose = false,
+  isAdmin = false,
   initialTab = 'login'
 }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'manage'>(
-    !canClose && initialTab === 'manage' ? 'login' : initialTab
+    (!canClose || !isAdmin) && initialTab === 'manage' ? 'login' : initialTab
   );
 
   // Online Users State (Real-Time Active Sessions Tracker)
@@ -171,7 +173,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           userName: matchedUser.fullName,
           department: matchedUser.department,
           staffName: matchedUser.role === 'staff' ? matchedUser.fullName : undefined,
-          whatsapp: matchedUser.whatsapp
+          whatsapp: matchedUser.whatsapp,
+          isAdmin:
+            matchedUser.isAdmin === true ||
+            matchedUser.username.toLowerCase() === 'admin' ||
+            matchedUser.role === 'dashboard'
         });
         return;
       } else {
@@ -189,7 +195,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           username: 'WBP',
           role: selectedRole,
           roleName: currentConfig.title,
-          userName: `WBP ${currentConfig.badge}`
+          userName: `WBP ${currentConfig.badge}`,
+          isAdmin: selectedRole === 'dashboard'
         });
         return;
       } else {
@@ -411,7 +418,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </button>
               )}
 
-              {canClose && (
+              {canClose && isAdmin && (
                 <button
                   type="button"
                   onClick={() => {
@@ -828,8 +835,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
         )}
 
-        {/* ==================== TAB 3: MANAJEMEN DAFTAR USER (PROTECTED: AUTHENTICATED ONLY) ==================== */}
-        {activeTab === 'manage' && canClose && (
+        {/* ==================== TAB 3: MANAJEMEN DAFTAR USER (PROTECTED: ADMIN ONLY) ==================== */}
+        {activeTab === 'manage' && canClose && isAdmin && (
           <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
               <div>

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { 
   Building2, UserCheck, Send, Clock, CheckCircle2, 
   ArrowRight, MessageSquare, AlertCircle, Eye, ShieldCheck, 
-  Layers, Users, Check, Download
+  Layers, Users, Check, Download, ExternalLink
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserAccount, UserSession, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber } from '../data/mockData';
-import { downloadFile } from '../data/fileStore';
+import { downloadFile, parseTicketFileEntry } from '../data/fileStore';
 
 interface ManagerViewProps {
   tickets: Ticket[];
@@ -350,20 +350,37 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                         <div className="text-slate-800 font-medium">{currentTicket.Dokumen}</div>
                       </div>
                       {currentTicket.File_Pendukung && currentTicket.File_Pendukung !== '-' && (
-                        <div className="col-span-2 pt-1.5 border-t border-slate-200 flex items-center justify-between">
-                          <span className="text-slate-500 text-[10px]">Lampiran Pemohon:</span>
-                          <button
-                            type="button"
-                            onClick={() => downloadFile(currentTicket.File_Pendukung.split('||')[0]?.trim() || currentTicket.File_Pendukung, {
-                              proyek: currentTicket.Proyek,
-                              idTiket: currentTicket.ID_Tiket,
-                              dokumen: currentTicket.Dokumen
-                            })}
-                            className="inline-flex items-center gap-1 text-[11px] font-mono text-[#282974] hover:text-[#1e1f5a] font-semibold underline"
-                          >
-                            <Download className="w-3 h-3" />
-                            <span>{currentTicket.File_Pendukung.split('||')[0]?.trim()}</span>
-                          </button>
+                        <div className="col-span-2 pt-1.5 border-t border-slate-200 space-y-1.5">
+                          <span className="text-slate-500 text-[10px] block">Lampiran Pemohon (Google Drive):</span>
+                          {currentTicket.File_Pendukung.split('||').map((rawFn, idx) => {
+                            const trimmed = rawFn.trim();
+                            const parsed = parseTicketFileEntry(trimmed);
+                            return (
+                              <div key={idx} className="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => downloadFile(trimmed, {
+                                    proyek: currentTicket.Proyek,
+                                    idTiket: currentTicket.ID_Tiket,
+                                    dokumen: currentTicket.Dokumen
+                                  })}
+                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#282974] hover:text-[#1e1f5a] font-semibold underline truncate"
+                                >
+                                  <Download className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{parsed.name}</span>
+                                </button>
+                                <a
+                                  href={parsed.driveViewUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974] hover:text-white px-2 py-0.5 rounded transition-colors shrink-0"
+                                >
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                  <span>Buka di Drive</span>
+                                </a>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

@@ -1,14 +1,27 @@
-import { DepartmentName, DepartmentStructure, Ticket, UserAccount, UserRole } from '../types';
+import { DepartmentName, DepartmentStructure, Ticket, UserAccount, UserRole, UserSession } from '../types';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   pemberi_tugas: 'Pemberi Tugas (Sales / Proyek)',
   manager: 'Manager Engineering (Disposisi)',
   staff: 'Staff Engineering (Eksekutor)',
-  dashboard: 'Dashboard Workload & Analitik'
+  dashboard: 'Administrator / Dashboard & Analitik'
 };
 
 export function getRoleDisplayName(role: UserRole): string {
   return ROLE_LABELS[role] || 'Pemberi Tugas (Sales / Proyek)';
+}
+
+/**
+ * Checks whether the currently active session has full Administrator privileges.
+ * Non-admin roles (Staff Engineering, Manager Engineering, Pemberi Tugas / Sales) return false.
+ */
+export function isAdminSession(session?: UserSession | null): boolean {
+  if (!session || !session.isLoggedIn) return false;
+  if (session.isAdmin === true) return true;
+  const uname = (session.username || '').trim().toLowerCase();
+  if (uname === 'admin' || uname === 'administrator') return true;
+  if (session.role === 'dashboard' || (session.role as string) === 'admin') return true;
+  return false;
 }
 
 export const INITIAL_USERS: UserAccount[] = [
@@ -121,14 +134,15 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: 'usr-default-dashboard',
-    fullName: 'Direksi & Manajemen WBP',
+    fullName: 'Administrator & Direksi WBP',
     username: 'admin',
     password: 'WBPVIEW',
     role: 'dashboard',
     roleName: ROLE_LABELS.dashboard,
     whatsapp: '628111000222',
     createdAt: '20/10/2026 08:45',
-    isDefault: true
+    isDefault: true,
+    isAdmin: true
   }
 ];
 
