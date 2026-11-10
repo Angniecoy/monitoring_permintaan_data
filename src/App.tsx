@@ -21,7 +21,8 @@ import { DatabaseView } from './views/DatabaseView';
 import { Ticket, UserAccount, UserRole, UserSession, WhatsAppNotificationPayload } from './types';
 import { 
   getStoredTickets, saveStoredTickets, resetToDefaultTickets,
-  getStoredUsers, saveStoredUsers, resetToDefaultUsers, formatCurrentDateTime, isAdminSession
+  getStoredUsers, addStoredUser, updateStoredUser, deleteStoredUser,
+  resetToDefaultUsers, USERS_STORAGE_KEY, isAdminSession
 } from './data/mockData';
 import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
 import { BarChart3, Database } from 'lucide-react';
@@ -30,7 +31,7 @@ export default function App() {
   // Global Tickets Data
   const [tickets, setTickets] = useState<Ticket[]>(() => getStoredTickets());
 
-  // Global Registered Users Data (Dynamic Multi-User State)
+  // Global Registered Users Data (Dynamic Multi-User State backed by localStorage)
   const [users, setUsers] = useState<UserAccount[]>(() => getStoredUsers());
 
   // User Session & Role - Mandatory Protected Login Gate
@@ -72,14 +73,13 @@ export default function App() {
     saveStoredTickets(tickets);
   }, [tickets]);
 
-  // Sync registered users with localStorage & listen for real-time cross-tab updates
+  // Listen for real-time user updates from localStorage (same tab & cross-tab)
   useEffect(() => {
-    saveStoredUsers(users);
-  }, [users]);
-
-  useEffect(() => {
-    const syncUsersFromStorage = (e?: StorageEvent) => {
-      if (e && e.key && e.key !== 'wbp_sim_teknis_users_v1') return;
+    const syncUsersFromStorage = (e?: Event) => {
+      if (e && 'key' in e) {
+        const storageEvent = e as StorageEvent;
+        if (storageEvent.key && storageEvent.key !== USERS_STORAGE_KEY) return;
+      }
       const latest = getStoredUsers();
       setUsers(prev => {
         if (JSON.stringify(prev) === JSON.stringify(latest)) return prev;
@@ -87,7 +87,11 @@ export default function App() {
       });
     };
     window.addEventListener('storage', syncUsersFromStorage);
-    return () => window.removeEventListener('storage', syncUsersFromStorage);
+    window.addEventListener('wbp_users_updated', syncUsersFromStorage);
+    return () => {
+      window.removeEventListener('storage', syncUsersFromStorage);
+      window.removeEventListener('wbp_users_updated', syncUsersFromStorage);
+    };
   }, []);
 
   // Keyboard shortcut: Ctrl + K / Cmd + K for Quick Search
@@ -121,28 +125,16 @@ export default function App() {
     }
   };
 
-  // Handlers for Dynamic User Registration & Management (Immediate State + Storage Persistence)
+  // Handlers for Dynamic User Registration & Management (Synchronous localStorage + Immediate State Persistence)
   const handleRegisterUser = (newUser: Omit<UserAccount, 'id' | 'createdAt'>): UserAccount => {
-    const created: UserAccount = {
-      ...newUser,
-      id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      createdAt: formatCurrentDateTime(),
-      isDefault: false
-    };
-    setUsers(prev => {
-      const updatedList = [created, ...prev];
-      saveStoredUsers(updatedList);
-      return updatedList;
-    });
+    const { created, users: updatedList } = addStoredUser(newUser);
+    setUsers(updatedList);
     return created;
   };
 
   const handleUpdateUser = (updatedUser: UserAccount) => {
-    setUsers(prev => {
-      const updatedList = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
-      saveStoredUsers(updatedList);
-      return updatedList;
-    });
+    const updatedList = updateStoredUser(updatedUser);
+    setUsers(updatedList);
     // If updating the currently logged-in user, sync their session details
     if (session.userId === updatedUser.id) {
       const updatedSession: UserSession = {
@@ -166,11 +158,8 @@ export default function App() {
   };
 
   const handleDeleteUser = (userId: string) => {
-    setUsers(prev => {
-      const updatedList = prev.filter(u => u.id !== userId);
-      saveStoredUsers(updatedList);
-      return updatedList;
-    });
+    const updatedList = deleteStoredUser(userId);
+    setUsers(updatedList);
   };
 
   const handleResetUsers = () => {
@@ -179,6 +168,7 @@ export default function App() {
   };
 
   const handleLoginSuccess = (newSession: UserSession) => {
+    setUsers(getStoredUsers());
     setSession(newSession);
     setActiveRole(newSession.role);
     setIsLoginModalOpen(false);
@@ -241,6 +231,7 @@ export default function App() {
         onOpenUserManagement={
           isAdminSession(session)
             ? () => {
+                setUsers(getStoredUsers());
                 setLoginModalInitialTab('manage');
                 setIsLoginModalOpen(true);
               }
@@ -273,6 +264,7 @@ export default function App() {
           onOpenUserManagement={
             isAdminSession(session)
               ? () => {
+                  setUsers(getStoredUsers());
                   setLoginModalInitialTab('manage');
                   setIsLoginModalOpen(true);
                 }

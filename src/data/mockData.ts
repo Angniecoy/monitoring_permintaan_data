@@ -362,7 +362,7 @@ export const INITIAL_TICKETS: Ticket[] = [
 ];
 
 const STORAGE_KEY = 'wbp_sim_teknis_tickets_v1';
-const USERS_STORAGE_KEY = 'wbp_sim_teknis_users_v1';
+export const USERS_STORAGE_KEY = 'wbp_sim_teknis_users_v1';
 
 export function getStoredTickets(): Ticket[] {
   try {
@@ -392,6 +392,35 @@ export function resetToDefaultTickets(): Ticket[] {
   return INITIAL_TICKETS;
 }
 
+function normalizeUserAccount(u: Partial<UserAccount>, index: number): UserAccount {
+  const safeRole: UserRole =
+    u.role === 'pemberi_tugas' || u.role === 'manager' || u.role === 'staff' || u.role === 'dashboard'
+      ? u.role
+      : 'pemberi_tugas';
+  const cleanUser = (u.username || `user_${index}`).trim();
+  const isDefaultAccount =
+    typeof u.isDefault === 'boolean'
+      ? u.isDefault
+      : INITIAL_USERS.some(init => init.id === u.id || init.username.toLowerCase() === cleanUser.toLowerCase());
+
+  return {
+    id: u.id || `usr-${Date.now()}-${index}`,
+    fullName: (u.fullName || cleanUser).trim(),
+    username: cleanUser,
+    password: u.password || 'WBP123',
+    role: safeRole,
+    roleName: u.roleName || ROLE_LABELS[safeRole],
+    department: u.department,
+    whatsapp: u.whatsapp ? cleanWhatsAppNumber(u.whatsapp) : '',
+    createdAt: u.createdAt || formatCurrentDateTime(),
+    isDefault: isDefaultAccount,
+    isAdmin:
+      u.isAdmin === true ||
+      cleanUser.toLowerCase() === 'admin' ||
+      safeRole === 'dashboard'
+  };
+}
+
 export function getStoredUsers(): UserAccount[] {
   try {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
@@ -400,7 +429,27 @@ export function getStoredUsers(): UserAccount[] {
       return INITIAL_USERS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_USERS;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
+    }
+
+    const normalized = parsed
+      .filter((item): item is Partial<UserAccount> => Boolean(item && typeof item === 'object'))
+      .map((item, idx) => normalizeUserAccount(item, idx));
+
+    // Ensure the default Administrator account is always present so admin can always log in
+    const hasAdmin = normalized.some(
+      u => u.username.toLowerCase() === 'admin' || u.role === 'dashboard' || u.isAdmin
+    );
+    const defaultAdmin = INITIAL_USERS.find(u => u.username.toLowerCase() === 'admin');
+    const completeList =
+      !hasAdmin && defaultAdmin ? [...normalized, defaultAdmin] : normalized;
+
+    // Keep newly registered custom accounts (!isDefault) at the top so they immediately stand out in Kelola User
+    const customUsers = completeList.filter(u => !u.isDefault);
+    const defaultUsers = completeList.filter(u => u.isDefault);
+    return [...customUsers, ...defaultUsers];
   } catch (err) {
     console.error('Failed reading users from localStorage:', err);
     return INITIAL_USERS;
@@ -414,6 +463,46 @@ export function saveStoredUsers(users: UserAccount[]): void {
   } catch (err) {
     console.error('Failed saving users to localStorage:', err);
   }
+}
+
+export function addStoredUser(
+  newUser: Omit<UserAccount, 'id' | 'createdAt'>
+): { created: UserAccount; users: UserAccount[] } {
+  const current = getStoredUsers();
+  const created: UserAccount = normalizeUserAccount(
+    {
+      ...newUser,
+      id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      createdAt: formatCurrentDateTime(),
+      isDefault: false
+    },
+    0
+  );
+  // Prepend new user at the very top of the persisted list
+  const withoutDuplicate = current.filter(
+    u => u.username.toLowerCase() !== created.username.toLowerCase()
+  );
+  const updatedList = [created, ...withoutDuplicate];
+  saveStoredUsers(updatedList);
+  return { created, users: updatedList };
+}
+
+export function updateStoredUser(updatedUser: UserAccount): UserAccount[] {
+  const current = getStoredUsers();
+  const normalizedTarget = normalizeUserAccount(updatedUser, 0);
+  const exists = current.some(u => u.id === normalizedTarget.id);
+  const updatedList = exists
+    ? current.map(u => (u.id === normalizedTarget.id ? normalizedTarget : u))
+    : [normalizedTarget, ...current];
+  saveStoredUsers(updatedList);
+  return updatedList;
+}
+
+export function deleteStoredUser(userId: string): UserAccount[] {
+  const current = getStoredUsers();
+  const updatedList = current.filter(u => u.id !== userId);
+  saveStoredUsers(updatedList);
+  return updatedList;
 }
 
 export function resetToDefaultUsers(): UserAccount[] {

@@ -5,7 +5,7 @@ import {
   Phone, RotateCcw, ArrowRight, CheckCircle2, X, LogIn, Activity
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserAccount, UserRole, UserSession } from '../types';
-import { ROLE_LABELS, cleanWhatsAppNumber, getStoredTickets } from '../data/mockData';
+import { ROLE_LABELS, cleanWhatsAppNumber, getStoredTickets, getStoredUsers } from '../data/mockData';
 import { getStoredOnlineUsers, registerOnlineUser, OnlineUserSession } from '../data/onlineStore';
 
 interface LoginModalProps {
@@ -40,6 +40,42 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'manage'>(
     (!canClose || !isAdmin) && initialTab === 'manage' ? 'login' : initialTab
   );
+
+  // Persistent Users State synced directly with localStorage + parent state
+  const [persistedUsers, setPersistedUsers] = useState<UserAccount[]>(() => getStoredUsers());
+
+  useEffect(() => {
+    setPersistedUsers(getStoredUsers());
+  }, [users, activeTab, isOpen]);
+
+  useEffect(() => {
+    const syncStoredUsers = () => {
+      setPersistedUsers(getStoredUsers());
+    };
+    window.addEventListener('wbp_users_updated', syncStoredUsers);
+    window.addEventListener('storage', syncStoredUsers);
+    return () => {
+      window.removeEventListener('wbp_users_updated', syncStoredUsers);
+      window.removeEventListener('storage', syncStoredUsers);
+    };
+  }, []);
+
+  // Merge persisted localStorage users with prop users to guarantee zero data loss
+  const effectiveUsers = React.useMemo(() => {
+    const map = new Map<string, UserAccount>();
+    for (const u of persistedUsers) {
+      map.set(u.username.toLowerCase(), u);
+    }
+    for (const u of users) {
+      if (!map.has(u.username.toLowerCase())) {
+        map.set(u.username.toLowerCase(), u);
+      }
+    }
+    const merged = Array.from(map.values());
+    const custom = merged.filter(u => !u.isDefault);
+    const defaults = merged.filter(u => u.isDefault);
+    return [...custom, ...defaults];
+  }, [persistedUsers, users]);
 
   // Online Users State (Real-Time Active Sessions Tracker)
   const [onlineUsers, setOnlineUsers] = useState<OnlineUserSession[]>(() => getStoredOnlineUsers());
@@ -152,8 +188,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // 1. Check registered users in dynamic application state
-    const matchingUsers = users.filter(
+    // 1. Check registered users in persistent localStorage + dynamic application state
+    const matchingUsers = effectiveUsers.filter(
       u => u.username.toLowerCase() === trimmedUsername.toLowerCase()
     );
 
@@ -233,8 +269,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Check username uniqueness
-    const exists = users.some(
+    // Check username uniqueness against persisted localStorage & state
+    const exists = effectiveUsers.some(
       u => u.username.toLowerCase() === cleanUser.toLowerCase()
     );
     if (exists) {
@@ -256,6 +292,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       department: needsDept ? regDept : undefined,
       whatsapp: cleanWhatsAppNumber(cleanWa)
     });
+
+    // Immediately sync local persisted state from localStorage
+    setPersistedUsers(getStoredUsers());
 
     // Reset registration form
     setRegFullName('');
@@ -291,7 +330,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setFilterRole('ALL');
       setSearchUserQuery('');
       setManageNotice(
-        `Akun baru "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke basis data utama!`
+        `Akun baru "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan secara permanen ke basis data!`
       );
       setTimeout(() => setManageNotice(''), 4500);
       setActiveTab('manage');
@@ -301,7 +340,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setPassword(createdUser.password);
       setErrorMsg('');
       setSuccessMsg(
-        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke basis data sebagai ${createdUser.roleName}. Silakan masuk!`
+        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan secara permanen sebagai ${createdUser.roleName}. Silakan masuk!`
       );
       setActiveTab('login');
     }
@@ -320,7 +359,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    const duplicate = users.some(
+    const duplicate = effectiveUsers.some(
       u => u.id !== editingUser.id && u.username.toLowerCase() === cleanUser.toLowerCase()
     );
     if (duplicate) {
@@ -339,21 +378,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     };
 
     onUpdateUser(updated);
+    setPersistedUsers(getStoredUsers());
     setEditingUser(null);
-    setManageNotice(`Data akun "${updated.fullName}" berhasil diperbarui.`);
+    setManageNotice(`Data akun "${updated.fullName}" berhasil diperbarui di penyimpanan permanen.`);
     setTimeout(() => setManageNotice(''), 3500);
   };
 
-  const filteredUsers = users.filter(u => {
+  const filteredUsers = effectiveUsers.filter(u => {
     const matchesRole = filterRole === 'ALL' || u.role === filterRole;
     const q = searchUserQuery.toLowerCase();
     const matchesQuery =
       u.fullName.toLowerCase().includes(q) ||
       u.username.toLowerCase().includes(q) ||
-      u.roleName.toLowerCase().includes(q) ||
+      (u.roleName || '').toLowerCase().includes(q) ||
+      (u.whatsapp || '').toLowerCase().includes(q) ||
       (u.department && u.department.toLowerCase().includes(q));
     return matchesRole && matchesQuery;
   });
+
+  const customUsersCount = effectiveUsers.filter(u => !u.isDefault).length;
 
   const allTickets = tickets || getStoredTickets();
   const activeTickets = allTickets.filter(
@@ -428,6 +471,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    setPersistedUsers(getStoredUsers());
                     setActiveTab(activeTab === 'manage' ? 'login' : 'manage');
                     setEditingUser(null);
                   }}
@@ -438,7 +482,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }`}
                 >
                   <Users className="w-3.5 h-3.5 shrink-0" />
-                  <span>Kelola User ({users.length})</span>
+                  <span>Kelola User ({effectiveUsers.length})</span>
                 </button>
               )}
 
@@ -804,12 +848,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
               <div>
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-[#282974]" />
-                  <span>Manajemen Daftar User ({users.length} Akun)</span>
+                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-[#282974]" />
+                    <span>Manajemen Daftar User ({effectiveUsers.length} Akun)</span>
+                  </span>
+                  {customUsersCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                      {customUsersCount} Pendaftaran Baru Tersimpan
+                    </span>
+                  )}
                 </h3>
                 <p className="text-[11px] text-slate-600">
-                  Kelola akun pengguna, ubah peran/password, hapus user, atau klik "Gunakan" untuk langsung login.
+                  Data tersimpan secara permanen di browser (localStorage). Kelola akun, ubah peran/password, atau hapus user.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -826,6 +877,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     type="button"
                     onClick={() => {
                       onResetUsers();
+                      setPersistedUsers(getStoredUsers());
                       setManageNotice('Daftar user dikembalikan ke pengaturan default.');
                       setTimeout(() => setManageNotice(''), 3000);
                     }}
@@ -983,7 +1035,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 onChange={(e) => setFilterRole(e.target.value as 'ALL' | UserRole)}
                 className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-[#282974]"
               >
-                <option value="ALL">Semua Peran ({users.length})</option>
+                <option value="ALL">Semua Peran ({effectiveUsers.length})</option>
                 <option value="pemberi_tugas">Pemberi Tugas / Sales</option>
                 <option value="manager">Manager Engineering</option>
                 <option value="staff">Staff Engineering</option>
@@ -1016,7 +1068,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         const isPassShown = !!revealedPasswords[u.id];
 
                         return (
-                          <tr key={u.id} className="hover:bg-slate-50/90 transition-colors">
+                          <tr
+                            key={u.id}
+                            className={`transition-colors ${
+                              !u.isDefault
+                                ? 'bg-emerald-50/35 hover:bg-emerald-50/70'
+                                : 'hover:bg-slate-50/90'
+                            }`}
+                          >
                             <td className="px-3 py-2.5">
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-lg bg-[#282974]/8 border border-[#282974]/25 text-[#282974] font-bold text-[10px] flex items-center justify-center shrink-0">
@@ -1106,12 +1165,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
 
-                                {users.length > 1 && (
+                                {effectiveUsers.length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => {
                                       onDeleteUser(u.id);
-                                      setManageNotice(`Akun "${u.fullName}" telah dihapus.`);
+                                      setPersistedUsers(getStoredUsers());
+                                      setManageNotice(`Akun "${u.fullName}" telah dihapus secara permanen.`);
                                       setTimeout(() => setManageNotice(''), 3000);
                                     }}
                                     className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors"
