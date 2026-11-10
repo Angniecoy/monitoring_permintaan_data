@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidUserAccount(data) {
+      return data.keys().hasAll(['id', 'fullName', 'username', 'password', 'role', 'roleName', 'createdAt'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 120
+        && data.fullName is string && data.fullName.size() > 0 && data.fullName.size() <= 200
+        && data.username is string && data.username.size() > 0 && data.username.size() <= 100
+        && data.password is string && data.password.size() > 0 && data.password.size() <= 200
+        && data.role in ['pemberi_tugas', 'manager', 'staff', 'dashboard']
+        && data.roleName is string && data.roleName.size() <= 200
+        && data.createdAt is string && data.createdAt.size() <= 100;
+    }
+
+    match /wbp_users/{userKey} {
+      allow read: if true;
+      allow create, update: if isValidUserAccount(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /wbp_meta/{docId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasAll(['folderId', 'updatedAt'])
+        && request.resource.data.folderId is string
+        && request.resource.data.updatedAt is string;
+      allow delete: if true;
+    }
+
+    match /wbp_tickets/{ticketId} {
+      allow read, write: if true;
+    }
+  }
+}

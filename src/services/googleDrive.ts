@@ -6,6 +6,16 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  onSnapshot
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import type { Ticket, UserAccount } from '../types';
 
@@ -15,12 +25,17 @@ export const GOOGLE_DRIVE_FOLDER_ID = '1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF';
 export const GOOGLE_DRIVE_FOLDER_URL =
   'https://drive.google.com/drive/folders/1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF?usp=sharing';
 
+export const DEFAULT_GAS_WEB_APP_URL =
+  import.meta.env.VITE_GAS_WEB_APP_URL ||
+  'https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec';
+
 export const DRIVE_USERS_DB_FILENAME = 'wbp_users_database.json';
 export const DRIVE_TICKETS_DB_FILENAME = 'wbp_tickets_database.json';
 export const DRIVE_USER_FILE_PREFIX = 'WBP_USER_';
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
+export const firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 const provider = new GoogleAuthProvider();
 SCOPES.forEach((scope) => provider.addScope(scope));
@@ -899,3 +914,427 @@ export async function uploadFileToDriveFolder(
     folderId: GOOGLE_DRIVE_FOLDER_ID
   };
 }
+
+// ==================== REAL-TIME CROSS-COMPUTER CLOUD FIRESTORE SYNC ====================
+
+function sanitizeUserForFirestore(u: UserAccount): Record<string, unknown> {
+  const clean: Record<string, unknown> = {
+    id: String(u.id || `usr-${Date.now()}`),
+    fullName: String(u.fullName || u.username || 'User WBP'),
+    username: String(u.username || '').trim(),
+    password: String(u.password || 'WBP123'),
+    role: u.role || 'pemberi_tugas',
+    roleName: String(u.roleName || 'Pemberi Tugas (Sales / Proyek)'),
+    whatsapp: String(u.whatsapp || ''),
+    createdAt: String(u.createdAt || new Date().toLocaleDateString('id-ID')),
+    isDefault: Boolean(u.isDefault),
+    isAdmin: Boolean(u.isAdmin)
+  };
+  if (u.department) {
+    clean.department = String(u.department);
+  }
+  return clean;
+}
+
+/**
+ * Atomically saves a newly registered or updated user to Google Cloud Firestore
+ * (both individual document in /wbp_users/{username} and unified metadata in /wbp_meta/users_db)
+ * so that ANY computer/browser (ais-dev, ais-pre, mobile, desktop) receives it in real time (< 300ms).
+ */
+export async function upsertUserToCloudFirestore(
+  user: UserAccount,
+  allUsers: UserAccount[],
+  deletedUsernames: string[] = []
+): Promise<boolean> {
+  try {
+    const docKey = user.username.trim().toLowerCase();
+    await Promise.all([
+      setDoc(doc(firestoreDb, 'wbp_users', docKey), sanitizeUserForFirestore(user)),
+      setDoc(
+        doc(firestoreDb, 'wbp_meta', 'users_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames,
+          usersJson: JSON.stringify(allUsers)
+        },
+        { merge: true }
+      )
+    ]);
+    const nowStr = new Date().toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    updateSyncState({
+      isSyncing: false,
+      lastSyncedAt: nowStr,
+      lastError: null
+    });
+    return true;
+  } catch (err) {
+    console.warn('Cloud Firestore upsert user warning:', err);
+    return false;
+  }
+}
+
+/**
+ * Deletes a user account from Google Cloud Firestore across all computers.
+ */
+export async function deleteUserFromCloudFirestore(
+  username: string,
+  allUsers: UserAccount[],
+  deletedUsernames: string[]
+): Promise<boolean> {
+  try {
+    const docKey = username.trim().toLowerCase();
+    await Promise.all([
+      deleteDoc(doc(firestoreDb, 'wbp_users', docKey)),
+      setDoc(
+        doc(firestoreDb, 'wbp_meta', 'users_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames,
+          usersJson: JSON.stringify(allUsers)
+        },
+        { merge: true }
+      )
+    ]);
+    return true;
+  } catch (err) {
+    console.warn('Cloud Firestore delete user warning:', err);
+    return false;
+  }
+}
+
+/**
+ * Resets the Cloud Firestore user database back to default users across all computers.
+ */
+export async function resetUsersInCloudFirestore(
+  defaultUsers: UserAccount[]
+): Promise<boolean> {
+  try {
+    const colSnap = await getDocs(collection(firestoreDb, 'wbp_users'));
+    const defaultKeys = new Set(defaultUsers.map((u) => u.username.toLowerCase()));
+    const ops: Promise<unknown>[] = [];
+
+    colSnap.forEach((docSnap) => {
+      if (!defaultKeys.has(docSnap.id.toLowerCase())) {
+        ops.push(deleteDoc(doc(firestoreDb, 'wbp_users', docSnap.id)));
+      }
+    });
+
+    for (const du of defaultUsers) {
+      ops.push(
+        setDoc(
+          doc(firestoreDb, 'wbp_users', du.username.toLowerCase()),
+          sanitizeUserForFirestore(du)
+        )
+      );
+    }
+
+    ops.push(
+      setDoc(
+        doc(firestoreDb, 'wbp_meta', 'users_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames: [],
+          usersJson: JSON.stringify(defaultUsers)
+        },
+        { merge: true }
+      )
+    );
+
+    await Promise.all(ops);
+    return true;
+  } catch (err) {
+    console.warn('Cloud Firestore reset users warning:', err);
+    return false;
+  }
+}
+
+/**
+ * Saves optional Google Apps Script Web App URL to Cloud Firestore metadata.
+ */
+export async function saveGasConfigToCloudFirestore(
+  gasWebAppUrl: string
+): Promise<boolean> {
+  try {
+    await setDoc(
+      doc(firestoreDb, 'wbp_meta', 'users_db'),
+      {
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        updatedAt: new Date().toISOString(),
+        gasWebAppUrl
+      },
+      { merge: true }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pulls and merges all user accounts from Cloud Firestore (/wbp_users collection + /wbp_meta/users_db).
+ */
+export async function fetchUsersFromCloudFirestore(): Promise<{
+  users: UserAccount[];
+  deletedUsernames: string[];
+  gasWebAppUrl?: string;
+} | null> {
+  try {
+    const [metaSnap, colSnap] = await Promise.all([
+      getDoc(doc(firestoreDb, 'wbp_meta', 'users_db')),
+      getDocs(collection(firestoreDb, 'wbp_users'))
+    ]);
+
+    let deletedUsernames: string[] = [];
+    let metaUsers: UserAccount[] = [];
+    let gasWebAppUrl = '';
+
+    if (metaSnap.exists()) {
+      const metaData = metaSnap.data() as {
+        deletedUsernames?: string[];
+        usersJson?: string;
+        gasWebAppUrl?: string;
+      };
+      if (Array.isArray(metaData.deletedUsernames)) {
+        deletedUsernames = metaData.deletedUsernames;
+      }
+      if (typeof metaData.gasWebAppUrl === 'string') {
+        gasWebAppUrl = metaData.gasWebAppUrl;
+      }
+      if (typeof metaData.usersJson === 'string' && metaData.usersJson.trim()) {
+        try {
+          const parsed = JSON.parse(metaData.usersJson);
+          if (Array.isArray(parsed)) metaUsers = parsed;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    const colUsers: UserAccount[] = [];
+    colSnap.forEach((docSnap) => {
+      const data = docSnap.data() as unknown as UserAccount;
+      if (data && data.username) {
+        colUsers.push(data);
+      }
+    });
+
+    if (colUsers.length === 0 && metaUsers.length === 0) {
+      return null;
+    }
+
+    const deletedSet = new Set(deletedUsernames.map((u) => u.toLowerCase()));
+    const mergedMap = new Map<string, UserAccount>();
+
+    // Individual collection documents take priority (most granular cross-PC writes)
+    for (const u of [...colUsers, ...metaUsers]) {
+      if (!u || !u.username) continue;
+      const key = u.username.toLowerCase();
+      if (deletedSet.has(key)) continue;
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, u);
+      }
+    }
+
+    return {
+      users: Array.from(mergedMap.values()),
+      deletedUsernames: Array.from(deletedSet),
+      gasWebAppUrl
+    };
+  } catch (err) {
+    console.warn('Cloud Firestore fetch warning:', err);
+    return null;
+  }
+}
+
+/**
+ * Subscribes to real-time changes in Cloud Firestore (/wbp_users and /wbp_meta/users_db)
+ * so that when a user registers on Computer B, Computer A (Admin Kelola User) updates instantaneously.
+ */
+export function subscribeCloudFirestoreUsers(
+  onUpdate: (payload: {
+    users: UserAccount[];
+    deletedUsernames: string[];
+    gasWebAppUrl?: string;
+  }) => void
+): () => void {
+  let latestMetaUsers: UserAccount[] = [];
+  let latestDeleted: string[] = [];
+  let latestGasUrl = '';
+  let latestColUsers: UserAccount[] = [];
+  let initializedMeta = false;
+  let initializedCol = false;
+
+  const emitCombined = () => {
+    if (!initializedMeta && !initializedCol) return;
+    if (latestColUsers.length === 0 && latestMetaUsers.length === 0) return;
+
+    const deletedSet = new Set(latestDeleted.map((u) => u.toLowerCase()));
+    const map = new Map<string, UserAccount>();
+    for (const u of [...latestColUsers, ...latestMetaUsers]) {
+      if (!u || !u.username) continue;
+      const key = u.username.toLowerCase();
+      if (deletedSet.has(key)) continue;
+      if (!map.has(key)) {
+        map.set(key, u);
+      }
+    }
+
+    onUpdate({
+      users: Array.from(map.values()),
+      deletedUsernames: Array.from(deletedSet),
+      gasWebAppUrl: latestGasUrl
+    });
+  };
+
+  const unsubMeta = onSnapshot(
+    doc(firestoreDb, 'wbp_meta', 'users_db'),
+    (snap) => {
+      initializedMeta = true;
+      if (snap.exists()) {
+        const data = snap.data() as {
+          deletedUsernames?: string[];
+          usersJson?: string;
+          gasWebAppUrl?: string;
+        };
+        latestDeleted = Array.isArray(data.deletedUsernames)
+          ? data.deletedUsernames
+          : [];
+        if (typeof data.gasWebAppUrl === 'string') {
+          latestGasUrl = data.gasWebAppUrl;
+        }
+        if (typeof data.usersJson === 'string' && data.usersJson.trim()) {
+          try {
+            const parsed = JSON.parse(data.usersJson);
+            if (Array.isArray(parsed)) latestMetaUsers = parsed;
+          } catch {
+            // ignore
+          }
+        }
+      }
+      emitCombined();
+    },
+    (err) => {
+      console.warn('Firestore meta snapshot warning:', err);
+    }
+  );
+
+  const unsubCol = onSnapshot(
+    collection(firestoreDb, 'wbp_users'),
+    (snap) => {
+      initializedCol = true;
+      const list: UserAccount[] = [];
+      snap.forEach((d) => {
+        const u = d.data() as unknown as UserAccount;
+        if (u && u.username) list.push(u);
+      });
+      latestColUsers = list;
+      emitCombined();
+    },
+    (err) => {
+      console.warn('Firestore users collection snapshot warning:', err);
+    }
+  );
+
+  return () => {
+    unsubMeta();
+    unsubCol();
+  };
+}
+
+/**
+ * Directly sends user registration / update / deletion / sync payload to the configured
+ * Google Apps Script Web App endpoint (using text/plain;charset=utf-8 to avoid browser CORS preflight).
+ */
+export async function pushUsersToGasEndpoint(params: {
+  gasWebAppUrl?: string;
+  action: 'registerUser' | 'updateUser' | 'deleteUser' | 'resetUsers' | 'syncUsers';
+  user?: UserAccount;
+  deletedUsername?: string;
+  users: UserAccount[];
+  deletedUsernames: string[];
+}): Promise<boolean> {
+  const endpoint = (params.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  if (!endpoint || !endpoint.startsWith('https://script.google.com/')) {
+    return false;
+  }
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify({
+        action: params.action,
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        user: params.user,
+        deletedUsername: params.deletedUsername,
+        users: params.users,
+        deletedUsernames: params.deletedUsernames,
+        updatedAt: new Date().toISOString()
+      })
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Direct GAS endpoint push warning:', err);
+    return false;
+  }
+}
+
+/**
+ * Pulls registered users from the configured Google Apps Script Web App endpoint.
+ */
+export async function pullUsersFromGasEndpoint(
+  gasWebAppUrl?: string
+): Promise<{
+  users: UserAccount[];
+  deletedUsernames: string[];
+} | null> {
+  const endpoint = (gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  if (!endpoint || !endpoint.startsWith('https://script.google.com/')) {
+    return null;
+  }
+
+  try {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const url = `${endpoint}${separator}action=getUsers&folderId=${GOOGLE_DRIVE_FOLDER_ID}&t=${Date.now()}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow'
+    });
+    if (!res.ok) return null;
+
+    const text = (await res.text()).trim();
+    if (!text.startsWith('{') && !text.startsWith('[')) {
+      return null;
+    }
+
+    const parsed = JSON.parse(text) as
+      | UserAccount[]
+      | { users?: UserAccount[]; deletedUsernames?: string[] };
+
+    if (Array.isArray(parsed)) {
+      return { users: parsed, deletedUsernames: [] };
+    }
+    if (parsed && Array.isArray(parsed.users)) {
+      return {
+        users: parsed.users,
+        deletedUsernames: Array.isArray(parsed.deletedUsernames)
+          ? parsed.deletedUsernames
+          : []
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+

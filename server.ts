@@ -2,13 +2,37 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  onSnapshot
+} from 'firebase/firestore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const GOOGLE_DRIVE_FOLDER_ID = '1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF';
+const DEFAULT_GAS_WEB_APP_URL =
+  process.env.GAS_WEB_APP_URL ||
+  'https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec';
 const DRIVE_USERS_DB_FILENAME = 'wbp_users_database.json';
 const DRIVE_USER_FILE_PREFIX = 'WBP_USER_';
+
+const firebaseConfigRaw = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf-8')
+);
+const firebaseApp =
+  getApps().length === 0 ? initializeApp(firebaseConfigRaw) : getApp();
+const serverFirestoreDb = getFirestore(
+  firebaseApp,
+  firebaseConfigRaw.firestoreDatabaseId
+);
 
 interface ServerUserAccount {
   id: string;
@@ -244,7 +268,7 @@ function readCloudDB(): CentralizedCloudDB {
         updatedAt: new Date().toISOString(),
         users: INITIAL_USERS,
         deletedUsernames: [],
-        gasWebAppUrl: process.env.GAS_WEB_APP_URL || ''
+        gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL
       };
       fs.writeFileSync(DB_FILE_PATH, JSON.stringify(initial, null, 2), 'utf-8');
       return initial;
@@ -260,7 +284,7 @@ function readCloudDB(): CentralizedCloudDB {
       updatedAt: parsed.updatedAt || new Date().toISOString(),
       users,
       deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
-      gasWebAppUrl: parsed.gasWebAppUrl || process.env.GAS_WEB_APP_URL || ''
+      gasWebAppUrl: parsed.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL
     };
   } catch (err) {
     console.error('Error reading centralized cloud DB:', err);
@@ -269,7 +293,7 @@ function readCloudDB(): CentralizedCloudDB {
       updatedAt: new Date().toISOString(),
       users: INITIAL_USERS,
       deletedUsernames: [],
-      gasWebAppUrl: process.env.GAS_WEB_APP_URL || ''
+      gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL
     };
   }
 }
@@ -422,8 +446,29 @@ async function saveJsonToDriveServer(
   }
 }
 
+function sanitizeServerUserForFirestore(
+  u: ServerUserAccount
+): Record<string, unknown> {
+  const clean: Record<string, unknown> = {
+    id: String(u.id || `usr-${Date.now()}`),
+    fullName: String(u.fullName || u.username || 'User WBP'),
+    username: String(u.username || '').trim(),
+    password: String(u.password || 'WBP123'),
+    role: u.role || 'pemberi_tugas',
+    roleName: String(u.roleName || ROLE_LABELS[u.role || 'pemberi_tugas']),
+    whatsapp: String(u.whatsapp || ''),
+    createdAt: String(u.createdAt || formatCurrentDateTime()),
+    isDefault: Boolean(u.isDefault),
+    isAdmin: Boolean(u.isAdmin)
+  };
+  if (u.department) {
+    clean.department = String(u.department);
+  }
+  return clean;
+}
+
 /**
- * Syncs with Google Apps Script Web App URL (if configured) and Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+ * Syncs with Cloud Firestore, Google Apps Script Web App URL (if configured), and Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
  */
 async function pushCloudDBToDriveAndGAS(
   db: CentralizedCloudDB,
@@ -433,12 +478,54 @@ async function pushCloudDBToDriveAndGAS(
 ): Promise<boolean> {
   let synced = false;
 
-  // 1. Forward to Google Apps Script Web App bridge if configured
-  if (db.gasWebAppUrl && db.gasWebAppUrl.startsWith('https://script.google.com/')) {
+  // 0. Always push to shared Google Cloud Firestore so all computers & containers stay in sync
+  try {
+    const ops: Promise<unknown>[] = [];
+    if (deletedUsername) {
+      ops.push(
+        deleteDoc(
+          doc(serverFirestoreDb, 'wbp_users', deletedUsername.toLowerCase())
+        )
+      );
+    }
+    if (newOrUpdatedUser) {
+      ops.push(
+        setDoc(
+          doc(
+            serverFirestoreDb,
+            'wbp_users',
+            newOrUpdatedUser.username.toLowerCase()
+          ),
+          sanitizeServerUserForFirestore(newOrUpdatedUser)
+        )
+      );
+    }
+    ops.push(
+      setDoc(
+        doc(serverFirestoreDb, 'wbp_meta', 'users_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames: db.deletedUsernames,
+          gasWebAppUrl: db.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL,
+          usersJson: JSON.stringify(db.users)
+        },
+        { merge: true }
+      )
+    );
+    await Promise.all(ops);
+    synced = true;
+  } catch (err) {
+    console.warn('Server Firestore push warning:', err);
+  }
+
+  // 1. Forward to Google Apps Script Web App bridge
+  const targetGasUrl = (db.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  if (targetGasUrl && targetGasUrl.startsWith('https://script.google.com/')) {
     try {
-      const gasRes = await fetch(db.gasWebAppUrl, {
+      const gasRes = await fetch(targetGasUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           action: deletedUsername
             ? 'deleteUser'
@@ -449,7 +536,8 @@ async function pushCloudDBToDriveAndGAS(
           user: newOrUpdatedUser,
           deletedUsername,
           users: db.users,
-          deletedUsernames: db.deletedUsernames
+          deletedUsernames: db.deletedUsernames,
+          updatedAt: new Date().toISOString()
         })
       });
       if (gasRes.ok) synced = true;
@@ -519,7 +607,7 @@ async function pushCloudDBToDriveAndGAS(
 }
 
 /**
- * Pulls and merges users from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF or GAS Web App into the centralized server DB
+ * Pulls and merges users from Cloud Firestore, Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF, and GAS Web App into the centralized server DB
  */
 async function pullFromDriveAndGASIntoServerDB(
   token: string | null
@@ -528,24 +616,66 @@ async function pullFromDriveAndGASIntoServerDB(
   const remoteUsers: ServerUserAccount[] = [];
   const remoteDeleted: string[] = [];
 
-  // 1. Pull from Google Apps Script Web App if configured
-  if (
-    currentDB.gasWebAppUrl &&
-    currentDB.gasWebAppUrl.startsWith('https://script.google.com/')
-  ) {
+  // 0. Pull from shared Google Cloud Firestore
+  try {
+    const [metaSnap, colSnap] = await Promise.all([
+      getDoc(doc(serverFirestoreDb, 'wbp_meta', 'users_db')),
+      getDocs(collection(serverFirestoreDb, 'wbp_users'))
+    ]);
+    if (metaSnap.exists()) {
+      const m = metaSnap.data() as {
+        deletedUsernames?: string[];
+        usersJson?: string;
+        gasWebAppUrl?: string;
+      };
+      if (Array.isArray(m.deletedUsernames)) {
+        remoteDeleted.push(...m.deletedUsernames);
+      }
+      if (typeof m.gasWebAppUrl === 'string' && m.gasWebAppUrl) {
+        currentDB.gasWebAppUrl = m.gasWebAppUrl;
+      }
+      if (typeof m.usersJson === 'string' && m.usersJson.trim()) {
+        try {
+          const parsed = JSON.parse(m.usersJson);
+          if (Array.isArray(parsed)) remoteUsers.push(...parsed);
+        } catch {
+          // ignore
+        }
+      }
+    }
+    colSnap.forEach((d) => {
+      const u = d.data() as unknown as ServerUserAccount;
+      if (u && u.username) remoteUsers.unshift(u);
+    });
+  } catch (err) {
+    console.warn('Server Firestore pull warning:', err);
+  }
+
+  // 1. Pull from Google Apps Script Web App
+  const targetGasUrl = (currentDB.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  if (targetGasUrl && targetGasUrl.startsWith('https://script.google.com/')) {
     try {
-      const url = `${currentDB.gasWebAppUrl}${
-        currentDB.gasWebAppUrl.includes('?') ? '&' : '?'
+      const url = `${targetGasUrl}${
+        targetGasUrl.includes('?') ? '&' : '?'
       }action=getUsers&folderId=${GOOGLE_DRIVE_FOLDER_ID}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { redirect: 'follow' });
       if (res.ok) {
-        const data = (await res.json()) as {
-          users?: ServerUserAccount[];
-          deletedUsernames?: string[];
-        };
-        if (Array.isArray(data.users)) remoteUsers.push(...data.users);
-        if (Array.isArray(data.deletedUsernames)) {
-          remoteDeleted.push(...data.deletedUsernames);
+        const text = (await res.text()).trim();
+        if (text.startsWith('{') || text.startsWith('[')) {
+          const data = JSON.parse(text) as
+            | ServerUserAccount[]
+            | {
+                users?: ServerUserAccount[];
+                deletedUsernames?: string[];
+              };
+          if (Array.isArray(data)) {
+            remoteUsers.push(...data);
+          } else if (data && Array.isArray(data.users)) {
+            remoteUsers.push(...data.users);
+            if (Array.isArray(data.deletedUsernames)) {
+              remoteDeleted.push(...data.deletedUsernames);
+            }
+          }
         }
       }
     } catch {
@@ -612,12 +742,14 @@ async function pullFromDriveAndGASIntoServerDB(
   );
 
   const map = new Map<string, ServerUserAccount>();
-  // Put server users first, then merge any new remote users
+  // Remote users (Firestore / Drive / GAS) take priority, then local server users
   for (const u of [...remoteUsers, ...currentDB.users]) {
     if (!u || !u.username) continue;
     const key = u.username.toLowerCase();
     if (deletedSet.has(key)) continue;
-    map.set(key, normalizeUserAccount(u, 0));
+    if (!map.has(key)) {
+      map.set(key, normalizeUserAccount(u, 0));
+    }
   }
 
   const mergedDB: CentralizedCloudDB = {
@@ -634,7 +766,79 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Enable CORS so cross-origin requests from ais-pre / external browsers work seamlessly
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, DELETE, OPTIONS'
+    );
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    );
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   app.use(express.json({ limit: '15mb' }));
+
+  // Background real-time Firestore listener on server: keeps /data/wbp_cloud_database.json & Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF in sync whenever any device registers a user
+  const serverSyncedDriveUsers = new Set<string>();
+  onSnapshot(
+    collection(serverFirestoreDb, 'wbp_users'),
+    (snap) => {
+      const currentDB = readCloudDB();
+      const deletedSet = new Set(
+        currentDB.deletedUsernames.map((u) => u.toLowerCase())
+      );
+      const map = new Map<string, ServerUserAccount>();
+      const newlyDiscoveredCustomUsers: ServerUserAccount[] = [];
+
+      snap.forEach((d) => {
+        const raw = d.data() as unknown as ServerUserAccount;
+        if (raw && raw.username) {
+          const norm = normalizeUserAccount(raw, 0);
+          const key = norm.username.toLowerCase();
+          if (!deletedSet.has(key)) {
+            map.set(key, norm);
+            if (!norm.isDefault && !serverSyncedDriveUsers.has(key)) {
+              serverSyncedDriveUsers.add(key);
+              newlyDiscoveredCustomUsers.push(norm);
+            }
+          }
+        }
+      });
+
+      for (const u of currentDB.users) {
+        const key = u.username.toLowerCase();
+        if (!deletedSet.has(key) && !map.has(key)) {
+          map.set(key, u);
+        }
+      }
+
+      if (map.size > 0) {
+        const updated = writeCloudDB({
+          ...currentDB,
+          users: Array.from(map.values())
+        });
+
+        // If server has an active Google Drive token or GAS URL, mirror new cross-computer user registrations to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+        if (
+          newlyDiscoveredCustomUsers.length > 0 &&
+          (activeDriveAccessToken || updated.gasWebAppUrl)
+        ) {
+          for (const nu of newlyDiscoveredCustomUsers) {
+            void pushCloudDBToDriveAndGAS(updated, activeDriveAccessToken, nu);
+          }
+        }
+      }
+    },
+    () => {}
+  );
 
   // ==================== CENTRALIZED CLOUD USER DATABASE API ====================
 

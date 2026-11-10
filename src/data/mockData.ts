@@ -5,7 +5,16 @@ import {
   pushUsersDatabaseToDrive,
   syncUsersFromDriveFolder,
   syncTicketsWithDriveFolder,
-  GOOGLE_DRIVE_FOLDER_ID
+  GOOGLE_DRIVE_FOLDER_ID,
+  DEFAULT_GAS_WEB_APP_URL,
+  upsertUserToCloudFirestore,
+  deleteUserFromCloudFirestore,
+  resetUsersInCloudFirestore,
+  saveGasConfigToCloudFirestore,
+  fetchUsersFromCloudFirestore,
+  subscribeCloudFirestoreUsers,
+  pushUsersToGasEndpoint,
+  pullUsersFromGasEndpoint
 } from '../services/googleDrive';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -382,10 +391,15 @@ try {
   // ignore
 }
 
-// In-memory runtime cache synchronized with the centralized backend (/api/users) & Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+// In-memory runtime cache synchronized with Cloud Firestore + Google Apps Script + Centralized Backend (/api/users) + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
 let cloudUsersMemoryStore: UserAccount[] = [...INITIAL_USERS];
 let cloudDeletedUsernamesStore: string[] = [];
-let cloudGasWebAppUrlStore = '';
+let cloudGasWebAppUrlStore = DEFAULT_GAS_WEB_APP_URL;
+
+// Protects newly registered/updated users against stale in-flight poll overwrites for 45 seconds
+const recentLocalUserMutations = new Map<string, { user: UserAccount; expiresAt: number }>();
+// Tracks which custom usernames have already been mirrored to Google Drive in this session
+const mirroredToDriveUsernames = new Set<string>();
 
 export function getDeletedUsernames(): string[] {
   return [...cloudDeletedUsernamesStore];
@@ -398,7 +412,7 @@ export function saveDeletedUsernames(usernames: string[]): void {
 }
 
 export function getGasWebAppUrl(): string {
-  return cloudGasWebAppUrlStore;
+  return cloudGasWebAppUrlStore || DEFAULT_GAS_WEB_APP_URL;
 }
 
 export const GAS_BACKEND_SCRIPT_TEMPLATE = `/**
@@ -546,13 +560,57 @@ function orderUsersList(list: Partial<UserAccount>[]): UserAccount[] {
   return [...customUsers, ...defaultUsers];
 }
 
+function mergeWithDefaultsAndRecentMutations(
+  incomingUsers: Partial<UserAccount>[],
+  deletedUsernames: string[]
+): UserAccount[] {
+  const now = Date.now();
+  for (const [k, v] of recentLocalUserMutations.entries()) {
+    if (v.expiresAt <= now) {
+      recentLocalUserMutations.delete(k);
+    }
+  }
+
+  const deletedSet = new Set(deletedUsernames.map((u) => u.toLowerCase()));
+  const map = new Map<string, UserAccount>();
+
+  // 1. Recent local mutations take highest precedence to prevent race conditions
+  for (const [k, v] of recentLocalUserMutations.entries()) {
+    if (!deletedSet.has(k)) {
+      map.set(k, normalizeUserAccount(v.user, 0));
+    }
+  }
+
+  // 2. Incoming cloud users (Firestore / Backend API / Google Drive)
+  for (const raw of incomingUsers) {
+    if (!raw || !raw.username) continue;
+    const key = raw.username.trim().toLowerCase();
+    if (deletedSet.has(key)) continue;
+    if (!map.has(key)) {
+      map.set(key, normalizeUserAccount(raw, 0));
+    }
+  }
+
+  // 3. Default system accounts (unless explicitly deleted by Admin)
+  for (const def of INITIAL_USERS) {
+    const key = def.username.toLowerCase();
+    if (!deletedSet.has(key) && !map.has(key)) {
+      map.set(key, def);
+    }
+  }
+
+  return orderUsersList(Array.from(map.values()));
+}
+
 export function getStoredUsers(): UserAccount[] {
   return cloudUsersMemoryStore;
 }
 
 export function saveStoredUsers(users: UserAccount[]): void {
   cloudUsersMemoryStore = orderUsersList(users);
-  window.dispatchEvent(new Event('wbp_users_updated'));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('wbp_users_updated'));
+  }
 }
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
@@ -566,41 +624,138 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+// Start real-time Cloud Firestore listener in browser so registrations from ANY computer appear immediately
+if (typeof window !== 'undefined') {
+  subscribeCloudFirestoreUsers((payload) => {
+    if (typeof payload.gasWebAppUrl === 'string' && payload.gasWebAppUrl) {
+      cloudGasWebAppUrlStore = payload.gasWebAppUrl;
+    }
+    saveDeletedUsernames(payload.deletedUsernames);
+    const merged = mergeWithDefaultsAndRecentMutations(
+      payload.users,
+      payload.deletedUsernames
+    );
+    if (JSON.stringify(merged) !== JSON.stringify(cloudUsersMemoryStore)) {
+      saveStoredUsers(merged);
+    }
+
+    // If this computer has an active Google Drive OAuth connection, automatically mirror any new cross-PC registrations into Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+    void getAccessToken().then((token) => {
+      if (!token) return;
+      const customUsers = merged.filter((u) => !u.isDefault);
+      for (const cu of customUsers) {
+        const key = cu.username.toLowerCase();
+        if (!mirroredToDriveUsernames.has(key)) {
+          mirroredToDriveUsernames.add(key);
+          void writeUserRegistrationToDrive(
+            cu,
+            merged,
+            payload.deletedUsernames,
+            token
+          );
+        }
+      }
+    });
+  });
+}
+
 /**
- * Fetches the authoritative centralized user database from the backend server (/api/users)
- * which is connected to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF and Google Apps Script.
+ * Fetches the authoritative centralized user database from Google Cloud Firestore,
+ * Google Apps Script Web App (https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec),
+ * AND the backend server (/api/users) connected to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF.
  */
 export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]> {
+  let firestoreUsers: UserAccount[] = [];
+  let firestoreDeleted: string[] = [];
+  let gasUsers: UserAccount[] = [];
+  let gasDeleted: string[] = [];
+  let serverUsers: UserAccount[] = [];
+  let serverDeleted: string[] = [];
+
+  // 1. Fetch from shared Google Cloud Firestore (works across ALL computers, ais-dev & ais-pre)
+  try {
+    const fsData = await fetchUsersFromCloudFirestore();
+    if (fsData) {
+      firestoreUsers = fsData.users;
+      firestoreDeleted = fsData.deletedUsernames;
+      if (fsData.gasWebAppUrl) {
+        cloudGasWebAppUrlStore = fsData.gasWebAppUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('Firestore user fetch warning:', err);
+  }
+
+  // 2. Pull from Google Apps Script Web App endpoint
+  try {
+    const gasData = await pullUsersFromGasEndpoint(getGasWebAppUrl());
+    if (gasData) {
+      gasUsers = gasData.users;
+      gasDeleted = gasData.deletedUsernames;
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Also fetch from local/container Express API (/api/users)
   try {
     const headers = await buildAuthHeaders();
     const res = await fetch(`/api/users${syncDrive ? '?syncDrive=true' : ''}`, {
       method: 'GET',
       headers
     });
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
-      if (typeof data.gasWebAppUrl === 'string') {
+      if (typeof data.gasWebAppUrl === 'string' && data.gasWebAppUrl) {
         cloudGasWebAppUrlStore = data.gasWebAppUrl;
       }
       if (Array.isArray(data.deletedUsernames)) {
-        saveDeletedUsernames(data.deletedUsernames);
+        serverDeleted = data.deletedUsernames;
       }
-      if (Array.isArray(data.users) && data.users.length > 0) {
-        const ordered = orderUsersList(data.users);
-        if (JSON.stringify(ordered) !== JSON.stringify(cloudUsersMemoryStore)) {
-          saveStoredUsers(ordered);
-        }
-        return ordered;
+      if (Array.isArray(data.users)) {
+        serverUsers = data.users;
       }
     }
-  } catch (err) {
-    console.warn('Cloud user fetch warning:', err);
+  } catch {
+    // ignore if static preview
   }
-  return cloudUsersMemoryStore;
+
+  const combinedDeleted = Array.from(
+    new Set(
+      [
+        ...getDeletedUsernames(),
+        ...firestoreDeleted,
+        ...gasDeleted,
+        ...serverDeleted
+      ].map((u) => u.toLowerCase())
+    )
+  );
+  saveDeletedUsernames(combinedDeleted);
+
+  // Merge Firestore users + GAS Web App users + Server users + Defaults
+  const merged = mergeWithDefaultsAndRecentMutations(
+    [...firestoreUsers, ...gasUsers, ...serverUsers],
+    combinedDeleted
+  );
+
+  // If Firestore was empty on first boot, seed default users to Firestore
+  if (firestoreUsers.length === 0 && merged.length > 0) {
+    const firstUser = merged[0];
+    if (firstUser) {
+      void upsertUserToCloudFirestore(firstUser, merged, combinedDeleted);
+    }
+  }
+
+  if (JSON.stringify(merged) !== JSON.stringify(cloudUsersMemoryStore)) {
+    saveStoredUsers(merged);
+  }
+  return merged;
 }
 
 export async function saveGasWebAppUrl(gasWebAppUrl: string): Promise<UserAccount[]> {
-  cloudGasWebAppUrlStore = gasWebAppUrl.trim();
+  cloudGasWebAppUrlStore = gasWebAppUrl.trim() || DEFAULT_GAS_WEB_APP_URL;
+  await saveGasConfigToCloudFirestore(cloudGasWebAppUrlStore);
   try {
     const headers = await buildAuthHeaders();
     const res = await fetch('/api/gas/config', {
@@ -608,10 +763,14 @@ export async function saveGasWebAppUrl(gasWebAppUrl: string): Promise<UserAccoun
       headers,
       body: JSON.stringify({ gasWebAppUrl: cloudGasWebAppUrlStore })
     });
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       if (Array.isArray(data.users) && data.users.length > 0) {
-        const ordered = orderUsersList(data.users);
+        const ordered = mergeWithDefaultsAndRecentMutations(
+          data.users,
+          getDeletedUsernames()
+        );
         saveStoredUsers(ordered);
         return ordered;
       }
@@ -623,41 +782,48 @@ export async function saveGasWebAppUrl(gasWebAppUrl: string): Promise<UserAccoun
 }
 
 /**
- * Pulls all registered users from the centralized cloud database AND Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+ * Pulls all registered users from Cloud Firestore, Google Apps Script endpoint, the centralized server, AND Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
  * (reading both wbp_users_database.json and WBP_USER_*.json files) so Admin sees all registrations from any device in real time.
  */
 export async function pullAndMergeUsersFromDrive(): Promise<UserAccount[]> {
-  // 1. First sync with centralized server (/api/users/sync)
-  try {
-    const headers = await buildAuthHeaders();
-    const syncRes = await fetch('/api/users/sync', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ users: cloudUsersMemoryStore })
-    });
-    if (syncRes.ok) {
-      const data = await syncRes.json();
-      if (Array.isArray(data.deletedUsernames)) {
-        saveDeletedUsernames(data.deletedUsernames);
-      }
-      if (Array.isArray(data.users) && data.users.length > 0) {
-        saveStoredUsers(data.users);
-      }
-    }
-  } catch {
-    // ignore
-  }
+  // 1. First pull latest from Cloud Firestore + GAS Web App + Backend Server
+  const cloudMerged = await fetchCloudUsers(true);
 
-  // 2. Also run direct Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF sync if client OAuth token is active
-  const currentLocal = getStoredUsers();
+  // 2. Sync full merged user list to Google Apps Script Web App endpoint
   const currentDeleted = getDeletedUsernames();
-  const res = await syncUsersFromDriveFolder(currentLocal, currentDeleted);
+  void pushUsersToGasEndpoint({
+    gasWebAppUrl: getGasWebAppUrl(),
+    action: 'syncUsers',
+    users: cloudMerged,
+    deletedUsernames: currentDeleted
+  });
+
+  // 3. Run direct Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF sync if client OAuth token is active
+  const res = await syncUsersFromDriveFolder(cloudMerged, currentDeleted);
   if (res && res.users.length > 0) {
-    const ordered = orderUsersList(res.users);
+    const ordered = mergeWithDefaultsAndRecentMutations(
+      res.users,
+      res.deletedUsernames
+    );
     saveDeletedUsernames(res.deletedUsernames);
     saveStoredUsers(ordered);
 
-    // Push merged Drive users back to centralized server so all other devices see them too
+    // Push any custom users found in Google Drive into Cloud Firestore, GAS endpoint & Backend Server so all computers share them
+    const customUsers = ordered.filter((u) => !u.isDefault);
+    for (const cu of customUsers) {
+      void upsertUserToCloudFirestore(cu, ordered, res.deletedUsernames);
+    }
+    if (customUsers.length === 0 && ordered[0]) {
+      void upsertUserToCloudFirestore(ordered[0], ordered, res.deletedUsernames);
+    }
+
+    void pushUsersToGasEndpoint({
+      gasWebAppUrl: getGasWebAppUrl(),
+      action: 'syncUsers',
+      users: ordered,
+      deletedUsernames: res.deletedUsernames
+    });
+
     void buildAuthHeaders().then((headers) =>
       fetch('/api/users/sync', {
         method: 'POST',
@@ -669,7 +835,13 @@ export async function pullAndMergeUsersFromDrive(): Promise<UserAccount[]> {
     return ordered;
   }
 
-  return getStoredUsers();
+  // Also ensure any custom users from Cloud Firestore are pushed to Google Drive if connected
+  const customFromCloud = cloudMerged.filter((u) => !u.isDefault);
+  for (const cu of customFromCloud) {
+    void writeUserRegistrationToDrive(cu, cloudMerged, currentDeleted);
+  }
+
+  return cloudMerged;
 }
 
 export function addStoredUser(
@@ -685,33 +857,60 @@ export function addStoredUser(
     },
     0
   );
+
+  const key = created.username.toLowerCase();
+  recentLocalUserMutations.set(key, {
+    user: created,
+    expiresAt: Date.now() + 45000
+  });
+
   const withoutDuplicate = current.filter(
-    u => u.username.toLowerCase() !== created.username.toLowerCase()
+    u => u.username.toLowerCase() !== key
   );
-  const updatedList = [created, ...withoutDuplicate];
+  const updatedList = orderUsersList([created, ...withoutDuplicate]);
   const updatedDeleted = getDeletedUsernames().filter(
-    uname => uname.toLowerCase() !== created.username.toLowerCase()
+    uname => uname.toLowerCase() !== key
   );
   saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
 
-  // 1. Immediately persist to centralized Cloud JSON backend (/api/users/register) so ANY device & Admin see it in real time
+  // 1. Immediately send to Google Apps Script Web App endpoint (https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec)
+  void pushUsersToGasEndpoint({
+    gasWebAppUrl: getGasWebAppUrl(),
+    action: 'registerUser',
+    user: created,
+    users: updatedList,
+    deletedUsernames: updatedDeleted
+  });
+
+  // 2. Immediately persist to shared Google Cloud Firestore so ANY computer (ais-dev, ais-pre, mobile, PC) sees it in < 300ms
+  void upsertUserToCloudFirestore(created, updatedList, updatedDeleted);
+
+  // 3. Persist to Express backend (/api/users/register)
   void buildAuthHeaders().then((headers) =>
     fetch('/api/users/register', {
       method: 'POST',
       headers,
       body: JSON.stringify(created)
     })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        const ct = r.headers.get('content-type') || '';
+        return r.ok && ct.includes('application/json') ? r.json() : null;
+      })
       .then((data) => {
         if (data && Array.isArray(data.users)) {
-          saveStoredUsers(data.users);
+          const merged = mergeWithDefaultsAndRecentMutations(
+            data.users,
+            updatedDeleted
+          );
+          saveStoredUsers(merged);
         }
       })
       .catch(() => {})
   );
 
-  // 2. Also write WBP_USER_<username>.json and wbp_users_database.json directly to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // 4. Write WBP_USER_<username>.json and wbp_users_database.json directly to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  mirroredToDriveUsernames.add(key);
   void writeUserRegistrationToDrive(created, updatedList, updatedDeleted);
 
   return { created, users: updatedList };
@@ -720,30 +919,62 @@ export function addStoredUser(
 export function updateStoredUser(updatedUser: UserAccount): UserAccount[] {
   const current = getStoredUsers();
   const normalizedTarget = normalizeUserAccount(updatedUser, 0);
+  const key = normalizedTarget.username.toLowerCase();
+
+  recentLocalUserMutations.set(key, {
+    user: normalizedTarget,
+    expiresAt: Date.now() + 45000
+  });
+
   const exists = current.some(u => u.id === normalizedTarget.id);
-  const updatedList = exists
-    ? current.map(u => (u.id === normalizedTarget.id ? normalizedTarget : u))
-    : [normalizedTarget, ...current];
+  const updatedList = orderUsersList(
+    exists
+      ? current.map(u => (u.id === normalizedTarget.id ? normalizedTarget : u))
+      : [normalizedTarget, ...current]
+  );
   saveStoredUsers(updatedList);
 
-  // 1. Update in centralized Cloud JSON backend
+  const currentDeleted = getDeletedUsernames();
+
+  // 1. Send update to Google Apps Script Web App endpoint
+  void pushUsersToGasEndpoint({
+    gasWebAppUrl: getGasWebAppUrl(),
+    action: 'updateUser',
+    user: normalizedTarget,
+    users: updatedList,
+    deletedUsernames: currentDeleted
+  });
+
+  // 2. Update in shared Google Cloud Firestore across all computers
+  void upsertUserToCloudFirestore(
+    normalizedTarget,
+    updatedList,
+    currentDeleted
+  );
+
+  // 3. Update in Express backend
   void buildAuthHeaders().then((headers) =>
     fetch(`/api/users/${encodeURIComponent(normalizedTarget.id)}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(normalizedTarget)
     })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        const ct = r.headers.get('content-type') || '';
+        return r.ok && ct.includes('application/json') ? r.json() : null;
+      })
       .then((data) => {
         if (data && Array.isArray(data.users)) {
-          saveStoredUsers(data.users);
+          saveStoredUsers(
+            mergeWithDefaultsAndRecentMutations(data.users, currentDeleted)
+          );
         }
       })
       .catch(() => {})
   );
 
-  // 2. Sync updated user record and database JSON to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
-  void writeUserRegistrationToDrive(normalizedTarget, updatedList, getDeletedUsernames());
+  // 4. Sync updated user record and database JSON to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  void writeUserRegistrationToDrive(normalizedTarget, updatedList, currentDeleted);
 
   return updatedList;
 }
@@ -751,6 +982,9 @@ export function updateStoredUser(updatedUser: UserAccount): UserAccount[] {
 export function deleteStoredUser(userId: string): UserAccount[] {
   const current = getStoredUsers();
   const targetUser = current.find(u => u.id === userId);
+  if (targetUser) {
+    recentLocalUserMutations.delete(targetUser.username.toLowerCase());
+  }
   const updatedList = current.filter(u => u.id !== userId);
   const updatedDeleted = targetUser
     ? Array.from(new Set([...getDeletedUsernames(), targetUser.username.toLowerCase()]))
@@ -758,37 +992,77 @@ export function deleteStoredUser(userId: string): UserAccount[] {
   saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
 
-  // 1. Delete from centralized Cloud JSON backend
+  // 1. Send deletion to Google Apps Script Web App endpoint
+  void pushUsersToGasEndpoint({
+    gasWebAppUrl: getGasWebAppUrl(),
+    action: 'deleteUser',
+    deletedUsername: targetUser?.username,
+    users: updatedList,
+    deletedUsernames: updatedDeleted
+  });
+
+  // 2. Delete from shared Google Cloud Firestore across all computers
+  if (targetUser) {
+    void deleteUserFromCloudFirestore(
+      targetUser.username,
+      updatedList,
+      updatedDeleted
+    );
+  }
+
+  // 3. Delete from Express backend
   void buildAuthHeaders().then((headers) =>
     fetch(`/api/users/${encodeURIComponent(userId)}`, {
       method: 'DELETE',
       headers
     })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        const ct = r.headers.get('content-type') || '';
+        return r.ok && ct.includes('application/json') ? r.json() : null;
+      })
       .then((data) => {
         if (data && Array.isArray(data.users)) {
-          saveStoredUsers(data.users);
+          saveStoredUsers(
+            mergeWithDefaultsAndRecentMutations(data.users, updatedDeleted)
+          );
         }
       })
       .catch(() => {})
   );
 
-  // 2. Sync deletion to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // 4. Sync deletion to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
   void pushUsersDatabaseToDrive(updatedList, updatedDeleted, targetUser?.username);
 
   return updatedList;
 }
 
 export function resetToDefaultUsers(): UserAccount[] {
+  recentLocalUserMutations.clear();
+  mirroredToDriveUsernames.clear();
   saveDeletedUsernames([]);
   saveStoredUsers(INITIAL_USERS);
 
+  // 1. Reset via Google Apps Script Web App endpoint
+  void pushUsersToGasEndpoint({
+    gasWebAppUrl: getGasWebAppUrl(),
+    action: 'resetUsers',
+    users: INITIAL_USERS,
+    deletedUsernames: []
+  });
+
+  // 2. Reset in shared Google Cloud Firestore
+  void resetUsersInCloudFirestore(INITIAL_USERS);
+
+  // 3. Reset in Express backend
   void buildAuthHeaders().then((headers) =>
     fetch('/api/users/reset', {
       method: 'POST',
       headers
     })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        const ct = r.headers.get('content-type') || '';
+        return r.ok && ct.includes('application/json') ? r.json() : null;
+      })
       .then((data) => {
         if (data && Array.isArray(data.users)) {
           saveStoredUsers(data.users);
@@ -797,6 +1071,7 @@ export function resetToDefaultUsers(): UserAccount[] {
       .catch(() => {})
   );
 
+  // 4. Reset in Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
   void pushUsersDatabaseToDrive(INITIAL_USERS, []);
   return INITIAL_USERS;
 }

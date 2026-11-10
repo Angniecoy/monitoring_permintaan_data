@@ -11,6 +11,7 @@ import {
   cleanWhatsAppNumber,
   getStoredTickets,
   getStoredUsers,
+  getDeletedUsernames,
   pullAndMergeUsersFromDrive,
   fetchCloudUsers,
   getGasWebAppUrl,
@@ -22,8 +23,11 @@ import {
   googleSignIn,
   GOOGLE_DRIVE_FOLDER_ID,
   GOOGLE_DRIVE_FOLDER_URL,
+  DEFAULT_GAS_WEB_APP_URL,
   getDriveSyncState,
-  DriveSyncState
+  DriveSyncState,
+  upsertUserToCloudFirestore,
+  pushUsersToGasEndpoint
 } from '../services/googleDrive';
 import { getStoredOnlineUsers, registerOnlineUser, OnlineUserSession } from '../data/onlineStore';
 
@@ -66,7 +70,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [driveSyncState, setDriveSyncState] = useState<DriveSyncState>(() => getDriveSyncState());
   const [isPullingDrive, setIsPullingDrive] = useState(false);
   const [showGasConfig, setShowGasConfig] = useState(false);
-  const [gasUrlInput, setGasUrlInput] = useState<string>(() => getGasWebAppUrl());
+  const [gasUrlInput, setGasUrlInput] = useState<string>(
+    () => getGasWebAppUrl() || DEFAULT_GAS_WEB_APP_URL
+  );
   const [copiedGasScript, setCopiedGasScript] = useState(false);
 
   useEffect(() => {
@@ -378,7 +384,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     const roleTitle = roleObj ? roleObj.title : ROLE_LABELS[safeRole];
     const needsDept = safeRole === 'manager' || safeRole === 'staff';
 
-    // Immediately saves to centralized Cloud JSON backend (/api/users/register) + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF + Google Apps Script
+    // Immediately saves to Cloud Firestore + centralized Cloud JSON backend (/api/users/register) + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF + Google Apps Script
     const createdUser = onRegisterUser({
       fullName: cleanName,
       username: cleanUser,
@@ -389,7 +395,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       whatsapp: cleanWhatsAppNumber(cleanWa)
     });
 
-    // Immediately sync local persisted state from localStorage
+    // Guarantee Cloud Firestore + Google Apps Script endpoint commit completes before switching tabs
+    await Promise.all([
+      upsertUserToCloudFirestore(
+        createdUser,
+        getStoredUsers(),
+        getDeletedUsernames()
+      ),
+      pushUsersToGasEndpoint({
+        gasWebAppUrl: getGasWebAppUrl(),
+        action: 'registerUser',
+        user: createdUser,
+        users: getStoredUsers(),
+        deletedUsernames: getDeletedUsernames()
+      })
+    ]);
+
+    // Immediately sync local state
     setPersistedUsers(getStoredUsers());
 
     // Reset registration form
@@ -1082,14 +1104,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Penyimpanan akun pengguna sudah terhubung otomatis ke <strong>Server Cloud JSON Terpusat (`/api/users`)</strong> dan <strong>Google Drive Folder `{GOOGLE_DRIVE_FOLDER_ID}`</strong> tanpa menggunakan `localStorage` browser. Anda juga dapat menghubungkan URL Web App <strong>Google Apps Script (`script.google.com`)</strong> opsional di bawah ini:
+                  Endpoint <strong>Google Apps Script Web App</strong> aktif dan terhubung langsung ke <strong>Google Drive Folder `{GOOGLE_DRIVE_FOLDER_ID}`</strong> serta <strong>Cloud Database Terpusat</strong> untuk penyimpanan, pendaftaran, dan sinkronisasi data user secara real-time:
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="url"
                     value={gasUrlInput}
                     onChange={(e) => setGasUrlInput(e.target.value)}
-                    placeholder="https://script.google.com/macros/s/.../exec (Opsional)"
+                    placeholder={DEFAULT_GAS_WEB_APP_URL}
                     className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:border-[#282974]"
                   />
                   <button

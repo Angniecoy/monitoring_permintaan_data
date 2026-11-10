@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Registered WBP Engineering user account synced with Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID" },
+        "fullName": { "type": "string", "description": "Full name of the user" },
+        "username": { "type": "string", "description": "Unique login username" },
+        "password": { "type": "string", "description": "Account password" },
+        "role": {
+          "type": "string",
+          "enum": ["pemberi_tugas", "manager", "staff", "dashboard"],
+          "description": "Access role in WBP Engineering system"
+        },
+        "roleName": { "type": "string", "description": "Display label for role" },
+        "department": { "type": "string", "description": "Engineering department if manager/staff" },
+        "whatsapp": { "type": "string", "description": "Normalized WhatsApp phone number" },
+        "createdAt": { "type": "string", "description": "Formatted creation timestamp" },
+        "isDefault": { "type": "boolean", "description": "Whether this is a default system account" },
+        "isAdmin": { "type": "boolean", "description": "Whether this user has Administrator access" }
+      },
+      "required": ["id", "fullName", "username", "password", "role", "roleName", "createdAt"]
+    },
+    "UsersDatabaseMeta": {
+      "title": "UsersDatabaseMeta",
+      "description": "Centralized user database metadata and unified snapshot for cross-device sync",
+      "type": "object",
+      "properties": {
+        "folderId": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "deletedUsernames": { "type": "array", "items": { "type": "string" } },
+        "gasWebAppUrl": { "type": "string" },
+        "usersJson": { "type": "string" }
+      },
+      "required": ["folderId", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/wbp_users/{userKey}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Individual registered user documents keyed by lowercase username"
+    },
+    "/wbp_meta/{docId}": {
+      "schema": { "$ref": "#/entities/UsersDatabaseMeta" },
+      "description": "Centralized metadata and unified user/ticket state"
+    }
+  }
+}
