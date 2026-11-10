@@ -2,7 +2,6 @@ import React from 'react';
 import { LogOut, Search, Menu, Users } from 'lucide-react';
 import { UserSession } from '../types';
 import { isAdminSession } from '../data/mockData';
-import { GoogleDriveStatusBanner } from './GoogleDriveStatusBanner';
 
 interface NavbarProps {
   session: UserSession;
@@ -65,9 +64,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
       </div>
 
-      {/* Zone 3: Google Drive Status + Active User Profile + User Management + Logout */}
+      {/* Zone 3: Active User Profile + User Management + Logout */}
       <div className="flex items-center gap-2.5 shrink-0">
-        <GoogleDriveStatusBanner compact />
         <div className="hidden sm:flex items-center gap-2.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200">
           <div className="w-6 h-6 rounded-lg bg-[#282974] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
             {(session.userName || 'WBP').slice(0, 2).toUpperCase()}
