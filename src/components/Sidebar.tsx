@@ -1,9 +1,10 @@
 import React from 'react';
 import { 
   FileEdit, Briefcase, Wrench, BarChart3, Database, 
-  X, Building, ShieldCheck
+  X, Building, ShieldCheck, LogOut, Users
 } from 'lucide-react';
 import { Ticket, UserRole, UserSession } from '../types';
+import { isAdminSession } from '../data/mockData';
 
 interface SidebarProps {
   currentRole: UserRole;
@@ -14,6 +15,8 @@ interface SidebarProps {
   onCloseMobile: () => void;
   tickets: Ticket[];
   onOpenGuideModal?: () => void;
+  onLogout?: () => void;
+  onOpenUserManagement?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,7 +26,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectRole,
   isOpenMobile,
   onCloseMobile,
-  tickets
+  tickets,
+  onLogout,
+  onOpenUserManagement
 }) => {
   const openCount = tickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
   const inProgressCount = tickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
@@ -234,15 +239,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Footer info in sidebar */}
-        <div className="p-3.5 border-t border-slate-200 bg-slate-50 text-[11px]">
-          <div className="flex items-center gap-2 mb-1">
-            <Building className="w-3.5 h-3.5 text-[#282974] shrink-0" />
-            <span className="text-xs font-semibold text-slate-900 tracking-wide">Dept. Engineering</span>
+        {/* Footer info & Mobile Quick Actions in sidebar */}
+        <div className="p-3.5 border-t border-slate-200 bg-slate-50 text-[11px] space-y-2.5">
+          {/* Mobile Action Buttons inside Hamburger Drawer */}
+          <div className="lg:hidden space-y-1.5 pb-2 border-b border-slate-200">
+            {isAdminSession(session) && onOpenUserManagement && (
+              <button
+                type="button"
+                onClick={() => {
+                  onCloseMobile();
+                  onOpenUserManagement();
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-[#282974] bg-[#282974]/10 hover:bg-[#282974] hover:text-white rounded-xl border border-[#282974]/25 transition-colors"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Kelola Daftar User</span>
+              </button>
+            )}
+            {onLogout && (
+              <button
+                type="button"
+                onClick={() => {
+                  onCloseMobile();
+                  onLogout();
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar dari Aplikasi</span>
+              </button>
+            )}
           </div>
-          <p className="text-[10px] text-slate-500 leading-snug">
-            PT Waskita Beton Precast, Tbk · ISO 9001, 14001 & 45001
-          </p>
+
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Building className="w-3.5 h-3.5 text-[#282974] shrink-0" />
+              <span className="text-xs font-semibold text-slate-900 tracking-wide">Dept. Engineering</span>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-snug">
+              PT Waskita Beton Precast, Tbk · ISO 9001, 14001 & 45001
+            </p>
+          </div>
         </div>
       </aside>
     </>

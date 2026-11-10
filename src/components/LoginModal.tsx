@@ -390,26 +390,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Brand Header */}
         <div className="px-4 pt-3.5 pb-3 sm:px-6 sm:pt-5 sm:pb-4 bg-gradient-to-b from-white/95 to-slate-50/90 border-b border-slate-200/90">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border border-slate-200/90 p-1 shadow-xs shrink-0 overflow-hidden">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white border border-slate-200/90 p-1 shadow-xs shrink-0 overflow-hidden">
                 <img
                   src="/assets/aistudio/logo_perusahaan_91bab227.jfif"
                   alt="Logo PT. Waskita Beton Precast, Tbk"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="flex flex-col justify-center">
-                <div className="text-[10px] font-bold tracking-widest text-[#282974] uppercase leading-tight">
+              <div className="flex flex-col justify-center min-w-0">
+                <div className="text-[10px] font-bold tracking-widest text-[#282974] uppercase leading-tight truncate">
                   PT. Waskita Beton Precast, Tbk
                 </div>
-                <h2 className="text-[13px] font-extrabold text-[#282974] tracking-tight leading-snug mt-0.5">
+                <h2 className="text-xs sm:text-[13px] font-extrabold text-[#282974] tracking-tight leading-snug mt-0.5 truncate">
                   ENGINEERING PORTAL
                 </h2>
               </div>
             </div>
 
             {/* Top Right Header Controls: Mode Switcher & Daftar User Online Widget */}
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
               {activeTab === 'register' && (
                 <button
                   type="button"
@@ -417,9 +417,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setActiveTab('login');
                     setRegError('');
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-white border border-slate-200 shadow-2xs transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-white border border-slate-200 shadow-2xs transition-all cursor-pointer shrink-0"
                 >
-                  <Lock className="w-3.5 h-3.5 text-[#282974]" />
+                  <Lock className="w-3.5 h-3.5 text-[#282974] shrink-0" />
                   <span>Form Masuk</span>
                 </button>
               )}
@@ -431,13 +431,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setActiveTab(activeTab === 'manage' ? 'login' : 'manage');
                     setEditingUser(null);
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                     activeTab === 'manage'
                       ? 'bg-[#282974] text-white shadow-2xs'
                       : 'text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-white border border-slate-200'
                   }`}
                 >
-                  <Users className="w-3.5 h-3.5" />
+                  <Users className="w-3.5 h-3.5 shrink-0" />
                   <span>Kelola User ({users.length})</span>
                 </button>
               )}
@@ -446,16 +446,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowOnlineUsersModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 sm:px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition-all active:scale-[0.98] cursor-pointer group shrink-0"
                 title="Lihat siapa saja pengguna yang sedang aktif/masuk ke dalam sesi aplikasi"
               >
-                <span className="relative flex h-2 w-2">
+                <span className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <Users className="w-3.5 h-3.5 text-emerald-700 group-hover:scale-110 transition-transform" />
+                <Users className="w-3.5 h-3.5 text-emerald-700 group-hover:scale-110 transition-transform shrink-0" />
                 <span className="font-bold">Daftar User Online</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px] font-mono font-bold">
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px] font-mono font-bold shrink-0">
                   {onlineUsers.length}
                 </span>
               </button>

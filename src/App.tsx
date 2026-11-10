@@ -269,6 +269,15 @@ export default function App() {
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           tickets={tickets}
+          onLogout={handleLogout}
+          onOpenUserManagement={
+            isAdminSession(session)
+              ? () => {
+                  setLoginModalInitialTab('manage');
+                  setIsLoginModalOpen(true);
+                }
+              : undefined
+          }
         />
 
         {/* Independently Scrollable Right Content Viewport */}
