@@ -360,7 +360,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           onClose();
         }
       }}
-      className="fixed inset-0 z-50 w-screen h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-50 w-screen h-[100dvh] flex items-start sm:items-center justify-center px-3 pt-2.5 pb-4 sm:p-6 lg:p-8 animate-in fade-in duration-200 overflow-y-auto"
     >
       {/* Full-Width Precast Plant Wallpaper Background */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -376,13 +376,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* Centered Translucent White Main Box with High-Contrast Shadow */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 w-full max-w-2xl bg-white/92 backdrop-blur-md border border-white/80 rounded-2xl shadow-[0_25px_70px_-12px_rgba(15,23,42,0.65)] ring-1 ring-slate-900/10 overflow-hidden my-auto"
+        className="relative z-10 w-full max-w-2xl bg-white/92 backdrop-blur-md border border-white/80 rounded-2xl shadow-[0_25px_70px_-12px_rgba(15,23,42,0.65)] ring-1 ring-slate-900/10 overflow-hidden mt-1.5 sm:my-auto"
       >
         {/* Brand Header */}
-        <div className="px-6 pt-5 pb-4 bg-gradient-to-b from-white/95 to-slate-50/90 border-b border-slate-200/90">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="px-4 pt-3.5 pb-3 sm:px-6 sm:pt-5 sm:pb-4 bg-gradient-to-b from-white/95 to-slate-50/90 border-b border-slate-200/90">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white border border-slate-200/90 p-1 shadow-xs shrink-0 overflow-hidden">
+              <div className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white border border-slate-200/90 p-1 shadow-xs shrink-0 overflow-hidden">
                 <img
                   src="/assets/aistudio/logo_perusahaan_91bab227.jfif"
                   alt="Logo PT. Waskita Beton Precast, Tbk"
@@ -437,7 +437,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowOnlineUsersModal(true)}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                className="flex items-center gap-2 px-3 py-1.5 sm:px-3.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
                 title="Lihat siapa saja pengguna yang sedang aktif/masuk ke dalam sesi aplikasi"
               >
                 <span className="relative flex h-2 w-2">
@@ -456,7 +456,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* ==================== TAB 1: MASUK (LOGIN) ==================== */}
         {activeTab === 'login' && (
-          <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
+          <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 max-h-[82dvh] sm:max-h-[78vh] overflow-y-auto">
             {successMsg && (
               <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
