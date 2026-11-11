@@ -290,7 +290,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     // 1. Check registered users in persistent localStorage + dynamic application state
     const matchingUsers = effectiveUsers.filter(
-      u => u.username.toLowerCase() === trimmedUsername.toLowerCase()
+      u =>
+        u.username.toLowerCase() === trimmedUsername.toLowerCase() ||
+        u.fullName.toLowerCase() === trimmedUsername.toLowerCase()
     );
 
     if (matchingUsers.length > 0) {
@@ -323,12 +325,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (trimmedUsername.toUpperCase() === 'WBP') {
       const currentConfig = roleConfigs.find(r => r.pass === password);
       if (currentConfig) {
+        const defaultRoleUser = effectiveUsers.find(u => u.role === currentConfig.id);
         onLoginSuccess({
           isLoggedIn: true,
-          username: 'WBP',
+          userId: defaultRoleUser?.id,
+          username: defaultRoleUser?.username || 'WBP',
           role: currentConfig.id,
           roleName: currentConfig.title,
-          userName: `WBP ${currentConfig.badge}`,
+          userName: defaultRoleUser?.fullName || `WBP ${currentConfig.badge}`,
+          whatsapp: defaultRoleUser?.whatsapp || '6281130001001',
           isAdmin: currentConfig.id === 'dashboard'
         });
         return;

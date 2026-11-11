@@ -242,12 +242,39 @@ export default function App() {
     });
   };
 
-  // Sync active online status if already in session
+  // Sync active online status and ensure session userName + whatsapp stay enriched from users list
   useEffect(() => {
     if (session.isLoggedIn && session.username) {
       registerOnlineUser(session);
     }
-  }, [session.isLoggedIn, session.username]);
+    if (session.isLoggedIn && users.length > 0) {
+      const matched = users.find(
+        u =>
+          (session.userId && u.id === session.userId) ||
+          (session.username && u.username.toLowerCase() === session.username.toLowerCase()) ||
+          (session.userName && u.fullName.toLowerCase() === session.userName.toLowerCase())
+      );
+      if (
+        matched &&
+        ((matched.fullName && session.userName !== matched.fullName) ||
+          (matched.whatsapp && session.whatsapp !== matched.whatsapp))
+      ) {
+        const enrichedSession: UserSession = {
+          ...session,
+          userId: matched.id,
+          username: matched.username,
+          userName: matched.fullName || session.userName,
+          whatsapp: matched.whatsapp || session.whatsapp
+        };
+        setSession(enrichedSession);
+        try {
+          sessionStorage.setItem('wbp_sim_session', JSON.stringify(enrichedSession));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [session, users]);
 
   // Mandatory Login Gate: If not logged in, render ONLY the Full-Screen Login & Registration view
   if (!session.isLoggedIn) {
@@ -364,6 +391,7 @@ export default function App() {
               key={session.userId || session.userName}
               tickets={tickets}
               session={session}
+              users={users}
               onAddTicket={handleAddTicket}
               onUpdateTicket={handleUpdateTicket}
               onOpenWhatsApp={setWhatsAppPayload}

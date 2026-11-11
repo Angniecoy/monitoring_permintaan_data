@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   PlusCircle, Search, Edit3, Send, CheckCircle2, FileUp, 
   Clock, AlertCircle, Building2, User, Phone, MapPin, 
   Calendar, Layers, FileCheck, ArrowRight, X, Eye, Download, ExternalLink, Loader2
 } from 'lucide-react';
-import { DepartmentName, Ticket, UserSession, WhatsAppNotificationPayload } from '../types';
-import { STRUKTUR_ORG, cleanWhatsAppNumber, generateTicketId, formatCurrentDateTime } from '../data/mockData';
+import { DepartmentName, Ticket, UserAccount, UserSession, WhatsAppNotificationPayload } from '../types';
+import { STRUKTUR_ORG, cleanWhatsAppNumber, generateTicketId, formatCurrentDateTime, getStoredUsers } from '../data/mockData';
 import { saveFileToStorage, downloadFile, parseTicketFileEntry } from '../data/fileStore';
 import { GoogleDriveStatusBanner } from '../components/GoogleDriveStatusBanner';
 import {
@@ -20,6 +20,7 @@ import {
 interface PemberiTugasViewProps {
   tickets: Ticket[];
   session?: UserSession;
+  users?: UserAccount[];
   onAddTicket: (ticket: Ticket) => void;
   onUpdateTicket: (ticket: Ticket) => void;
   onOpenWhatsApp: (payload: WhatsAppNotificationPayload) => void;
@@ -29,6 +30,7 @@ interface PemberiTugasViewProps {
 export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   tickets,
   session,
+  users,
   onAddTicket,
   onUpdateTicket,
   onOpenWhatsApp,
@@ -36,11 +38,48 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'baru' | 'lacak' | 'edit'>('baru');
 
-  // Form State: Buat Baru
-  const [peminta, setPeminta] = useState(
-    session?.userName && !session.userName.startsWith('WBP ') ? session.userName : ''
-  );
-  const [waPeminta, setWaPeminta] = useState(session?.whatsapp || '');
+  // Resolve logged-in user identity from active session + user account database
+  const { autoPeminta, autoWaPeminta } = useMemo(() => {
+    const accountList = users && users.length > 0 ? users : getStoredUsers();
+    const matchedAccount = accountList.find(
+      u =>
+        (session?.userId && u.id === session.userId) ||
+        (session?.username && u.username.toLowerCase() === session.username.toLowerCase()) ||
+        (session?.userName && u.fullName.toLowerCase() === session.userName.toLowerCase())
+    ) || (session?.username?.toUpperCase() === 'WBP' ? accountList.find(u => u.role === 'pemberi_tugas') : undefined);
+
+    const resolvedName = (
+      matchedAccount?.fullName ||
+      (session?.userName && !session.userName.startsWith('WBP ') ? session.userName : '') ||
+      session?.userName ||
+      ''
+    ).trim();
+
+    const resolvedWa = (
+      matchedAccount?.whatsapp ||
+      session?.whatsapp ||
+      ''
+    ).trim();
+
+    return {
+      autoPeminta: resolvedName,
+      autoWaPeminta: resolvedWa
+    };
+  }, [session, users]);
+
+  // Form State: Buat Baru (Auto-filled from active login session)
+  const [peminta, setPeminta] = useState(autoPeminta);
+  const [waPeminta, setWaPeminta] = useState(autoWaPeminta);
+
+  // Keep Peminta & No. WhatsApp Peminta synced with the active login session automatically
+  useEffect(() => {
+    if (autoPeminta) {
+      setPeminta(autoPeminta);
+    }
+    if (autoWaPeminta) {
+      setWaPeminta(autoWaPeminta);
+    }
+  }, [autoPeminta, autoWaPeminta]);
   const [soNumber, setSoNumber] = useState('');
   const [pemasukanPenawaran, setPemasukanPenawaran] = useState('');
   const [tujuanPermintaan, setTujuanPermintaan] = useState('');
@@ -125,7 +164,10 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     e.preventDefault();
     setFormError('');
 
-    if (!peminta.trim()) {
+    const finalPeminta = (peminta || autoPeminta).trim();
+    const finalWaPeminta = cleanWhatsAppNumber(waPeminta || autoWaPeminta);
+
+    if (!finalPeminta) {
       setFormError('Nama Pemberi Tugas wajib diisi.');
       return;
     }
@@ -165,8 +207,8 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     const newTicket: Ticket = {
       ID_Tiket: newId,
       Waktu_Request: waktuReq,
-      Peminta: peminta,
-      WA_Peminta: cleanWhatsAppNumber(waPeminta),
+      Peminta: finalPeminta,
+      WA_Peminta: finalWaPeminta,
       SO: soNumber || '-',
       Pemasukan_Penawaran: formattedPemasukan || '-',
       Tujuan_Permintaan: tujuanPermintaan || '-',
@@ -192,8 +234,9 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     onAddTicket(newTicket);
     setFormSuccess(`Tiket ${newId} berhasil didaftarkan ke sistem!`);
 
-    // Reset form
-    setPeminta('');
+    // Reset form while preserving auto-filled requester session identity
+    setPeminta(autoPeminta);
+    setWaPeminta(autoWaPeminta);
     setNamaProyek('');
     setKodeProyek('');
     setSoNumber('');
@@ -205,7 +248,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     setFormStep(1);
 
     // Trigger WhatsApp notification for Manager
-    const pesan = `*PERMINTAAN TUGAS BARU*\n\nHalo Bpk. ${currentManager},\nAda request dokumen teknis baru dari *${peminta}* untuk proyek *${namaProyek}*.\nMohon segera didisposisikan ke tim ${departemenTujuan}.\n\nID Tiket: ${newId}\nTarget: ${formattedTarget}`;
+    const pesan = `*PERMINTAAN TUGAS BARU*\n\nHalo Bpk. ${currentManager},\nAda request dokumen teknis baru dari *${finalPeminta}* untuk proyek *${namaProyek}*.\nMohon segera didisposisikan ke tim ${departemenTujuan}.\n\nID Tiket: ${newId}\nTarget: ${formattedTarget}`;
     onOpenWhatsApp({
       id: newId,
       wa: currentWaManager,
@@ -349,30 +392,62 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <div className="space-y-4 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Nama Pemberi Tugas / Sales <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={peminta}
-                        onChange={(e) => setPeminta(e.target.value)}
-                        placeholder="e.g. Budi Santoso"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
-                        required
-                      />
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700">
+                          Nama Pemberi Tugas / Sales <span className="text-rose-500">*</span>
+                        </label>
+                        {autoPeminta && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Otomatis dari Sesi Login
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <User className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={peminta || autoPeminta}
+                          onChange={(e) => setPeminta(e.target.value)}
+                          readOnly={Boolean(autoPeminta)}
+                          placeholder="Terbaca otomatis dari akun login"
+                          className={`w-full pl-9 pr-3.5 py-2 text-xs border rounded-xl transition-colors ${
+                            autoPeminta
+                              ? 'bg-slate-50 border-slate-200 text-slate-800 font-semibold cursor-default'
+                              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]'
+                          }`}
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        No. WhatsApp Peminta <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={waPeminta}
-                        onChange={(e) => setWaPeminta(e.target.value)}
-                        placeholder="Contoh: 08123456789"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors font-mono"
-                      />
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700">
+                          No. WhatsApp Peminta <span className="text-rose-500">*</span>
+                        </label>
+                        {autoWaPeminta && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Otomatis dari Sesi Login
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={waPeminta || autoWaPeminta}
+                          onChange={(e) => setWaPeminta(e.target.value)}
+                          readOnly={Boolean(autoWaPeminta)}
+                          placeholder="Terbaca otomatis dari akun login"
+                          className={`w-full pl-9 pr-3.5 py-2 text-xs border rounded-xl font-mono transition-colors ${
+                            autoWaPeminta
+                              ? 'bg-slate-50 border-slate-200 text-slate-800 font-semibold cursor-default'
+                              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974]'
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -464,7 +539,8 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        if (!peminta.trim() || !namaProyek.trim()) {
+                        const resolvedPeminta = (peminta || autoPeminta).trim();
+                        if (!resolvedPeminta || !namaProyek.trim()) {
                           setFormError('Nama Pemberi Tugas dan Nama Proyek wajib diisi sebelum lanjut.');
                           return;
                         }
