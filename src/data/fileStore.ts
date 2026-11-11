@@ -138,15 +138,27 @@ export function parseTicketFileEntry(
 export async function saveFileToStorage(
   file: File,
   category: DriveUploadCategory = 'permintaan',
-  ticketId?: string
+  ticketId?: string,
+  onProgress?: (percent: number, stageText?: string) => void
 ): Promise<AppFileRecord> {
   const fileId = `FILE-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const targetFolder = resolveDriveFolderByCategory(category);
 
+  onProgress?.(2, `Membaca berkas ${file.name}...`);
+
   // Read file as Base64 Data URL for local preview/instant download cache and GAS payload
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
+    reader.onprogress = (evt) => {
+      if (evt.lengthComputable && evt.total > 0) {
+        const readPct = Math.min(30, Math.round((evt.loaded / evt.total) * 30));
+        onProgress?.(Math.max(5, readPct), `Menyiapkan payload berkas ${file.name}...`);
+      }
+    };
+    reader.onload = () => {
+      onProgress?.(32, `Menghubungi Google Drive (${targetFolder.categoryLabel})...`);
+      resolve(reader.result as string);
+    };
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
@@ -156,41 +168,58 @@ export async function saveFileToStorage(
   let driveDownloadUrl: string | undefined;
   let isDriveSynced = false;
 
-  // 1. Upload directly via Google Drive REST API v3 into the category's dedicated folder if OAuth token is available
-  const token = await getAccessToken();
-  if (token) {
-    try {
-      const uploaded = await uploadFileToDriveFolder(file, token, targetFolder.categoryKey);
-      driveFileId = uploaded.id;
-      driveViewUrl = uploaded.webViewLink;
-      driveDownloadUrl = uploaded.downloadUrl;
-      isDriveSynced = true;
-    } catch (err) {
-      console.warn(`Google Drive upload warning (${targetFolder.categoryLabel}):`, err);
+  // Start smooth real-time progress ticker during network upload (35% -> 92%)
+  let currentPct = 35;
+  onProgress?.(currentPct, `Mengunggah ${file.name} ke Google Drive...`);
+  const progressInterval = setInterval(() => {
+    if (currentPct < 92) {
+      const step = currentPct < 65 ? 6 : currentPct < 82 ? 3 : 1;
+      currentPct = Math.min(92, currentPct + step);
+      onProgress?.(currentPct, `Mengunggah ${file.name} ke Google Drive (${targetFolder.folderId})...`);
     }
+  }, 140);
+
+  try {
+    // 1. Upload directly via Google Drive REST API v3 into the category's dedicated folder if OAuth token is available
+    const token = await getAccessToken();
+    if (token) {
+      try {
+        const uploaded = await uploadFileToDriveFolder(file, token, targetFolder.categoryKey);
+        driveFileId = uploaded.id;
+        driveViewUrl = uploaded.webViewLink;
+        driveDownloadUrl = uploaded.downloadUrl;
+        isDriveSynced = true;
+      } catch (err) {
+        console.warn(`Google Drive upload warning (${targetFolder.categoryLabel}):`, err);
+      }
+    }
+
+    // 2. Also send to Backend Server (/api/files/upload) & Google Apps Script Web App endpoint with category separation
+    try {
+      const gasOrServerUploaded = await uploadFileViaGasAndBackend({
+        file,
+        dataUrl,
+        category: targetFolder.categoryKey,
+        ticketId
+      });
+      if (gasOrServerUploaded) {
+        if (gasOrServerUploaded.gasSynced) {
+          isDriveSynced = true;
+        }
+        if (!driveFileId && gasOrServerUploaded.id) {
+          driveFileId = gasOrServerUploaded.id;
+          driveViewUrl = gasOrServerUploaded.webViewLink;
+          driveDownloadUrl = gasOrServerUploaded.downloadUrl;
+        }
+      }
+    } catch (err) {
+      console.warn('GAS/Backend categorized upload warning:', err);
+    }
+  } finally {
+    clearInterval(progressInterval);
   }
 
-  // 2. Also send to Backend Server (/api/files/upload) & Google Apps Script Web App endpoint with category separation
-  try {
-    const gasOrServerUploaded = await uploadFileViaGasAndBackend({
-      file,
-      dataUrl,
-      category: targetFolder.categoryKey,
-      ticketId
-    });
-    if (gasOrServerUploaded) {
-      if (gasOrServerUploaded.gasSynced) {
-        isDriveSynced = true;
-      }
-      if (!driveFileId && gasOrServerUploaded.id) {
-        driveFileId = gasOrServerUploaded.id;
-        driveViewUrl = gasOrServerUploaded.webViewLink;
-        driveDownloadUrl = gasOrServerUploaded.downloadUrl;
-      }
-    }
-  } catch (err) {
-    console.warn('GAS/Backend categorized upload warning:', err);
-  }
+  onProgress?.(96, `Menyimpan metadata berkas ${file.name}...`);
 
   const formattedEntry = driveFileId ? `${file.name}::${driveFileId}` : file.name;
 
@@ -226,6 +255,8 @@ export async function saveFileToStorage(
   } catch (err) {
     console.warn('Could not persist file to IndexedDB, stored in memory cache:', err);
   }
+
+  onProgress?.(100, `Berkas ${file.name} selesai diunggah (100%)!`);
 
   return record;
 }

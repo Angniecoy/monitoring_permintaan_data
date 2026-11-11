@@ -101,6 +101,9 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   // Uploaded files (stored as "filename.ext::DRIVE_FILE_ID" when synced to Google Drive)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadCurrentFile, setUploadCurrentFile] = useState('');
+  const [uploadStageText, setUploadStageText] = useState('');
   const [uploadNotice, setUploadNotice] = useState('');
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -130,17 +133,45 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
+      const totalFiles = filesArray.length;
       setIsUploading(true);
-      setUploadNotice(`Mengunggah berkas Permintaan ke folder Google Drive (${DRIVE_PERMINTAAN_FOLDER_ID})...`);
+      setUploadProgress(0);
+      setUploadNotice('');
+      setUploadCurrentFile(filesArray[0]?.name || '');
+      setUploadStageText(`Menyiapkan unggahan ke Google Drive (${DRIVE_PERMINTAAN_FOLDER_ID})...`);
 
       try {
         const newEntries: string[] = [];
         let syncedCount = 0;
-        for (const file of filesArray) {
-          const record = await saveFileToStorage(file, 'permintaan');
+
+        for (let i = 0; i < totalFiles; i++) {
+          const file = filesArray[i];
+          const fileLabel = totalFiles > 1 ? `(${i + 1}/${totalFiles}) ${file.name}` : file.name;
+          setUploadCurrentFile(fileLabel);
+
+          const record = await saveFileToStorage(
+            file,
+            'permintaan',
+            undefined,
+            (filePct, stageMsg) => {
+              const overallPct = Math.min(
+                100,
+                Math.round(((i * 100 + filePct) / totalFiles))
+              );
+              setUploadProgress(overallPct);
+              if (stageMsg) {
+                setUploadStageText(stageMsg);
+              }
+            }
+          );
+
           newEntries.push(record.formattedEntry);
           if (record.driveFileId || record.isDriveSynced) syncedCount++;
         }
+
+        setUploadProgress(100);
+        setUploadStageText('Unggahan ke Google Drive selesai (100%)!');
+        await new Promise(resolve => setTimeout(resolve, 350));
 
         setUploadedFiles(prev => [...prev, ...newEntries]);
         if (syncedCount > 0) {
@@ -150,6 +181,9 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
         }
       } finally {
         setIsUploading(false);
+        setUploadProgress(0);
+        setUploadCurrentFile('');
+        setUploadStageText('');
         e.target.value = '';
       }
     }
@@ -726,10 +760,39 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     </label>
                     <div className="border-2 border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-5 text-center transition-colors bg-slate-50">
                       {isUploading ? (
-                        <div className="py-3 flex flex-col items-center justify-center gap-2">
-                          <Loader2 className="w-7 h-7 text-[#282974] animate-spin" />
-                          <div className="text-xs font-semibold text-[#282974]">
-                            Mengunggah berkas Permintaan ke Google Drive ({DRIVE_PERMINTAAN_FOLDER_ID})...
+                        <div className="py-2 px-2 max-w-lg mx-auto space-y-2.5 text-left">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-[#282974] truncate">
+                                {uploadCurrentFile
+                                  ? `Mengunggah: ${uploadCurrentFile}`
+                                  : 'Mengunggah berkas ke Google Drive...'}
+                              </div>
+                              <div className="text-[11px] text-slate-600 truncate mt-0.5">
+                                {uploadStageText || `Menyimpan ke Folder Permintaan (${DRIVE_PERMINTAAN_FOLDER_ID})...`}
+                              </div>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-lg bg-[#282974] text-white font-mono text-xs font-bold shrink-0 shadow-2xs">
+                              {uploadProgress}%
+                            </span>
+                          </div>
+
+                          {/* Real-Time Animated Progress Bar (0% - 100%) */}
+                          <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden p-0.5 shadow-inner">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-[#282974] via-indigo-600 to-emerald-500 transition-all duration-200 ease-out relative overflow-hidden"
+                              style={{ width: `${Math.max(4, uploadProgress)}%` }}
+                            >
+                              <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                            <span>0%</span>
+                            <span>25%</span>
+                            <span>50%</span>
+                            <span>75%</span>
+                            <span className={uploadProgress === 100 ? 'text-emerald-700 font-bold' : ''}>100%</span>
                           </div>
                         </div>
                       ) : (
