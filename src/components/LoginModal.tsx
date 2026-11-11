@@ -447,9 +447,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       // Admin added a new user from Kelola User -> return directly to the real-time management table
       setFilterRole('ALL');
       setSearchUserQuery('');
-      setManageNotice(
-        `Akun baru "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke Google Drive (WBP_USER_${createdUser.username.toLowerCase()}.json) & basis data utama!`
-      );
+      setManageNotice('Akun Berhasil Dibuat.');
       setTimeout(() => setManageNotice(''), 5000);
       setActiveTab('manage');
     } else {
@@ -457,9 +455,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setUsername(createdUser.username);
       setPassword(createdUser.password);
       setErrorMsg('');
-      setSuccessMsg(
-        `Akun "${createdUser.fullName}" (@${createdUser.username}) berhasil disimpan ke Google Drive (Folder ID: ${GOOGLE_DRIVE_FOLDER_ID}) sebagai ${createdUser.roleName}. Silakan masuk!`
-      );
+      setSuccessMsg('Akun Berhasil Dibuat. Silakan masuk!');
       setActiveTab('login');
     }
   };
