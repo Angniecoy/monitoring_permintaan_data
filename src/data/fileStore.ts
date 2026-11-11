@@ -39,6 +39,7 @@ export interface AppFileRecord {
   driveDownloadUrl?: string;
   driveFolderId: string;
   driveFolderUrl: string;
+  isDriveSynced?: boolean;
   formattedEntry: string;
 }
 
@@ -124,7 +125,7 @@ export function parseTicketFileEntry(
     folderUrl: resolvedTarget.folderUrl,
     category: resolvedTarget.categoryKey,
     categoryLabel: resolvedTarget.categoryLabel,
-    isDriveSynced: Boolean(driveId)
+    isDriveSynced: Boolean(driveId || cachedRecord?.isDriveSynced)
   };
 }
 
@@ -153,6 +154,7 @@ export async function saveFileToStorage(
   let driveFileId: string | undefined;
   let driveViewUrl: string | undefined;
   let driveDownloadUrl: string | undefined;
+  let isDriveSynced = false;
 
   // 1. Upload directly via Google Drive REST API v3 into the category's dedicated folder if OAuth token is available
   const token = await getAccessToken();
@@ -162,6 +164,7 @@ export async function saveFileToStorage(
       driveFileId = uploaded.id;
       driveViewUrl = uploaded.webViewLink;
       driveDownloadUrl = uploaded.downloadUrl;
+      isDriveSynced = true;
     } catch (err) {
       console.warn(`Google Drive upload warning (${targetFolder.categoryLabel}):`, err);
     }
@@ -175,10 +178,15 @@ export async function saveFileToStorage(
       category: targetFolder.categoryKey,
       ticketId
     });
-    if (gasOrServerUploaded && !driveFileId) {
-      driveFileId = gasOrServerUploaded.id;
-      driveViewUrl = gasOrServerUploaded.webViewLink;
-      driveDownloadUrl = gasOrServerUploaded.downloadUrl;
+    if (gasOrServerUploaded) {
+      if (gasOrServerUploaded.gasSynced) {
+        isDriveSynced = true;
+      }
+      if (!driveFileId && gasOrServerUploaded.id) {
+        driveFileId = gasOrServerUploaded.id;
+        driveViewUrl = gasOrServerUploaded.webViewLink;
+        driveDownloadUrl = gasOrServerUploaded.downloadUrl;
+      }
     }
   } catch (err) {
     console.warn('GAS/Backend categorized upload warning:', err);
@@ -196,10 +204,11 @@ export async function saveFileToStorage(
     category: targetFolder.categoryKey,
     categoryLabel: targetFolder.categoryLabel,
     driveFileId,
-    driveViewUrl,
-    driveDownloadUrl,
+    driveViewUrl: driveViewUrl || targetFolder.folderUrl,
+    driveDownloadUrl: driveDownloadUrl || targetFolder.folderUrl,
     driveFolderId: targetFolder.folderId,
     driveFolderUrl: targetFolder.folderUrl,
+    isDriveSynced,
     formattedEntry
   };
 

@@ -95,21 +95,12 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
       setUploadNotice(`Mengunggah berkas Permintaan ke folder Google Drive (${DRIVE_PERMINTAAN_FOLDER_ID})...`);
 
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          try {
-            await googleSignIn();
-          } catch {
-            // User closed or skipped popup; saveFileToStorage will handle backend/GAS & local fallback
-          }
-        }
-
         const newEntries: string[] = [];
         let syncedCount = 0;
         for (const file of filesArray) {
           const record = await saveFileToStorage(file, 'permintaan');
           newEntries.push(record.formattedEntry);
-          if (record.driveFileId) syncedCount++;
+          if (record.driveFileId || record.isDriveSynced) syncedCount++;
         }
 
         setUploadedFiles(prev => [...prev, ...newEntries]);

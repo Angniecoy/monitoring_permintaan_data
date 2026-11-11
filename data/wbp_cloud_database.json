@@ -1,7 +1,45 @@
 {
   "folderId": "1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF",
-  "updatedAt": "2026-11-10T05:00:12.928Z",
+  "updatedAt": "2026-11-11T06:52:20.908Z",
   "users": [
+    {
+      "id": "usr-1794378197788-oxs4f",
+      "fullName": "Haritz Gabrioga",
+      "username": "haritz_wbp",
+      "password": "123456",
+      "role": "pemberi_tugas",
+      "roleName": "Pemberi Tugas (Sales / Proyek)",
+      "whatsapp": "628119538620",
+      "createdAt": "11/11/2026 13:23",
+      "isDefault": false,
+      "isAdmin": false
+    },
+    {
+      "id": "usr-1794288497043-orssb",
+      "fullName": "Rahman",
+      "username": "rahman_wbp",
+      "password": "123",
+      "role": "staff",
+      "roleName": "Staff Engineering (Eksekutor)",
+      "department": "Engineering Precast",
+      "whatsapp": "6281321804321",
+      "createdAt": "10/11/2026 12:28",
+      "isDefault": false,
+      "isAdmin": false
+    },
+    {
+      "id": "usr-1794293908508-0zlwt",
+      "fullName": "Saffira Kusuma",
+      "username": "saffira",
+      "password": "password123",
+      "role": "staff",
+      "roleName": "Staff Engineering (Eksekutor)",
+      "department": "Engineering Readymix",
+      "whatsapp": "6285755513423",
+      "createdAt": "10/11/2026 13:58",
+      "isDefault": false,
+      "isAdmin": false
+    },
     {
       "id": "usr-default-sales",
       "fullName": "Budi Santoso (Sales Tol)",
@@ -132,5 +170,5 @@
     }
   ],
   "deletedUsernames": [],
-  "gasWebAppUrl": "https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec"
+  "gasWebAppUrl": "https://script.google.com/macros/s/AKfycbwf11X_caQ9oCQmoPgJfnBpqM4w6uc02O-aMWC40qoRIdwgxZc5-V9LzQZxy3zAEDg3/exec"
 }

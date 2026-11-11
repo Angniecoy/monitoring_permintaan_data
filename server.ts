@@ -21,8 +21,22 @@ const GOOGLE_DRIVE_FOLDER_ID = '1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF';
 const DRIVE_PERMINTAAN_FOLDER_ID = '1To0dQP0bco7s7czx48B9BlxLsT8FYXNY';
 const DRIVE_JAWABAN_FOLDER_ID = '1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy';
 const DEFAULT_GAS_WEB_APP_URL =
-  process.env.GAS_WEB_APP_URL ||
-  'https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec';
+  'https://script.google.com/macros/s/AKfycbwf11X_caQ9oCQmoPgJfnBpqM4w6uc02O-aMWC40qoRIdwgxZc5-V9LzQZxy3zAEDg3/exec';
+const DEPRECATED_GAS_IDS = [
+  'AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a'
+];
+
+function normalizeServerGasUrl(rawUrl?: string | null): string {
+  const trimmed = (rawUrl || '').trim();
+  if (!trimmed || !trimmed.startsWith('https://script.google.com/')) {
+    return DEFAULT_GAS_WEB_APP_URL;
+  }
+  if (DEPRECATED_GAS_IDS.some((oldId) => trimmed.includes(oldId))) {
+    return DEFAULT_GAS_WEB_APP_URL;
+  }
+  return trimmed;
+}
+
 const DRIVE_USERS_DB_FILENAME = 'wbp_users_database.json';
 const DRIVE_USER_FILE_PREFIX = 'WBP_USER_';
 
@@ -312,7 +326,7 @@ function readCloudDB(): CentralizedCloudDB {
       updatedAt: parsed.updatedAt || new Date().toISOString(),
       users,
       deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
-      gasWebAppUrl: parsed.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL
+      gasWebAppUrl: normalizeServerGasUrl(parsed.gasWebAppUrl)
     };
   } catch (err) {
     console.error('Error reading centralized cloud DB:', err);
@@ -335,6 +349,7 @@ function writeCloudDB(db: CentralizedCloudDB): CentralizedCloudDB {
       ...db,
       folderId: GOOGLE_DRIVE_FOLDER_ID,
       updatedAt: new Date().toISOString(),
+      gasWebAppUrl: normalizeServerGasUrl(db.gasWebAppUrl),
       users: sortUsersCustomFirst(db.users)
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(ordered, null, 2), 'utf-8');
@@ -660,7 +675,15 @@ async function pullFromDriveAndGASIntoServerDB(
         remoteDeleted.push(...m.deletedUsernames);
       }
       if (typeof m.gasWebAppUrl === 'string' && m.gasWebAppUrl) {
-        currentDB.gasWebAppUrl = m.gasWebAppUrl;
+        const normalizedGas = normalizeServerGasUrl(m.gasWebAppUrl);
+        currentDB.gasWebAppUrl = normalizedGas;
+        if (normalizedGas !== m.gasWebAppUrl) {
+          void setDoc(
+            doc(serverFirestoreDb, 'wbp_meta', 'users_db'),
+            { gasWebAppUrl: normalizedGas, updatedAt: new Date().toISOString() },
+            { merge: true }
+          ).catch(() => {});
+        }
       }
       if (typeof m.usersJson === 'string' && m.usersJson.trim()) {
         try {
@@ -1192,42 +1215,61 @@ async function startServer() {
       }
     }
 
-    // 2. Also forward to Google Apps Script Web App endpoint so GAS can store the file in the right folder if Drive OAuth wasn't active
+    // 2. Always forward categorized upload to Google Apps Script Web App endpoint (https://script.google.com/macros/s/AKfycbwf11X_caQ9oCQmoPgJfnBpqM4w6uc02O-aMWC40qoRIdwgxZc5-V9LzQZxy3zAEDg3/exec)
     const db = readCloudDB();
-    const targetGasUrl = (db.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
-    if (!uploadedFileId && targetGasUrl && targetGasUrl.startsWith('https://script.google.com/')) {
+    const targetGasUrl = normalizeServerGasUrl(db.gasWebAppUrl);
+    let gasForwarded = false;
+    if (targetGasUrl && targetGasUrl.startsWith('https://script.google.com/')) {
       try {
-        const gasRes = await fetch(targetGasUrl, {
+        const sep = targetGasUrl.includes('?') ? '&' : '?';
+        const gasUrlWithParams = `${targetGasUrl}${sep}action=uploadFile&category=${encodeURIComponent(
+          target.categoryLabel
+        )}&kategori=${encodeURIComponent(
+          target.categoryLabel
+        )}&categoryKey=${encodeURIComponent(
+          target.categoryKey
+        )}&folderId=${encodeURIComponent(target.folderId)}`;
+
+        const gasRes = await fetch(gasUrlWithParams, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'uploadFile',
             category: target.categoryLabel,
+            kategori: target.categoryLabel,
             categoryKey: target.categoryKey,
+            jenis: target.categoryLabel,
+            type: target.categoryKey,
             folderId: target.folderId,
+            targetFolderId: target.folderId,
             ticketId: ticketId || '',
             fileName,
+            name: fileName,
             mimeType: mimeType || 'application/octet-stream',
             base64Data: cleanBase64,
+            data: cleanBase64,
             uploadedAt: new Date().toISOString()
           }),
           redirect: 'follow'
         });
 
         if (gasRes.ok) {
+          gasForwarded = true;
           const text = (await gasRes.text()).trim();
           if (text.startsWith('{')) {
             const parsed = JSON.parse(text) as {
               id?: string;
               fileId?: string;
               webViewLink?: string;
+              url?: string;
               downloadUrl?: string;
             };
             const gasFileId = parsed.id || parsed.fileId || '';
-            if (gasFileId) {
+            if (gasFileId && !uploadedFileId) {
               uploadedFileId = gasFileId;
               webViewLink =
                 parsed.webViewLink ||
+                parsed.url ||
                 `https://drive.google.com/file/d/${gasFileId}/view?usp=sharing`;
               downloadUrl =
                 parsed.downloadUrl ||
@@ -1241,7 +1283,8 @@ async function startServer() {
     }
 
     res.json({
-      ok: Boolean(uploadedFileId),
+      ok: Boolean(uploadedFileId || gasForwarded),
+      gasForwarded,
       id: uploadedFileId || undefined,
       name: fileName,
       category: target.categoryLabel,

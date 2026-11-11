@@ -70,8 +70,22 @@ export function resolveDriveFolderByCategory(
 }
 
 export const DEFAULT_GAS_WEB_APP_URL =
-  import.meta.env.VITE_GAS_WEB_APP_URL ||
-  'https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec';
+  'https://script.google.com/macros/s/AKfycbwf11X_caQ9oCQmoPgJfnBpqM4w6uc02O-aMWC40qoRIdwgxZc5-V9LzQZxy3zAEDg3/exec';
+
+const DEPRECATED_GAS_IDS = [
+  'AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a'
+];
+
+export function normalizeGasWebAppUrl(rawUrl?: string | null): string {
+  const trimmed = (rawUrl || '').trim();
+  if (!trimmed || !trimmed.startsWith('https://script.google.com/')) {
+    return DEFAULT_GAS_WEB_APP_URL;
+  }
+  if (DEPRECATED_GAS_IDS.some((oldId) => trimmed.includes(oldId))) {
+    return DEFAULT_GAS_WEB_APP_URL;
+  }
+  return trimmed;
+}
 
 export const DRIVE_USERS_DB_FILENAME = 'wbp_users_database.json';
 export const DRIVE_TICKETS_DB_FILENAME = 'wbp_tickets_database.json';
@@ -984,6 +998,7 @@ export async function uploadFileViaGasAndBackend(params: {
   downloadUrl?: string;
   folderId: string;
   categoryLabel: string;
+  gasSynced: boolean;
 }> {
   const resolved = resolveDriveFolderByCategory(params.category);
   const base64Clean = params.dataUrl.includes(',')
@@ -993,19 +1008,27 @@ export async function uploadFileViaGasAndBackend(params: {
   const payload = {
     action: 'uploadFile',
     category: resolved.categoryLabel,
+    kategori: resolved.categoryLabel,
     categoryKey: resolved.categoryKey,
+    jenis: resolved.categoryLabel,
+    type: resolved.categoryKey,
     folderId: resolved.folderId,
+    targetFolderId: resolved.folderId,
     ticketId: params.ticketId || '',
     fileName: params.file.name,
+    name: params.file.name,
     mimeType: params.file.type || 'application/octet-stream',
     size: params.file.size,
     base64Data: base64Clean,
+    data: base64Clean,
     uploadedAt: new Date().toISOString()
   };
 
   let uploadedId: string | undefined;
   let webViewLink: string | undefined;
   let downloadUrl: string | undefined;
+  let handledByServerGas = false;
+  let gasSynced = false;
 
   // 1. Try backend server endpoint (/api/files/upload) which bridges both Drive API and GAS Web App
   try {
@@ -1023,6 +1046,10 @@ export async function uploadFileViaGasAndBackend(params: {
     const ct = serverRes.headers.get('content-type') || '';
     if (serverRes.ok && ct.includes('application/json')) {
       const data = await serverRes.json();
+      if (data && (data.gasForwarded || data.ok)) {
+        handledByServerGas = true;
+        gasSynced = true;
+      }
       if (data && typeof data.id === 'string' && data.id) {
         uploadedId = data.id;
         webViewLink =
@@ -1038,11 +1065,20 @@ export async function uploadFileViaGasAndBackend(params: {
   }
 
   // 2. Also send directly to Google Apps Script Web App endpoint (using text/plain to bypass CORS preflight)
-  if (!uploadedId) {
-    const endpoint = (params.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  if (!uploadedId && !handledByServerGas) {
+    const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
     if (endpoint && endpoint.startsWith('https://script.google.com/')) {
       try {
-        const gasRes = await fetch(endpoint, {
+        const sep = endpoint.includes('?') ? '&' : '?';
+        const gasUrlWithParams = `${endpoint}${sep}action=uploadFile&category=${encodeURIComponent(
+          resolved.categoryLabel
+        )}&kategori=${encodeURIComponent(
+          resolved.categoryLabel
+        )}&categoryKey=${encodeURIComponent(
+          resolved.categoryKey
+        )}&folderId=${encodeURIComponent(resolved.folderId)}`;
+
+        const gasRes = await fetch(gasUrlWithParams, {
           method: 'POST',
           headers: {
             'Content-Type': 'text/plain;charset=utf-8'
@@ -1050,12 +1086,14 @@ export async function uploadFileViaGasAndBackend(params: {
           body: JSON.stringify(payload)
         });
         if (gasRes.ok) {
+          gasSynced = true;
           const text = (await gasRes.text()).trim();
           if (text.startsWith('{')) {
             const parsed = JSON.parse(text) as {
               id?: string;
               fileId?: string;
               webViewLink?: string;
+              url?: string;
               downloadUrl?: string;
             };
             const fid = parsed.id || parsed.fileId;
@@ -1063,6 +1101,7 @@ export async function uploadFileViaGasAndBackend(params: {
               uploadedId = fid;
               webViewLink =
                 parsed.webViewLink ||
+                parsed.url ||
                 `https://drive.google.com/file/d/${fid}/view?usp=sharing`;
               downloadUrl =
                 parsed.downloadUrl ||
@@ -1081,7 +1120,8 @@ export async function uploadFileViaGasAndBackend(params: {
     webViewLink,
     downloadUrl,
     folderId: resolved.folderId,
-    categoryLabel: resolved.categoryLabel
+    categoryLabel: resolved.categoryLabel,
+    gasSynced: Boolean(uploadedId || gasSynced)
   };
 }
 
@@ -1274,8 +1314,12 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
       if (Array.isArray(metaData.deletedUsernames)) {
         deletedUsernames = metaData.deletedUsernames;
       }
-      if (typeof metaData.gasWebAppUrl === 'string') {
-        gasWebAppUrl = metaData.gasWebAppUrl;
+      if (typeof metaData.gasWebAppUrl === 'string' && metaData.gasWebAppUrl) {
+        const normalizedGas = normalizeGasWebAppUrl(metaData.gasWebAppUrl);
+        gasWebAppUrl = normalizedGas;
+        if (normalizedGas !== metaData.gasWebAppUrl) {
+          void saveGasConfigToCloudFirestore(normalizedGas);
+        }
       }
       if (typeof metaData.usersJson === 'string' && metaData.usersJson.trim()) {
         try {
@@ -1376,8 +1420,8 @@ export function subscribeCloudFirestoreUsers(
         latestDeleted = Array.isArray(data.deletedUsernames)
           ? data.deletedUsernames
           : [];
-        if (typeof data.gasWebAppUrl === 'string') {
-          latestGasUrl = data.gasWebAppUrl;
+        if (typeof data.gasWebAppUrl === 'string' && data.gasWebAppUrl) {
+          latestGasUrl = normalizeGasWebAppUrl(data.gasWebAppUrl);
         }
         if (typeof data.usersJson === 'string' && data.usersJson.trim()) {
           try {
@@ -1430,7 +1474,7 @@ export async function pushUsersToGasEndpoint(params: {
   users: UserAccount[];
   deletedUsernames: string[];
 }): Promise<boolean> {
-  const endpoint = (params.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
   if (!endpoint || !endpoint.startsWith('https://script.google.com/')) {
     return false;
   }
@@ -1444,6 +1488,8 @@ export async function pushUsersToGasEndpoint(params: {
       body: JSON.stringify({
         action: params.action,
         folderId: GOOGLE_DRIVE_FOLDER_ID,
+        permintaanFolderId: DRIVE_PERMINTAAN_FOLDER_ID,
+        jawabanFolderId: DRIVE_JAWABAN_FOLDER_ID,
         user: params.user,
         deletedUsername: params.deletedUsername,
         users: params.users,
@@ -1467,7 +1513,7 @@ export async function pullUsersFromGasEndpoint(
   users: UserAccount[];
   deletedUsernames: string[];
 } | null> {
-  const endpoint = (gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+  const endpoint = normalizeGasWebAppUrl(gasWebAppUrl);
   if (!endpoint || !endpoint.startsWith('https://script.google.com/')) {
     return null;
   }

@@ -81,15 +81,6 @@ export const StaffView: React.FC<StaffViewProps> = ({
       setUploadNotice(`Mengunggah Jawaban Atas Permintaan ke folder Google Drive (${DRIVE_JAWABAN_FOLDER_ID})...`);
 
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          try {
-            await googleSignIn();
-          } catch {
-            // Fallback to backend/GAS & local storage if popup closed
-          }
-        }
-
         const newEntries: string[] = [];
         let syncedCount = 0;
         for (const file of filesArray) {
@@ -99,7 +90,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
             currentTask?.ID_Tiket
           );
           newEntries.push(record.formattedEntry);
-          if (record.driveFileId) syncedCount++;
+          if (record.driveFileId || record.isDriveSynced) syncedCount++;
         }
 
         setHasilFiles(prev => [...prev, ...newEntries]);

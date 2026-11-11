@@ -9,6 +9,7 @@ import {
   DRIVE_PERMINTAAN_FOLDER_ID,
   DRIVE_JAWABAN_FOLDER_ID,
   DEFAULT_GAS_WEB_APP_URL,
+  normalizeGasWebAppUrl,
   upsertUserToCloudFirestore,
   deleteUserFromCloudFirestore,
   resetUsersInCloudFirestore,
@@ -414,11 +415,12 @@ export function saveDeletedUsernames(usernames: string[]): void {
 }
 
 export function getGasWebAppUrl(): string {
-  return cloudGasWebAppUrlStore || DEFAULT_GAS_WEB_APP_URL;
+  return normalizeGasWebAppUrl(cloudGasWebAppUrlStore);
 }
 
 export const GAS_BACKEND_SCRIPT_TEMPLATE = `/**
  * GOOGLE APPS SCRIPT BACKEND - PT. WASKITA BETON PRECAST TBK
+ * Endpoint Web App Aktif: ${DEFAULT_GAS_WEB_APP_URL}
  * Pemisahan Direktori Permanen Google Drive:
  * 1. Database Akun & User         : ${GOOGLE_DRIVE_FOLDER_ID}
  * 2. Lampiran 'Permintaan'        : ${DRIVE_PERMINTAAN_FOLDER_ID}
@@ -468,17 +470,29 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  const payload = JSON.parse(e.postData.contents || '{}');
+  const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+  const params = (e && e.parameter) || {};
 
   // 1. Handler Upload File Terpisah ('Permintaan' vs 'Jawaban Atas Permintaan')
-  if (payload.action === 'uploadFile' && payload.fileName && payload.base64Data) {
-    const target = resolveUploadFolderId(payload.category || payload.categoryKey, payload.folderId);
+  const fileName = payload.fileName || payload.name || params.fileName;
+  const base64Data = payload.base64Data || payload.data;
+  if ((payload.action === 'uploadFile' || params.action === 'uploadFile' || base64Data) && fileName && base64Data) {
+    const rawCategory =
+      payload.category ||
+      payload.kategori ||
+      payload.categoryKey ||
+      payload.jenis ||
+      params.category ||
+      params.kategori ||
+      params.categoryKey;
+    const rawFolderId = payload.folderId || payload.targetFolderId || params.folderId;
+    const target = resolveUploadFolderId(rawCategory, rawFolderId);
     const uploadFolder = DriveApp.getFolderById(target.folderId);
-    const decodedBytes = Utilities.base64Decode(payload.base64Data);
+    const decodedBytes = Utilities.base64Decode(base64Data);
     const blob = Utilities.newBlob(
       decodedBytes,
       payload.mimeType || 'application/octet-stream',
-      payload.fileName
+      fileName
     );
     const createdFile = uploadFolder.createFile(blob);
     createdFile.setDescription(
@@ -819,7 +833,7 @@ export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]>
 }
 
 export async function saveGasWebAppUrl(gasWebAppUrl: string): Promise<UserAccount[]> {
-  cloudGasWebAppUrlStore = gasWebAppUrl.trim() || DEFAULT_GAS_WEB_APP_URL;
+  cloudGasWebAppUrlStore = normalizeGasWebAppUrl(gasWebAppUrl);
   await saveGasConfigToCloudFirestore(cloudGasWebAppUrlStore);
   try {
     const headers = await buildAuthHeaders();
