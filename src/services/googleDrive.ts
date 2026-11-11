@@ -25,6 +25,50 @@ export const GOOGLE_DRIVE_FOLDER_ID = '1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF';
 export const GOOGLE_DRIVE_FOLDER_URL =
   'https://drive.google.com/drive/folders/1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF?usp=sharing';
 
+// Dedicated Google Drive Folder for 'Permintaan' attachments (Sales / Proyek)
+export const DRIVE_PERMINTAAN_FOLDER_ID = '1To0dQP0bco7s7czx48B9BlxLsT8FYXNY';
+export const DRIVE_PERMINTAAN_FOLDER_URL =
+  'https://drive.google.com/drive/folders/1To0dQP0bco7s7czx48B9BlxLsT8FYXNY?usp=sharing';
+
+// Dedicated Google Drive Folder for 'Jawaban Atas Permintaan' attachments (Hasil Engineering)
+export const DRIVE_JAWABAN_FOLDER_ID = '1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy';
+export const DRIVE_JAWABAN_FOLDER_URL =
+  'https://drive.google.com/drive/folders/1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy?usp=sharing';
+
+export type DriveUploadCategory = 'permintaan' | 'jawaban_atas_permintaan';
+
+export function resolveDriveFolderByCategory(
+  categoryOrFolderId?: DriveUploadCategory | string
+): {
+  categoryKey: DriveUploadCategory;
+  categoryLabel: 'Permintaan' | 'Jawaban Atas Permintaan';
+  folderId: string;
+  folderUrl: string;
+} {
+  const normalized = (categoryOrFolderId || 'permintaan').trim().toLowerCase();
+  if (
+    normalized === 'jawaban_atas_permintaan' ||
+    normalized === 'jawaban atas permintaan' ||
+    normalized === 'jawaban' ||
+    normalized === 'hasil' ||
+    normalized === 'response' ||
+    categoryOrFolderId === DRIVE_JAWABAN_FOLDER_ID
+  ) {
+    return {
+      categoryKey: 'jawaban_atas_permintaan',
+      categoryLabel: 'Jawaban Atas Permintaan',
+      folderId: DRIVE_JAWABAN_FOLDER_ID,
+      folderUrl: DRIVE_JAWABAN_FOLDER_URL
+    };
+  }
+  return {
+    categoryKey: 'permintaan',
+    categoryLabel: 'Permintaan',
+    folderId: DRIVE_PERMINTAAN_FOLDER_ID,
+    folderUrl: DRIVE_PERMINTAAN_FOLDER_URL
+  };
+}
+
 export const DEFAULT_GAS_WEB_APP_URL =
   import.meta.env.VITE_GAS_WEB_APP_URL ||
   'https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec';
@@ -834,21 +878,28 @@ export async function syncTicketsWithDriveFolder(
 }
 
 /**
- * Uploads a File attachment directly to the specified Google Drive folder (1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF).
+ * Uploads a File attachment directly to the target Google Drive folder based on category:
+ * - 'Permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
+ * - 'Jawaban Atas Permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
  */
 export async function uploadFileToDriveFolder(
   file: File,
-  accessToken?: string | null
+  accessToken?: string | null,
+  categoryOrFolderId: DriveUploadCategory | string = 'permintaan'
 ): Promise<DriveUploadedFile> {
   const token = accessToken || cachedAccessToken;
   if (!token) {
     throw new Error('Silakan hubungkan akun Google Drive terlebih dahulu.');
   }
 
+  const resolved = resolveDriveFolderByCategory(categoryOrFolderId);
+  const targetFolderId = resolved.folderId;
+
   const buildMultipartBody = (parents?: string[]) => {
     const metadata: Record<string, unknown> = {
       name: file.name,
-      mimeType: file.type || 'application/octet-stream'
+      mimeType: file.type || 'application/octet-stream',
+      description: `Kategori: ${resolved.categoryLabel} | Folder ID: ${targetFolderId}`
     };
     if (parents && parents.length > 0) {
       metadata.parents = parents;
@@ -866,13 +917,13 @@ export async function uploadFileToDriveFolder(
   const endpoint =
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,size,webViewLink,webContentLink';
 
-  // First try uploading directly into the target shared folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // First try uploading directly into the target category folder (Permintaan or Jawaban Atas Permintaan)
   let response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`
     },
-    body: buildMultipartBody([GOOGLE_DRIVE_FOLDER_ID])
+    body: buildMultipartBody([targetFolderId])
   });
 
   // If the user's Google account only has Viewer permission on the shared folder,
@@ -911,7 +962,126 @@ export async function uploadFileToDriveFolder(
     webViewLink,
     webContentLink,
     downloadUrl: webContentLink,
-    folderId: GOOGLE_DRIVE_FOLDER_ID
+    folderId: targetFolderId
+  };
+}
+
+/**
+ * Uploads a file via the backend server (/api/files/upload) and Google Apps Script Web App
+ * into the separated category folder:
+ * - 'Permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
+ * - 'Jawaban Atas Permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
+ */
+export async function uploadFileViaGasAndBackend(params: {
+  file: File;
+  dataUrl: string;
+  category: DriveUploadCategory | string;
+  ticketId?: string;
+  gasWebAppUrl?: string;
+}): Promise<{
+  id?: string;
+  webViewLink?: string;
+  downloadUrl?: string;
+  folderId: string;
+  categoryLabel: string;
+}> {
+  const resolved = resolveDriveFolderByCategory(params.category);
+  const base64Clean = params.dataUrl.includes(',')
+    ? params.dataUrl.split(',')[1]
+    : params.dataUrl;
+
+  const payload = {
+    action: 'uploadFile',
+    category: resolved.categoryLabel,
+    categoryKey: resolved.categoryKey,
+    folderId: resolved.folderId,
+    ticketId: params.ticketId || '',
+    fileName: params.file.name,
+    mimeType: params.file.type || 'application/octet-stream',
+    size: params.file.size,
+    base64Data: base64Clean,
+    uploadedAt: new Date().toISOString()
+  };
+
+  let uploadedId: string | undefined;
+  let webViewLink: string | undefined;
+  let downloadUrl: string | undefined;
+
+  // 1. Try backend server endpoint (/api/files/upload) which bridges both Drive API and GAS Web App
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (cachedAccessToken) {
+      headers.Authorization = `Bearer ${cachedAccessToken}`;
+    }
+    const serverRes = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    const ct = serverRes.headers.get('content-type') || '';
+    if (serverRes.ok && ct.includes('application/json')) {
+      const data = await serverRes.json();
+      if (data && typeof data.id === 'string' && data.id) {
+        uploadedId = data.id;
+        webViewLink =
+          data.webViewLink ||
+          `https://drive.google.com/file/d/${data.id}/view?usp=sharing`;
+        downloadUrl =
+          data.downloadUrl ||
+          `https://drive.google.com/uc?export=download&id=${data.id}`;
+      }
+    }
+  } catch {
+    // ignore if static preview
+  }
+
+  // 2. Also send directly to Google Apps Script Web App endpoint (using text/plain to bypass CORS preflight)
+  if (!uploadedId) {
+    const endpoint = (params.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+    if (endpoint && endpoint.startsWith('https://script.google.com/')) {
+      try {
+        const gasRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (gasRes.ok) {
+          const text = (await gasRes.text()).trim();
+          if (text.startsWith('{')) {
+            const parsed = JSON.parse(text) as {
+              id?: string;
+              fileId?: string;
+              webViewLink?: string;
+              downloadUrl?: string;
+            };
+            const fid = parsed.id || parsed.fileId;
+            if (fid) {
+              uploadedId = fid;
+              webViewLink =
+                parsed.webViewLink ||
+                `https://drive.google.com/file/d/${fid}/view?usp=sharing`;
+              downloadUrl =
+                parsed.downloadUrl ||
+                `https://drive.google.com/uc?export=download&id=${fid}`;
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return {
+    id: uploadedId,
+    webViewLink,
+    downloadUrl,
+    folderId: resolved.folderId,
+    categoryLabel: resolved.categoryLabel
   };
 }
 

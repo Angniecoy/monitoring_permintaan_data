@@ -6,6 +6,8 @@ import {
   syncUsersFromDriveFolder,
   syncTicketsWithDriveFolder,
   GOOGLE_DRIVE_FOLDER_ID,
+  DRIVE_PERMINTAAN_FOLDER_ID,
+  DRIVE_JAWABAN_FOLDER_ID,
   DEFAULT_GAS_WEB_APP_URL,
   upsertUserToCloudFirestore,
   deleteUserFromCloudFirestore,
@@ -417,16 +419,47 @@ export function getGasWebAppUrl(): string {
 
 export const GAS_BACKEND_SCRIPT_TEMPLATE = `/**
  * GOOGLE APPS SCRIPT BACKEND - PT. WASKITA BETON PRECAST TBK
- * Terhubung langsung ke Google Drive Folder ID: ${GOOGLE_DRIVE_FOLDER_ID}
+ * Pemisahan Direktori Permanen Google Drive:
+ * 1. Database Akun & User         : ${GOOGLE_DRIVE_FOLDER_ID}
+ * 2. Lampiran 'Permintaan'        : ${DRIVE_PERMINTAAN_FOLDER_ID}
+ * 3. Lampiran 'Jawaban Atas Permintaan' : ${DRIVE_JAWABAN_FOLDER_ID}
  * Cara Pakai: Buka script.google.com -> Proyek Baru -> Tempel kode ini -> Deploy sebagai Web App (Who has access: Anyone)
  */
 const FOLDER_ID = '${GOOGLE_DRIVE_FOLDER_ID}';
+const PERMINTAAN_FOLDER_ID = '${DRIVE_PERMINTAAN_FOLDER_ID}';
+const JAWABAN_FOLDER_ID = '${DRIVE_JAWABAN_FOLDER_ID}';
 const DB_FILENAME = 'wbp_users_database.json';
+
+function resolveUploadFolderId(category, explicitFolderId) {
+  const normalized = String(category || explicitFolderId || '').trim().toLowerCase();
+  if (
+    normalized === 'jawaban_atas_permintaan' ||
+    normalized === 'jawaban atas permintaan' ||
+    normalized === 'jawaban' ||
+    normalized === 'hasil' ||
+    normalized === JAWABAN_FOLDER_ID.toLowerCase()
+  ) {
+    return {
+      folderId: JAWABAN_FOLDER_ID,
+      category: 'Jawaban Atas Permintaan'
+    };
+  }
+  return {
+    folderId: PERMINTAAN_FOLDER_ID,
+    category: 'Permintaan'
+  };
+}
 
 function doGet(e) {
   const folder = DriveApp.getFolderById(FOLDER_ID);
   const files = folder.getFilesByName(DB_FILENAME);
-  let db = { folderId: FOLDER_ID, users: [], deletedUsernames: [] };
+  let db = {
+    folderId: FOLDER_ID,
+    permintaanFolderId: PERMINTAAN_FOLDER_ID,
+    jawabanFolderId: JAWABAN_FOLDER_ID,
+    users: [],
+    deletedUsernames: []
+  };
   if (files.hasNext()) {
     db = JSON.parse(files.next().getBlob().getDataAsString());
   }
@@ -436,9 +469,37 @@ function doGet(e) {
 
 function doPost(e) {
   const payload = JSON.parse(e.postData.contents || '{}');
+
+  // 1. Handler Upload File Terpisah ('Permintaan' vs 'Jawaban Atas Permintaan')
+  if (payload.action === 'uploadFile' && payload.fileName && payload.base64Data) {
+    const target = resolveUploadFolderId(payload.category || payload.categoryKey, payload.folderId);
+    const uploadFolder = DriveApp.getFolderById(target.folderId);
+    const decodedBytes = Utilities.base64Decode(payload.base64Data);
+    const blob = Utilities.newBlob(
+      decodedBytes,
+      payload.mimeType || 'application/octet-stream',
+      payload.fileName
+    );
+    const createdFile = uploadFolder.createFile(blob);
+    createdFile.setDescription(
+      'Kategori: ' + target.category + (payload.ticketId ? ' | Tiket: ' + payload.ticketId : '')
+    );
+    const fileId = createdFile.getId();
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      id: fileId,
+      fileId: fileId,
+      name: createdFile.getName(),
+      category: target.category,
+      folderId: target.folderId,
+      webViewLink: 'https://drive.google.com/file/d/' + fileId + '/view?usp=sharing',
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + fileId
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   const folder = DriveApp.getFolderById(FOLDER_ID);
 
-  // Simpan berkas catatan JSON individu untuk user baru (WBP_USER_<username>.json)
+  // 2. Simpan berkas catatan JSON individu untuk user baru (WBP_USER_<username>.json)
   if (payload.user && payload.user.username) {
     const singleName = 'WBP_USER_' + payload.user.username.toLowerCase() + '.json';
     const existingSingle = folder.getFilesByName(singleName);
@@ -455,7 +516,7 @@ function doPost(e) {
     }
   }
 
-  // Simpan basis data utama (wbp_users_database.json)
+  // 3. Simpan basis data utama (wbp_users_database.json)
   if (Array.isArray(payload.users)) {
     const dbFiles = folder.getFilesByName(DB_FILENAME);
     const dbContent = JSON.stringify({
@@ -472,8 +533,12 @@ function doPost(e) {
     }
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, folderId: FOLDER_ID }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify({
+    ok: true,
+    folderId: FOLDER_ID,
+    permintaanFolderId: PERMINTAAN_FOLDER_ID,
+    jawabanFolderId: JAWABAN_FOLDER_ID
+  })).setMimeType(ContentService.MimeType.JSON);
 }`;
 
 export function getStoredTickets(): Ticket[] {

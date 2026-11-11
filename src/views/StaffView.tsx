@@ -7,7 +7,14 @@ import { Ticket, UserAccount, UserSession, WhatsAppNotificationPayload } from '.
 import { STRUKTUR_ORG, cleanWhatsAppNumber, formatCurrentDateTime } from '../data/mockData';
 import { saveFileToStorage, downloadFile, parseTicketFileEntry } from '../data/fileStore';
 import { GoogleDriveStatusBanner } from '../components/GoogleDriveStatusBanner';
-import { getAccessToken, googleSignIn, GOOGLE_DRIVE_FOLDER_URL } from '../services/googleDrive';
+import {
+  getAccessToken,
+  googleSignIn,
+  DRIVE_PERMINTAAN_FOLDER_ID,
+  DRIVE_PERMINTAAN_FOLDER_URL,
+  DRIVE_JAWABAN_FOLDER_ID,
+  DRIVE_JAWABAN_FOLDER_URL
+} from '../services/googleDrive';
 
 interface StaffViewProps {
   tickets: Ticket[];
@@ -71,7 +78,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
       setIsUploading(true);
-      setUploadNotice('Mengunggah dokumen hasil ke Google Drive WBP...');
+      setUploadNotice(`Mengunggah Jawaban Atas Permintaan ke folder Google Drive (${DRIVE_JAWABAN_FOLDER_ID})...`);
 
       try {
         const token = await getAccessToken();
@@ -79,23 +86,27 @@ export const StaffView: React.FC<StaffViewProps> = ({
           try {
             await googleSignIn();
           } catch {
-            // Fallback to local storage if popup closed
+            // Fallback to backend/GAS & local storage if popup closed
           }
         }
 
         const newEntries: string[] = [];
         let syncedCount = 0;
         for (const file of filesArray) {
-          const record = await saveFileToStorage(file);
+          const record = await saveFileToStorage(
+            file,
+            'jawaban_atas_permintaan',
+            currentTask?.ID_Tiket
+          );
           newEntries.push(record.formattedEntry);
           if (record.driveFileId) syncedCount++;
         }
 
         setHasilFiles(prev => [...prev, ...newEntries]);
         if (syncedCount > 0) {
-          setUploadNotice(`${syncedCount} dokumen hasil berhasil disimpan ke folder Google Drive utama!`);
+          setUploadNotice(`${syncedCount} dokumen Jawaban Atas Permintaan berhasil disimpan ke Folder Drive (${DRIVE_JAWABAN_FOLDER_ID})!`);
         } else {
-          setUploadNotice('Dokumen dilampirkan. Hubungkan Google Drive di atas untuk sinkronisasi cloud langsung.');
+          setUploadNotice(`Dokumen Jawaban Atas Permintaan dilampirkan untuk Folder Drive (${DRIVE_JAWABAN_FOLDER_ID}).`);
         }
       } finally {
         setIsUploading(false);
@@ -444,14 +455,15 @@ export const StaffView: React.FC<StaffViewProps> = ({
                       </div>
                       <div className="pt-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-slate-500">Berkas Referensi Awal:</span>
+                          <span className="text-slate-500">Berkas Referensi Awal (Permintaan):</span>
                           <a
-                            href={GOOGLE_DRIVE_FOLDER_URL}
+                            href={DRIVE_PERMINTAAN_FOLDER_URL}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#282974] hover:underline"
+                            title={`Folder Permintaan (${DRIVE_PERMINTAAN_FOLDER_ID})`}
                           >
-                            <span>Buka Direktori Google Drive</span>
+                            <span>Folder Permintaan ({DRIVE_PERMINTAAN_FOLDER_ID.slice(0, 8)}...)</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
@@ -459,7 +471,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                           <div className="space-y-1.5">
                             {currentTask.File_Pendukung.split('||').map((fileName, idx) => {
                               const trimmed = fileName.trim();
-                              const parsed = parseTicketFileEntry(trimmed);
+                              const parsed = parseTicketFileEntry(trimmed, 'permintaan');
                               return (
                                 <div key={idx} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-white border border-slate-200">
                                   <button
@@ -529,25 +541,25 @@ export const StaffView: React.FC<StaffViewProps> = ({
                         </div>
                       </div>
 
-                      <GoogleDriveStatusBanner />
+                      <GoogleDriveStatusBanner category="jawaban_atas_permintaan" />
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Upload Dokumen Hasil Engineering ke Google Drive (Kalkulasi / Drawing / SSP):
+                          Upload Jawaban Atas Permintaan ke Google Drive (Kalkulasi / Drawing / SSP):
                         </label>
                         <div className="border border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-4 text-center bg-slate-50 transition-colors">
                           {isUploading ? (
                             <div className="py-2 flex flex-col items-center justify-center gap-1.5">
                               <Loader2 className="w-6 h-6 text-[#282974] animate-spin" />
                               <div className="text-xs font-semibold text-[#282974]">
-                                Mengunggah dokumen hasil ke Google Drive...
+                                Mengunggah Jawaban Atas Permintaan ke Google Drive ({DRIVE_JAWABAN_FOLDER_ID})...
                               </div>
                             </div>
                           ) : (
                             <>
                               <FileUp className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                               <div className="text-xs text-slate-700 font-medium">
-                                Pilih berkas hasil teknis (PDF, DWG, XLSX) — langsung disimpan ke Google Drive
+                                Pilih berkas hasil teknis (PDF, DWG, XLSX) — langsung disimpan ke Folder Jawaban ({DRIVE_JAWABAN_FOLDER_ID})
                               </div>
                             </>
                           )}
@@ -563,12 +575,12 @@ export const StaffView: React.FC<StaffViewProps> = ({
                           <div className="mt-2 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center justify-between gap-2">
                             <span>{uploadNotice}</span>
                             <a
-                              href={GOOGLE_DRIVE_FOLDER_URL}
+                              href={DRIVE_JAWABAN_FOLDER_URL}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 font-semibold underline shrink-0"
                             >
-                              <span>Folder Drive</span>
+                              <span>Folder Jawaban</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
@@ -577,9 +589,9 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
                       {hasilFiles.length > 0 && (
                         <div className="space-y-1.5">
-                          <div className="text-[11px] font-semibold text-slate-600">Berkas Hasil yang Diunggah ke Google Drive:</div>
+                          <div className="text-[11px] font-semibold text-slate-600">Berkas Jawaban Atas Permintaan di Google Drive ({DRIVE_JAWABAN_FOLDER_ID}):</div>
                           {hasilFiles.map((fn, idx) => {
-                            const parsed = parseTicketFileEntry(fn);
+                            const parsed = parseTicketFileEntry(fn, 'jawaban_atas_permintaan');
                             return (
                               <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -727,7 +739,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
                             <div className="flex flex-col gap-1.5">
                               {ticket.File_Hasil.split('||').map((fileName, idx) => {
                                 const trimmed = fileName.trim();
-                                const parsed = parseTicketFileEntry(trimmed);
+                                const parsed = parseTicketFileEntry(trimmed, 'jawaban_atas_permintaan');
                                 return (
                                   <div key={idx} className="flex items-center gap-2">
                                     <button

@@ -4,22 +4,33 @@ import {
   subscribeDriveAuth,
   googleSignIn,
   logoutDrive,
+  resolveDriveFolderByCategory,
   GOOGLE_DRIVE_FOLDER_ID,
-  GOOGLE_DRIVE_FOLDER_URL
+  GOOGLE_DRIVE_FOLDER_URL,
+  type DriveUploadCategory
 } from '../services/googleDrive';
 import type { User } from 'firebase/auth';
 
 interface GoogleDriveStatusBannerProps {
   compact?: boolean;
+  category?: DriveUploadCategory;
 }
 
 export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = ({
-  compact = false
+  compact = false,
+  category
 }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [driveUser, setDriveUser] = useState<User | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [authError, setAuthError] = useState('');
+
+  const resolvedCategory = category ? resolveDriveFolderByCategory(category) : null;
+  const activeFolderId = resolvedCategory ? resolvedCategory.folderId : GOOGLE_DRIVE_FOLDER_ID;
+  const activeFolderUrl = resolvedCategory ? resolvedCategory.folderUrl : GOOGLE_DRIVE_FOLDER_URL;
+  const directoryTitle = resolvedCategory
+    ? `Direktori ${resolvedCategory.categoryLabel}:`
+    : 'Direktori Utama:';
 
   useEffect(() => {
     const unsubscribe = subscribeDriveAuth((state) => {
@@ -50,11 +61,11 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="hidden xl:inline">Google Drive Aktif</span>
             <a
-              href={GOOGLE_DRIVE_FOLDER_URL}
+              href={activeFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[#282974] hover:underline font-mono text-[10px] ml-1"
-              title="Buka Folder Penyimpanan Utama Google Drive"
+              title="Buka Folder Penyimpanan Google Drive"
             >
               <span>Folder Drive</span>
               <ExternalLink className="w-2.5 h-2.5" />
@@ -111,7 +122,7 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-900">
-                Integrasi Penyimpanan Google Drive
+                Integrasi Penyimpanan Google Drive {resolvedCategory ? `(${resolvedCategory.categoryLabel})` : ''}
               </span>
               {isConnected ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
@@ -125,14 +136,14 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
               )}
             </div>
             <div className="text-[11px] text-slate-600 mt-0.5 flex flex-wrap items-center gap-1.5">
-              <span>Direktori Utama:</span>
+              <span>{directoryTitle}</span>
               <a
-                href={GOOGLE_DRIVE_FOLDER_URL}
+                href={activeFolderUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-[#282974] hover:underline"
               >
-                <span>Folder ID: {GOOGLE_DRIVE_FOLDER_ID}</span>
+                <span>Folder ID: {activeFolderId}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -141,7 +152,7 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
 
         <div className="flex items-center gap-2 shrink-0">
           <a
-            href={GOOGLE_DRIVE_FOLDER_URL}
+            href={activeFolderUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-[#282974] bg-white hover:bg-[#282974]/8 border border-[#282974]/25 transition-colors"

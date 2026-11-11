@@ -2,8 +2,13 @@ import React from 'react';
 import { X, Calendar, User, Phone, FileText, CheckCircle2, Clock, AlertTriangle, ArrowRight, Download, Send, ExternalLink } from 'lucide-react';
 import { Ticket } from '../types';
 import { cleanWhatsAppNumber } from '../data/mockData';
-import { downloadFile, parseTicketFileEntry } from '../data/fileStore';
-import { GOOGLE_DRIVE_FOLDER_URL } from '../services/googleDrive';
+import { downloadFile, parseTicketFileEntry, type DriveUploadCategory } from '../data/fileStore';
+import {
+  DRIVE_PERMINTAAN_FOLDER_ID,
+  DRIVE_PERMINTAAN_FOLDER_URL,
+  DRIVE_JAWABAN_FOLDER_ID,
+  DRIVE_JAWABAN_FOLDER_URL
+} from '../services/googleDrive';
 
 interface TicketDetailModalProps {
   ticket: Ticket | null;
@@ -19,13 +24,13 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
   const isDisposisi = ticket.Status_Pengerjaan === 'DISPOSISI';
   const isOpen = ticket.Status_Pengerjaan === 'OPEN';
 
-  const parseFiles = (fileStr: string) => {
+  const parseFiles = (fileStr: string, category: DriveUploadCategory) => {
     if (!fileStr || fileStr === '-' || fileStr === 'nan') return [];
-    return fileStr.split('||').map(f => parseTicketFileEntry(f.trim()));
+    return fileStr.split('||').map(f => parseTicketFileEntry(f.trim(), category));
   };
 
-  const filesPendukung = parseFiles(ticket.File_Pendukung);
-  const filesHasil = parseFiles(ticket.File_Hasil);
+  const filesPendukung = parseFiles(ticket.File_Pendukung, 'permintaan');
+  const filesHasil = parseFiles(ticket.File_Hasil, 'jawaban_atas_permintaan');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -279,15 +284,16 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs font-bold text-slate-900">
-                  📎 Berkas Pendukung (TOR/Gambar/Data)
+                  📎 Berkas Pendukung (Permintaan)
                 </div>
                 <a
-                  href={GOOGLE_DRIVE_FOLDER_URL}
+                  href={DRIVE_PERMINTAAN_FOLDER_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#282974] hover:underline"
+                  title={`Folder Permintaan: ${DRIVE_PERMINTAAN_FOLDER_ID}`}
                 >
-                  <span>Folder Drive</span>
+                  <span>Folder Permintaan</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -330,15 +336,16 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs font-bold text-slate-900">
-                  📁 Dokumen Hasil Engineering
+                  📁 Dokumen Hasil (Jawaban Atas Permintaan)
                 </div>
                 <a
-                  href={GOOGLE_DRIVE_FOLDER_URL}
+                  href={DRIVE_JAWABAN_FOLDER_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 hover:underline"
+                  title={`Folder Jawaban Atas Permintaan: ${DRIVE_JAWABAN_FOLDER_ID}`}
                 >
-                  <span>Folder Drive</span>
+                  <span>Folder Jawaban</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>

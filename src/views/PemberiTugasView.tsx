@@ -8,7 +8,14 @@ import { DepartmentName, Ticket, UserSession, WhatsAppNotificationPayload } from
 import { STRUKTUR_ORG, cleanWhatsAppNumber, generateTicketId, formatCurrentDateTime } from '../data/mockData';
 import { saveFileToStorage, downloadFile, parseTicketFileEntry } from '../data/fileStore';
 import { GoogleDriveStatusBanner } from '../components/GoogleDriveStatusBanner';
-import { getAccessToken, googleSignIn, GOOGLE_DRIVE_FOLDER_URL } from '../services/googleDrive';
+import {
+  getAccessToken,
+  googleSignIn,
+  DRIVE_PERMINTAAN_FOLDER_ID,
+  DRIVE_PERMINTAAN_FOLDER_URL,
+  DRIVE_JAWABAN_FOLDER_ID,
+  DRIVE_JAWABAN_FOLDER_URL
+} from '../services/googleDrive';
 
 interface PemberiTugasViewProps {
   tickets: Ticket[];
@@ -85,7 +92,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
       setIsUploading(true);
-      setUploadNotice('Mengunggah berkas ke folder Google Drive WBP...');
+      setUploadNotice(`Mengunggah berkas Permintaan ke folder Google Drive (${DRIVE_PERMINTAAN_FOLDER_ID})...`);
 
       try {
         const token = await getAccessToken();
@@ -93,23 +100,23 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
           try {
             await googleSignIn();
           } catch {
-            // User closed or skipped popup; saveFileToStorage will handle local fallback
+            // User closed or skipped popup; saveFileToStorage will handle backend/GAS & local fallback
           }
         }
 
         const newEntries: string[] = [];
         let syncedCount = 0;
         for (const file of filesArray) {
-          const record = await saveFileToStorage(file);
+          const record = await saveFileToStorage(file, 'permintaan');
           newEntries.push(record.formattedEntry);
           if (record.driveFileId) syncedCount++;
         }
 
         setUploadedFiles(prev => [...prev, ...newEntries]);
         if (syncedCount > 0) {
-          setUploadNotice(`${syncedCount} berkas berhasil disimpan langsung ke folder Google Drive utama!`);
+          setUploadNotice(`${syncedCount} berkas Permintaan berhasil disimpan ke Folder Drive (${DRIVE_PERMINTAAN_FOLDER_ID})!`);
         } else {
-          setUploadNotice('Berkas dilampirkan. Hubungkan akun Google Drive di atas agar otomatis tersimpan ke cloud.');
+          setUploadNotice(`Berkas Permintaan dilampirkan untuk Folder Drive (${DRIVE_PERMINTAAN_FOLDER_ID}).`);
         }
       } finally {
         setIsUploading(false);
@@ -644,25 +651,25 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               {/* STEP 3: LAMPIRAN & SUBMIT */}
               {formStep === 3 && (
                 <div className="space-y-4 animate-in fade-in duration-150">
-                  <GoogleDriveStatusBanner />
+                  <GoogleDriveStatusBanner category="permintaan" />
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Upload Dokumen Pendukung ke Google Drive (TOR, Gambar Referensi, Data Tanah)
+                      Upload Dokumen Pendukung Permintaan ke Google Drive (TOR, Gambar Referensi, Data Tanah)
                     </label>
                     <div className="border-2 border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-5 text-center transition-colors bg-slate-50">
                       {isUploading ? (
                         <div className="py-3 flex flex-col items-center justify-center gap-2">
                           <Loader2 className="w-7 h-7 text-[#282974] animate-spin" />
                           <div className="text-xs font-semibold text-[#282974]">
-                            Mengunggah berkas ke Google Drive...
+                            Mengunggah berkas Permintaan ke Google Drive ({DRIVE_PERMINTAAN_FOLDER_ID})...
                           </div>
                         </div>
                       ) : (
                         <>
                           <FileUp className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                           <div className="text-xs text-slate-700 font-medium">
-                            Klik untuk memilih berkas — otomatis diunggah ke Folder Google Drive WBP
+                            Klik untuk memilih berkas — otomatis diunggah ke Folder Permintaan ({DRIVE_PERMINTAAN_FOLDER_ID})
                           </div>
                           <div className="text-[11px] text-slate-500 mt-1">
                             Format didukung: PDF, DWG, XLSX, DOCX, ZIP
@@ -681,12 +688,12 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                       <div className="mt-2 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center justify-between gap-2">
                         <span>{uploadNotice}</span>
                         <a
-                          href={GOOGLE_DRIVE_FOLDER_URL}
+                          href={DRIVE_PERMINTAAN_FOLDER_URL}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 font-semibold underline shrink-0"
                         >
-                          <span>Buka Folder Drive</span>
+                          <span>Buka Folder Permintaan</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
@@ -695,9 +702,9 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
 
                   {uploadedFiles.length > 0 && (
                     <div className="space-y-1.5">
-                      <div className="text-xs font-semibold text-slate-600">Berkas Terlampir di Google Drive:</div>
+                      <div className="text-xs font-semibold text-slate-600">Berkas Permintaan di Google Drive ({DRIVE_PERMINTAAN_FOLDER_ID}):</div>
                       {uploadedFiles.map((fn, idx) => {
-                        const parsed = parseTicketFileEntry(fn);
+                        const parsed = parseTicketFileEntry(fn, 'permintaan');
                         return (
                           <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
                             <div className="flex items-center gap-2 min-w-0">
@@ -963,14 +970,15 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-slate-800">Berkas Pendukung Awal:</span>
+                    <span className="font-bold text-slate-800">Berkas Pendukung (Permintaan):</span>
                     <a
-                      href={GOOGLE_DRIVE_FOLDER_URL}
+                      href={DRIVE_PERMINTAAN_FOLDER_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#282974] hover:underline"
+                      title={`Folder Permintaan (${DRIVE_PERMINTAAN_FOLDER_ID})`}
                     >
-                      <span>Folder Google Drive</span>
+                      <span>Folder Permintaan</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -978,7 +986,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     <div className="space-y-2">
                       {displayedTicket.File_Pendukung.split('||').map((fn, idx) => {
                         const cleanFn = fn.trim();
-                        const parsed = parseTicketFileEntry(cleanFn);
+                        const parsed = parseTicketFileEntry(cleanFn, 'permintaan');
                         return (
                           <div key={idx} className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
@@ -1017,14 +1025,15 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
 
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-slate-800">Dokumen Hasil Engineering:</span>
+                    <span className="font-bold text-slate-800">Dokumen Hasil (Jawaban Atas Permintaan):</span>
                     <a
-                      href={GOOGLE_DRIVE_FOLDER_URL}
+                      href={DRIVE_JAWABAN_FOLDER_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 hover:underline"
+                      title={`Folder Jawaban Atas Permintaan (${DRIVE_JAWABAN_FOLDER_ID})`}
                     >
-                      <span>Folder Google Drive</span>
+                      <span>Folder Jawaban</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -1032,7 +1041,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     <div className="space-y-2">
                       {displayedTicket.File_Hasil.split('||').map((fn, idx) => {
                         const cleanFn = fn.trim();
-                        const parsed = parseTicketFileEntry(cleanFn);
+                        const parsed = parseTicketFileEntry(cleanFn, 'jawaban_atas_permintaan');
                         return (
                           <div key={idx} className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 space-y-1.5">
                             <div className="flex items-center justify-between gap-2">

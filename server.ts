@@ -18,11 +18,39 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const GOOGLE_DRIVE_FOLDER_ID = '1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF';
+const DRIVE_PERMINTAAN_FOLDER_ID = '1To0dQP0bco7s7czx48B9BlxLsT8FYXNY';
+const DRIVE_JAWABAN_FOLDER_ID = '1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy';
 const DEFAULT_GAS_WEB_APP_URL =
   process.env.GAS_WEB_APP_URL ||
   'https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec';
 const DRIVE_USERS_DB_FILENAME = 'wbp_users_database.json';
 const DRIVE_USER_FILE_PREFIX = 'WBP_USER_';
+
+function resolveServerUploadFolder(categoryOrFolder?: string): {
+  folderId: string;
+  categoryKey: 'permintaan' | 'jawaban_atas_permintaan';
+  categoryLabel: 'Permintaan' | 'Jawaban Atas Permintaan';
+} {
+  const normalized = (categoryOrFolder || '').trim().toLowerCase();
+  if (
+    normalized === 'jawaban_atas_permintaan' ||
+    normalized === 'jawaban atas permintaan' ||
+    normalized === 'jawaban' ||
+    normalized === 'hasil' ||
+    normalized === DRIVE_JAWABAN_FOLDER_ID.toLowerCase()
+  ) {
+    return {
+      folderId: DRIVE_JAWABAN_FOLDER_ID,
+      categoryKey: 'jawaban_atas_permintaan',
+      categoryLabel: 'Jawaban Atas Permintaan'
+    };
+  }
+  return {
+    folderId: DRIVE_PERMINTAAN_FOLDER_ID,
+    categoryKey: 'permintaan',
+    categoryLabel: 'Permintaan'
+  };
+}
 
 const firebaseConfigRaw = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf-8')
@@ -1070,6 +1098,161 @@ async function startServer() {
       ok: true,
       gasWebAppUrl: finalDB.gasWebAppUrl,
       users: finalDB.users
+    });
+  });
+
+  // 9. Categorized File Upload Endpoint ('Permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY, 'Jawaban Atas Permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy)
+  app.post('/api/files/upload', async (req, res) => {
+    const token = extractToken(req);
+    const {
+      fileName,
+      mimeType,
+      base64Data,
+      category,
+      categoryKey,
+      folderId: requestedFolderId,
+      ticketId
+    } = (req.body || {}) as {
+      fileName?: string;
+      mimeType?: string;
+      base64Data?: string;
+      category?: string;
+      categoryKey?: string;
+      folderId?: string;
+      ticketId?: string;
+    };
+
+    if (!fileName || !base64Data) {
+      res.status(400).json({ ok: false, error: 'fileName dan base64Data wajib diisi.' });
+      return;
+    }
+
+    const target = resolveServerUploadFolder(category || categoryKey || requestedFolderId);
+    const cleanBase64 = base64Data.includes(',')
+      ? base64Data.split(',')[1] || base64Data
+      : base64Data;
+
+    let uploadedFileId = '';
+    let webViewLink = '';
+    let downloadUrl = '';
+
+    // 1. If server has an active Google Drive OAuth token, upload binary directly to the target folder (1To0dQP0bco7s7czx48B9BlxLsT8FYXNY or 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy)
+    if (token) {
+      try {
+        const fileBuffer = Buffer.from(cleanBase64, 'base64');
+        const boundary = '-------wbpFileBoundary' + Date.now();
+        const metadata = {
+          name: fileName,
+          mimeType: mimeType || 'application/octet-stream',
+          parents: [target.folderId],
+          description: `Kategori: ${target.categoryLabel}${ticketId ? ` | Tiket: ${ticketId}` : ''}`
+        };
+
+        const multipartHead = Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+            `${JSON.stringify(metadata)}\r\n` +
+            `--${boundary}\r\n` +
+            `Content-Type: ${mimeType || 'application/octet-stream'}\r\n\r\n`,
+          'utf-8'
+        );
+        const multipartTail = Buffer.from(`\r\n--${boundary}--`, 'utf-8');
+        const multipartBody = Buffer.concat([multipartHead, fileBuffer, multipartTail]);
+
+        const driveRes = await fetch(
+          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink,webContentLink',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': `multipart/related; boundary=${boundary}`
+            },
+            body: multipartBody
+          }
+        );
+
+        if (driveRes.ok) {
+          const driveData = (await driveRes.json()) as {
+            id?: string;
+            webViewLink?: string;
+            webContentLink?: string;
+          };
+          if (driveData.id) {
+            uploadedFileId = driveData.id;
+            webViewLink =
+              driveData.webViewLink ||
+              `https://drive.google.com/file/d/${driveData.id}/view?usp=sharing`;
+            downloadUrl =
+              driveData.webContentLink ||
+              `https://drive.google.com/uc?export=download&id=${driveData.id}`;
+          }
+        }
+      } catch (err) {
+        console.warn(`Server direct Drive upload warning (${target.categoryLabel}):`, err);
+      }
+    }
+
+    // 2. Also forward to Google Apps Script Web App endpoint so GAS can store the file in the right folder if Drive OAuth wasn't active
+    const db = readCloudDB();
+    const targetGasUrl = (db.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL).trim();
+    if (!uploadedFileId && targetGasUrl && targetGasUrl.startsWith('https://script.google.com/')) {
+      try {
+        const gasRes = await fetch(targetGasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'uploadFile',
+            category: target.categoryLabel,
+            categoryKey: target.categoryKey,
+            folderId: target.folderId,
+            ticketId: ticketId || '',
+            fileName,
+            mimeType: mimeType || 'application/octet-stream',
+            base64Data: cleanBase64,
+            uploadedAt: new Date().toISOString()
+          }),
+          redirect: 'follow'
+        });
+
+        if (gasRes.ok) {
+          const text = (await gasRes.text()).trim();
+          if (text.startsWith('{')) {
+            const parsed = JSON.parse(text) as {
+              id?: string;
+              fileId?: string;
+              webViewLink?: string;
+              downloadUrl?: string;
+            };
+            const gasFileId = parsed.id || parsed.fileId || '';
+            if (gasFileId) {
+              uploadedFileId = gasFileId;
+              webViewLink =
+                parsed.webViewLink ||
+                `https://drive.google.com/file/d/${gasFileId}/view?usp=sharing`;
+              downloadUrl =
+                parsed.downloadUrl ||
+                `https://drive.google.com/uc?export=download&id=${gasFileId}`;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`GAS upload forwarding warning (${target.categoryLabel}):`, err);
+      }
+    }
+
+    res.json({
+      ok: Boolean(uploadedFileId),
+      id: uploadedFileId || undefined,
+      name: fileName,
+      category: target.categoryLabel,
+      categoryKey: target.categoryKey,
+      folderId: target.folderId,
+      webViewLink:
+        webViewLink ||
+        `https://drive.google.com/drive/folders/${target.folderId}?usp=sharing`,
+      downloadUrl:
+        downloadUrl ||
+        `https://drive.google.com/drive/folders/${target.folderId}?usp=sharing`
     });
   });
 

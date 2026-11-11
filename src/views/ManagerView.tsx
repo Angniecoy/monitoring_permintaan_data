@@ -354,7 +354,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                           <span className="text-slate-500 text-[10px] block">Lampiran Pemohon (Google Drive):</span>
                           {currentTicket.File_Pendukung.split('||').map((rawFn, idx) => {
                             const trimmed = rawFn.trim();
-                            const parsed = parseTicketFileEntry(trimmed);
+                            const parsed = parseTicketFileEntry(trimmed, 'permintaan');
                             return (
                               <div key={idx} className="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                                 <button

@@ -1,16 +1,29 @@
 /**
  * File Store & Google Drive Storage Integration for PT Waskita Beton Precast
- * Primary Cloud Directory: https://drive.google.com/drive/folders/1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF?usp=sharing
- * Supports real Google Drive API v3 uploads into folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF,
- * plus IndexedDB / Memory caching and real download links.
+ * Permanently separates file uploads into two dedicated Google Drive directories:
+ * 1. Kategori 'Permintaan': Folder ID 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
+ * 2. Kategori 'Jawaban Atas Permintaan': Folder ID 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
  */
 
 import {
   getAccessToken,
   uploadFileToDriveFolder,
-  GOOGLE_DRIVE_FOLDER_ID,
-  GOOGLE_DRIVE_FOLDER_URL
+  uploadFileViaGasAndBackend,
+  resolveDriveFolderByCategory,
+  DRIVE_PERMINTAAN_FOLDER_ID,
+  DRIVE_PERMINTAAN_FOLDER_URL,
+  DRIVE_JAWABAN_FOLDER_ID,
+  DRIVE_JAWABAN_FOLDER_URL,
+  type DriveUploadCategory
 } from '../services/googleDrive';
+
+export {
+  DRIVE_PERMINTAAN_FOLDER_ID,
+  DRIVE_PERMINTAAN_FOLDER_URL,
+  DRIVE_JAWABAN_FOLDER_ID,
+  DRIVE_JAWABAN_FOLDER_URL,
+  type DriveUploadCategory
+};
 
 export interface AppFileRecord {
   id: string;
@@ -19,10 +32,13 @@ export interface AppFileRecord {
   type: string;
   dataUrl: string;
   uploadedAt: string;
+  category: DriveUploadCategory;
+  categoryLabel: 'Permintaan' | 'Jawaban Atas Permintaan';
   driveFileId?: string;
   driveViewUrl?: string;
   driveDownloadUrl?: string;
-  driveFolderId?: string;
+  driveFolderId: string;
+  driveFolderUrl: string;
   formattedEntry: string;
 }
 
@@ -32,7 +48,10 @@ export interface ParsedTicketFile {
   driveId: string;
   driveViewUrl: string;
   driveDownloadUrl: string;
+  folderId: string;
   folderUrl: string;
+  category: DriveUploadCategory;
+  categoryLabel: 'Permintaan' | 'Jawaban Atas Permintaan';
   isDriveSynced: boolean;
 }
 
@@ -66,25 +85,34 @@ function getDB(): Promise<IDBDatabase> {
 
 /**
  * Parses a ticket file entry string (e.g. "TOR_Proyek.pdf::1AbCdEfGhIjKlMnOpQrStUvWxYz" or "TOR_Proyek.pdf")
- * and returns structured metadata + real Google Drive download & view URLs.
+ * and returns structured metadata + real Google Drive download & view URLs for the specified category
+ * ('permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY, 'jawaban_atas_permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy).
  */
-export function parseTicketFileEntry(rawEntry: string): ParsedTicketFile {
+export function parseTicketFileEntry(
+  rawEntry: string,
+  defaultCategory: DriveUploadCategory = 'permintaan'
+): ParsedTicketFile {
   const trimmed = (rawEntry || '').trim();
   const parts = trimmed.split('::');
   const cleanName = (parts[0] || trimmed).trim();
   const explicitDriveId = (parts[1] || '').trim();
+  const explicitCategoryOrFolder = (parts[2] || '').trim();
 
   // Check in-memory cache if explicitDriveId wasn't embedded in string
   const cachedRecord = memoryFileMap.get(cleanName) || memoryFileMap.get(trimmed);
   const driveId = explicitDriveId || cachedRecord?.driveFileId || '';
 
+  const resolvedTarget = resolveDriveFolderByCategory(
+    explicitCategoryOrFolder || cachedRecord?.category || defaultCategory
+  );
+
   const driveDownloadUrl = driveId
     ? `https://drive.google.com/uc?export=download&id=${driveId}`
-    : GOOGLE_DRIVE_FOLDER_URL;
+    : resolvedTarget.folderUrl;
 
   const driveViewUrl = driveId
     ? `https://drive.google.com/file/d/${driveId}/view?usp=sharing`
-    : GOOGLE_DRIVE_FOLDER_URL;
+    : resolvedTarget.folderUrl;
 
   return {
     raw: trimmed,
@@ -92,19 +120,29 @@ export function parseTicketFileEntry(rawEntry: string): ParsedTicketFile {
     driveId,
     driveViewUrl,
     driveDownloadUrl,
-    folderUrl: GOOGLE_DRIVE_FOLDER_URL,
+    folderId: resolvedTarget.folderId,
+    folderUrl: resolvedTarget.folderUrl,
+    category: resolvedTarget.categoryKey,
+    categoryLabel: resolvedTarget.categoryLabel,
     isDriveSynced: Boolean(driveId)
   };
 }
 
 /**
- * Saves a browser File object to Google Drive folder (1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
- * as well as IndexedDB and in-memory cache.
+ * Saves a browser File object to the separated Google Drive directory based on category:
+ * - 'permintaan' -> Folder ID 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
+ * - 'jawaban_atas_permintaan' -> Folder ID 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
+ * Also syncs via Backend API & Google Apps Script endpoint, plus IndexedDB and memory cache.
  */
-export async function saveFileToStorage(file: File): Promise<AppFileRecord> {
+export async function saveFileToStorage(
+  file: File,
+  category: DriveUploadCategory = 'permintaan',
+  ticketId?: string
+): Promise<AppFileRecord> {
   const fileId = `FILE-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const targetFolder = resolveDriveFolderByCategory(category);
 
-  // Read file as Base64 Data URL for local preview/instant download cache
+  // Read file as Base64 Data URL for local preview/instant download cache and GAS payload
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -116,18 +154,34 @@ export async function saveFileToStorage(file: File): Promise<AppFileRecord> {
   let driveViewUrl: string | undefined;
   let driveDownloadUrl: string | undefined;
 
-  // Upload to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF if token is available
+  // 1. Upload directly via Google Drive REST API v3 into the category's dedicated folder if OAuth token is available
   const token = await getAccessToken();
   if (token) {
     try {
-      const uploaded = await uploadFileToDriveFolder(file, token);
+      const uploaded = await uploadFileToDriveFolder(file, token, targetFolder.categoryKey);
       driveFileId = uploaded.id;
       driveViewUrl = uploaded.webViewLink;
       driveDownloadUrl = uploaded.downloadUrl;
     } catch (err) {
-      console.warn('Google Drive upload warning:', err);
-      throw err;
+      console.warn(`Google Drive upload warning (${targetFolder.categoryLabel}):`, err);
     }
+  }
+
+  // 2. Also send to Backend Server (/api/files/upload) & Google Apps Script Web App endpoint with category separation
+  try {
+    const gasOrServerUploaded = await uploadFileViaGasAndBackend({
+      file,
+      dataUrl,
+      category: targetFolder.categoryKey,
+      ticketId
+    });
+    if (gasOrServerUploaded && !driveFileId) {
+      driveFileId = gasOrServerUploaded.id;
+      driveViewUrl = gasOrServerUploaded.webViewLink;
+      driveDownloadUrl = gasOrServerUploaded.downloadUrl;
+    }
+  } catch (err) {
+    console.warn('GAS/Backend categorized upload warning:', err);
   }
 
   const formattedEntry = driveFileId ? `${file.name}::${driveFileId}` : file.name;
@@ -139,10 +193,13 @@ export async function saveFileToStorage(file: File): Promise<AppFileRecord> {
     type: file.type || 'application/octet-stream',
     dataUrl,
     uploadedAt: new Date().toISOString(),
+    category: targetFolder.categoryKey,
+    categoryLabel: targetFolder.categoryLabel,
     driveFileId,
     driveViewUrl,
     driveDownloadUrl,
-    driveFolderId: GOOGLE_DRIVE_FOLDER_ID,
+    driveFolderId: targetFolder.folderId,
+    driveFolderUrl: targetFolder.folderUrl,
     formattedEntry
   };
 
@@ -214,11 +271,12 @@ export async function getFileFromStorage(idOrName: string): Promise<AppFileRecor
  */
 function createSyntheticDocumentBlob(
   fileName: string,
-  context?: { proyek?: string; idTiket?: string; dokumen?: string }
+  context?: { proyek?: string; idTiket?: string; dokumen?: string; category?: DriveUploadCategory }
 ): Blob {
   const projectName = context?.proyek || 'Proyek Rekayasa Teknis WBP';
   const ticketId = context?.idTiket || 'REQ-WBP';
   const docType = context?.dokumen || 'Spesifikasi & Dokumen Teknis';
+  const targetFolder = resolveDriveFolderByCategory(context?.category || 'permintaan');
   const now = new Date().toLocaleString('id-ID');
 
   const content = `================================================================================
@@ -229,8 +287,8 @@ PORTAL SISTEM MANAJEMEN DOKUMEN TEKNIS & HASIL REKAYASA (ISO 9001:2015)
 Nama Berkas       : ${fileName}
 Nomor Tiket       : ${ticketId}
 Nama Proyek       : ${projectName}
-Kategori Dokumen  : ${docType}
-Direktori Cloud   : Google Drive (${GOOGLE_DRIVE_FOLDER_URL})
+Kategori Dokumen  : ${docType} (${targetFolder.categoryLabel})
+Direktori Cloud   : Google Drive (${targetFolder.folderUrl})
 Waktu Terbit      : ${now}
 Status Pengesahan : DIVERIFIKASI OLEH ENGINEERING WBP (VALID & RESMI)
 
