@@ -1320,6 +1320,9 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
         if (normalizedGas !== metaData.gasWebAppUrl) {
           void saveGasConfigToCloudFirestore(normalizedGas);
         }
+      } else {
+        gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
+        void saveGasConfigToCloudFirestore(DEFAULT_GAS_WEB_APP_URL);
       }
       if (typeof metaData.usersJson === 'string' && metaData.usersJson.trim()) {
         try {
@@ -1329,6 +1332,9 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
           // ignore
         }
       }
+    } else {
+      gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
+      void saveGasConfigToCloudFirestore(DEFAULT_GAS_WEB_APP_URL);
     }
 
     const colUsers: UserAccount[] = [];

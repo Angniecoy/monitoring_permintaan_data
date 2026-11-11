@@ -740,7 +740,7 @@ if (typeof window !== 'undefined') {
 
 /**
  * Fetches the authoritative centralized user database from Google Cloud Firestore,
- * Google Apps Script Web App (https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec),
+ * Google Apps Script Web App (https://script.google.com/macros/s/AKfycbwf11X_caQ9oCQmoPgJfnBpqM4w6uc02O-aMWC40qoRIdwgxZc5-V9LzQZxy3zAEDg3/exec),
  * AND the backend server (/api/users) connected to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF.
  */
 export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]> {
@@ -953,7 +953,7 @@ export function addStoredUser(
   saveDeletedUsernames(updatedDeleted);
   saveStoredUsers(updatedList);
 
-  // 1. Immediately send to Google Apps Script Web App endpoint (https://script.google.com/macros/s/AKfycbz4q_EddMqXEnfNSDvuRbB-Ka3dlUPe1NNR7rD9gnllpHk8VaxiM8tvs6mSOLLfnj1a/exec)
+  // 1. Immediately send to Google Apps Script Web App endpoint (https://script.google.com/macros/s/AKfycbwf11X_caQ9oCQmoPgJfnBpqM4w6uc02O-aMWC40qoRIdwgxZc5-V9LzQZxy3zAEDg3/exec)
   void pushUsersToGasEndpoint({
     gasWebAppUrl: getGasWebAppUrl(),
     action: 'registerUser',

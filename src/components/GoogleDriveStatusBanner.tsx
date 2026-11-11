@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, CheckCircle2, Cloud, LogOut, AlertCircle } from 'lucide-react';
+import { ExternalLink, CheckCircle2, Cloud } from 'lucide-react';
 import {
   subscribeDriveAuth,
   googleSignIn,
-  logoutDrive,
   resolveDriveFolderByCategory,
   GOOGLE_DRIVE_FOLDER_ID,
   GOOGLE_DRIVE_FOLDER_URL,
+  DEFAULT_GAS_WEB_APP_URL,
   type DriveUploadCategory
 } from '../services/googleDrive';
 import type { User } from 'firebase/auth';
@@ -23,7 +23,6 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
   const [isConnected, setIsConnected] = useState(false);
   const [driveUser, setDriveUser] = useState<User | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [authError, setAuthError] = useState('');
 
   const resolvedCategory = category ? resolveDriveFolderByCategory(category) : null;
   const activeFolderId = resolvedCategory ? resolvedCategory.folderId : GOOGLE_DRIVE_FOLDER_ID;
@@ -42,12 +41,10 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
 
   const handleConnectDrive = async () => {
     setIsLoggingIn(true);
-    setAuthError('');
     try {
       await googleSignIn();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal menghubungkan Google Drive';
-      setAuthError(msg);
+    } catch {
+      // ignore
     } finally {
       setIsLoggingIn(false);
     }
@@ -137,6 +134,9 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
             <span className="font-mono text-[11px] font-semibold text-[#282974]">
               Folder ID: {activeFolderId}
             </span>
+          </div>
+          <div className="text-[10px] text-slate-500 mt-0.5 font-mono truncate" title={DEFAULT_GAS_WEB_APP_URL}>
+            Endpoint GAS Aktif: {DEFAULT_GAS_WEB_APP_URL}
           </div>
         </div>
       </div>
