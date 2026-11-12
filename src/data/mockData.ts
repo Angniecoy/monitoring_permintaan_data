@@ -58,7 +58,7 @@ export const STRUKTUR_ORG: Record<DepartmentName, DepartmentStructure> = {
   },
   "Engineering Readymix": {
     Manager: "Choerul SB",
-    WA_Manager: "628562568659",
+    WA_Manager: "6285712655659",
     Staff: {
       "Fani": "6281321804321",
       "Rafi": "6281259666040",
