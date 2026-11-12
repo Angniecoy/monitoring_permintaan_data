@@ -163,6 +163,20 @@ export default function App() {
     }
   };
 
+  // Strictly Admin-authorized Ticket Deletion handler
+  const handleDeleteTicket = (ticketId: string) => {
+    if (!isAdminSession(session)) return;
+    setTickets(prev => {
+      const updated = prev.filter(t => t.ID_Tiket !== ticketId);
+      saveStoredTickets(updated);
+      void syncTicketsWithDriveFolder(updated, true);
+      return updated;
+    });
+    if (selectedTicketDetail?.ID_Tiket === ticketId) {
+      setSelectedTicketDetail(null);
+    }
+  };
+
   const handleResetData = () => {
     try {
       clearAllStoredFiles();
@@ -449,6 +463,8 @@ export default function App() {
               tickets={tickets}
               onResetData={handleResetData}
               onSelectTicketDetail={setSelectedTicketDetail}
+              isAdmin={isAdminSession(session)}
+              onDeleteTicket={isAdminSession(session) ? handleDeleteTicket : undefined}
             />
           )}
         </main>
@@ -488,6 +504,8 @@ export default function App() {
         ticket={selectedTicketDetail}
         onClose={() => setSelectedTicketDetail(null)}
         onOpenWhatsApp={setWhatsAppPayload}
+        isAdmin={isAdminSession(session)}
+        onDeleteTicket={isAdminSession(session) ? handleDeleteTicket : undefined}
       />
 
       {/* Quick Search Modal (Ctrl + K) */}

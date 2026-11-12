@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Calendar, User, Phone, FileText, CheckCircle2, Clock, AlertTriangle, ArrowRight, Download, Send, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Calendar, User, Phone, FileText, CheckCircle2, Clock, AlertTriangle, ArrowRight, Download, Send, ExternalLink, Trash2 } from 'lucide-react';
 import { Ticket } from '../types';
 import { cleanWhatsAppNumber } from '../data/mockData';
 import { downloadFile, parseTicketFileEntry, type DriveUploadCategory } from '../data/fileStore';
@@ -14,9 +14,19 @@ interface TicketDetailModalProps {
   ticket: Ticket | null;
   onClose: () => void;
   onOpenWhatsApp?: (payload: { id: string; wa: string; pesan: string; target_role: string; target_name: string }) => void;
+  isAdmin?: boolean;
+  onDeleteTicket?: (ticketId: string) => void;
 }
 
-export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, onClose, onOpenWhatsApp }) => {
+export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
+  ticket,
+  onClose,
+  onOpenWhatsApp,
+  isAdmin = false,
+  onDeleteTicket
+}) => {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   if (!ticket) return null;
 
   const isClosed = ticket.Status_Pengerjaan === 'CLOSED (Selesai)';
@@ -387,15 +397,52 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({ ticket, on
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
-          <button
-            type="button"
-            onClick={handleNotifyRequester}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Kirim Update via WhatsApp</span>
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 bg-slate-50 border-t border-slate-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleNotifyRequester}
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Kirim Update via WhatsApp</span>
+            </button>
+
+            {isAdmin && onDeleteTicket && (
+              confirmDelete ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200">
+                  <span className="text-[11px] font-semibold text-rose-800">Hapus tiket ini?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDeleteTicket(ticket.ID_Tiket);
+                      setConfirmDelete(false);
+                      onClose();
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors"
+                  >
+                    Ya, Hapus
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-2 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors"
+                  >
+                    Batal
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 hover:border-rose-600 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Tiket</span>
+                </button>
+              )
+            )}
+          </div>
 
           <button
             onClick={onClose}
