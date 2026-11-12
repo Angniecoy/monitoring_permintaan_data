@@ -105,127 +105,9 @@ const ROLE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard & Analitik'
 };
 
-const INITIAL_USERS: ServerUserAccount[] = [
-  {
-    id: 'usr-default-sales',
-    fullName: 'Budi Santoso (Sales Tol)',
-    username: 'sales',
-    password: 'WBP456',
-    role: 'pemberi_tugas',
-    roleName: ROLE_LABELS.pemberi_tugas,
-    whatsapp: '6281234567890',
-    createdAt: '20/10/2026 08:00',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-mgr-precast',
-    fullName: 'Aryo BK',
-    username: 'aryo',
-    password: 'WBPMGR',
-    role: 'manager',
-    roleName: ROLE_LABELS.manager,
-    department: 'Engineering Precast',
-    whatsapp: '628562568659',
-    createdAt: '20/10/2026 08:05',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-mgr-readymix',
-    fullName: 'Choerul SB',
-    username: 'choerul',
-    password: 'WBPMGR',
-    role: 'manager',
-    roleName: ROLE_LABELS.manager,
-    department: 'Engineering Readymix',
-    whatsapp: '628562568659',
-    createdAt: '20/10/2026 08:10',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-mgr-konstruksi',
-    fullName: 'Simon',
-    username: 'simon',
-    password: 'WBPMGR',
-    role: 'manager',
-    roleName: ROLE_LABELS.manager,
-    department: 'Engineering Konstruksi',
-    whatsapp: '628562568659',
-    createdAt: '20/10/2026 08:15',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-staff-fikri',
-    fullName: 'Fikri R',
-    username: 'fikri',
-    password: 'WBP123',
-    role: 'staff',
-    roleName: ROLE_LABELS.staff,
-    department: 'Engineering Precast',
-    whatsapp: '6281267044965',
-    createdAt: '20/10/2026 08:20',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-staff-ikhsan',
-    fullName: 'Ikhsan',
-    username: 'ikhsan',
-    password: 'WBP123',
-    role: 'staff',
-    roleName: ROLE_LABELS.staff,
-    department: 'Engineering Precast',
-    whatsapp: '6282285299441',
-    createdAt: '20/10/2026 08:25',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-staff-nisa',
-    fullName: 'Nisa',
-    username: 'nisa',
-    password: 'WBP123',
-    role: 'staff',
-    roleName: ROLE_LABELS.staff,
-    department: 'Engineering Precast',
-    whatsapp: '6281267670706',
-    createdAt: '20/10/2026 08:30',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-staff-fani',
-    fullName: 'Fani',
-    username: 'fani',
-    password: 'WBP123',
-    role: 'staff',
-    roleName: ROLE_LABELS.staff,
-    department: 'Engineering Readymix',
-    whatsapp: '6281321804321',
-    createdAt: '20/10/2026 08:35',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-staff-ricky',
-    fullName: 'Ricky',
-    username: 'ricky',
-    password: 'WBP123',
-    role: 'staff',
-    roleName: ROLE_LABELS.staff,
-    department: 'Engineering Konstruksi',
-    whatsapp: '6282233669400',
-    createdAt: '20/10/2026 08:40',
-    isDefault: true
-  },
-  {
-    id: 'usr-default-dashboard',
-    fullName: 'Administrator',
-    username: 'admin',
-    password: 'WBPVIEW',
-    role: 'dashboard',
-    roleName: ROLE_LABELS.dashboard,
-    whatsapp: '628111000222',
-    createdAt: '20/10/2026 08:45',
-    isDefault: true,
-    isAdmin: true
-  }
-];
+const CLEAN_ZERO_EPOCH = 'v2_clean_zero';
+
+const INITIAL_USERS: ServerUserAccount[] = [];
 
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE_PATH = path.join(DATA_DIR, 'wbp_cloud_database.json');
@@ -317,10 +199,9 @@ function readCloudDB(): CentralizedCloudDB {
     }
     const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<CentralizedCloudDB>;
-    const users =
-      Array.isArray(parsed.users) && parsed.users.length > 0
-        ? sortUsersCustomFirst(parsed.users)
-        : INITIAL_USERS;
+    const users = Array.isArray(parsed.users)
+      ? sortUsersCustomFirst(parsed.users)
+      : INITIAL_USERS;
     return {
       folderId: GOOGLE_DRIVE_FOLDER_ID,
       updatedAt: parsed.updatedAt || new Date().toISOString(),
@@ -548,6 +429,7 @@ async function pushCloudDBToDriveAndGAS(
         doc(serverFirestoreDb, 'wbp_meta', 'users_db'),
         {
           folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
           updatedAt: new Date().toISOString(),
           deletedUsernames: db.deletedUsernames,
           gasWebAppUrl: db.gasWebAppUrl || DEFAULT_GAS_WEB_APP_URL,
@@ -837,6 +719,58 @@ async function startServer() {
 
   app.use(express.json({ limit: '15mb' }));
 
+  // Ensure Firestore & GAS start clean at 0 users if cleanEpoch is not yet set
+  try {
+    const [metaSnap, colSnap] = await Promise.all([
+      getDoc(doc(serverFirestoreDb, 'wbp_meta', 'users_db')),
+      getDocs(collection(serverFirestoreDb, 'wbp_users'))
+    ]);
+    const metaData = metaSnap.exists()
+      ? (metaSnap.data() as { cleanEpoch?: string; gasWebAppUrl?: string })
+      : null;
+    if (!metaData || metaData.cleanEpoch !== CLEAN_ZERO_EPOCH) {
+      const delOps: Promise<unknown>[] = [];
+      colSnap.forEach((d) => {
+        delOps.push(deleteDoc(doc(serverFirestoreDb, 'wbp_users', d.id)));
+      });
+      delOps.push(
+        setDoc(
+          doc(serverFirestoreDb, 'wbp_meta', 'users_db'),
+          {
+            folderId: GOOGLE_DRIVE_FOLDER_ID,
+            cleanEpoch: CLEAN_ZERO_EPOCH,
+            updatedAt: new Date().toISOString(),
+            deletedUsernames: [],
+            gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL,
+            usersJson: '[]'
+          },
+          { merge: true }
+        )
+      );
+      await Promise.all(delOps);
+      writeCloudDB({
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        updatedAt: new Date().toISOString(),
+        users: [],
+        deletedUsernames: [],
+        gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL
+      });
+      void fetch(DEFAULT_GAS_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'resetUsers',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          users: [],
+          deletedUsernames: [],
+          updatedAt: new Date().toISOString()
+        })
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Server clean epoch init warning:', err);
+  }
+
   // Background real-time Firestore listener on server: keeps /data/wbp_cloud_database.json & Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF in sync whenever any device registers a user
   const serverSyncedDriveUsers = new Set<string>();
   onSnapshot(
@@ -864,27 +798,17 @@ async function startServer() {
         }
       });
 
-      for (const u of currentDB.users) {
-        const key = u.username.toLowerCase();
-        if (!deletedSet.has(key) && !map.has(key)) {
-          map.set(key, u);
-        }
-      }
+      const updated = writeCloudDB({
+        ...currentDB,
+        users: Array.from(map.values())
+      });
 
-      if (map.size > 0) {
-        const updated = writeCloudDB({
-          ...currentDB,
-          users: Array.from(map.values())
-        });
-
-        // If server has an active Google Drive token or GAS URL, mirror new cross-computer user registrations to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
-        if (
-          newlyDiscoveredCustomUsers.length > 0 &&
-          (activeDriveAccessToken || updated.gasWebAppUrl)
-        ) {
-          for (const nu of newlyDiscoveredCustomUsers) {
-            void pushCloudDBToDriveAndGAS(updated, activeDriveAccessToken, nu);
-          }
+      if (
+        newlyDiscoveredCustomUsers.length > 0 &&
+        (activeDriveAccessToken || updated.gasWebAppUrl)
+      ) {
+        for (const nu of newlyDiscoveredCustomUsers) {
+          void pushCloudDBToDriveAndGAS(updated, activeDriveAccessToken, nu);
         }
       }
     },

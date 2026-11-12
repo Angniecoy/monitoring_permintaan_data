@@ -27,6 +27,7 @@ import {
 } from './data/mockData';
 import { subscribeDriveAuth, syncTicketsWithDriveFolder } from './services/googleDrive';
 import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
+import { clearAllStoredFiles } from './data/fileStore';
 import { BarChart3, Database } from 'lucide-react';
 
 export default function App() {
@@ -164,16 +165,15 @@ export default function App() {
 
   const handleResetData = () => {
     try {
+      clearAllStoredFiles();
       localStorage.clear();
-      if (typeof window !== 'undefined' && window.indexedDB) {
-        window.indexedDB.deleteDatabase('wbp_sim_file_storage');
-      }
     } catch {
       // ignore storage errors
     }
     const resetTickets = resetToDefaultTickets();
+    const resetUsers = resetToDefaultUsers();
     setTickets(resetTickets);
-    setUsers(getStoredUsers());
+    setUsers(resetUsers);
     setSelectedTicketDetail(null);
     setWhatsAppPayload(null);
     window.location.reload();

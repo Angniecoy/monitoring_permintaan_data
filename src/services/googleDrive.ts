@@ -732,6 +732,8 @@ function sanitizeUserForFirestore(u: UserAccount): Record<string, unknown> {
   };
 }
 
+export const CLEAN_ZERO_EPOCH = 'v2_clean_zero';
+
 export async function upsertUserToCloudFirestore(
   user: UserAccount,
   allUsers: UserAccount[],
@@ -745,6 +747,7 @@ export async function upsertUserToCloudFirestore(
         doc(firestoreDb, 'wbp_meta', 'users_db'),
         {
           folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
           updatedAt: new Date().toISOString(),
           deletedUsernames,
           usersJson: JSON.stringify(allUsers)
@@ -771,6 +774,7 @@ export async function deleteUserFromCloudFirestore(
         doc(firestoreDb, 'wbp_meta', 'users_db'),
         {
           folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
           updatedAt: new Date().toISOString(),
           deletedUsernames,
           usersJson: JSON.stringify(allUsers)
@@ -812,6 +816,7 @@ export async function resetUsersInCloudFirestore(
         doc(firestoreDb, 'wbp_meta', 'users_db'),
         {
           folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
           updatedAt: new Date().toISOString(),
           deletedUsernames: [],
           usersJson: JSON.stringify(defaultUsers)
@@ -835,6 +840,7 @@ export async function saveGasConfigToCloudFirestore(
       doc(firestoreDb, 'wbp_meta', 'users_db'),
       {
         folderId: GOOGLE_DRIVE_FOLDER_ID,
+        cleanEpoch: CLEAN_ZERO_EPOCH,
         updatedAt: new Date().toISOString(),
         gasWebAppUrl
       },
@@ -859,21 +865,35 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
 
     let deletedUsernames: string[] = [];
     let metaUsers: UserAccount[] = [];
-    let gasWebAppUrl = '';
+    let gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
 
     if (metaSnap.exists()) {
       const metaData = metaSnap.data() as {
+        cleanEpoch?: string;
         deletedUsernames?: string[];
         usersJson?: string;
         gasWebAppUrl?: string;
       };
-      if (Array.isArray(metaData.deletedUsernames)) {
-        deletedUsernames = metaData.deletedUsernames;
-      }
       if (typeof metaData.gasWebAppUrl === 'string' && metaData.gasWebAppUrl) {
         gasWebAppUrl = normalizeGasWebAppUrl(metaData.gasWebAppUrl);
-      } else {
-        gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
+      }
+      // If Firestore still holds legacy pre-clean users, wipe them once and return 0 users
+      if (metaData.cleanEpoch !== CLEAN_ZERO_EPOCH) {
+        await resetUsersInCloudFirestore([]);
+        void pushUsersToGasEndpoint({
+          gasWebAppUrl,
+          action: 'resetUsers',
+          users: [],
+          deletedUsernames: []
+        });
+        return {
+          users: [],
+          deletedUsernames: [],
+          gasWebAppUrl
+        };
+      }
+      if (Array.isArray(metaData.deletedUsernames)) {
+        deletedUsernames = metaData.deletedUsernames;
       }
       if (typeof metaData.usersJson === 'string' && metaData.usersJson.trim()) {
         try {
@@ -882,7 +902,12 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
         } catch {}
       }
     } else {
-      gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
+      await resetUsersInCloudFirestore([]);
+      return {
+        users: [],
+        deletedUsernames: [],
+        gasWebAppUrl
+      };
     }
 
     const colUsers: UserAccount[] = [];
@@ -890,8 +915,6 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
       const data = docSnap.data() as unknown as UserAccount;
       if (data && data.username) colUsers.push(data);
     });
-
-    if (colUsers.length === 0 && metaUsers.length === 0) return null;
 
     const deletedSet = new Set(deletedUsernames.map((u) => u.toLowerCase()));
     const mergedMap = new Map<string, UserAccount>();
@@ -927,9 +950,10 @@ export function subscribeCloudFirestoreUsers(
   let latestColUsers: UserAccount[] = [];
   let initializedMeta = false;
   let initializedCol = false;
+  let isCleanEpochReady = false;
 
   const emitCombined = () => {
-    if (!initializedMeta && !initializedCol) return;
+    if (!initializedMeta || !isCleanEpochReady) return;
     const deletedSet = new Set(latestDeleted.map((u) => u.toLowerCase()));
     const map = new Map<string, UserAccount>();
     for (const u of [...latestColUsers, ...latestMetaUsers]) {
@@ -952,10 +976,17 @@ export function subscribeCloudFirestoreUsers(
       initializedMeta = true;
       if (snap.exists()) {
         const data = snap.data() as {
+          cleanEpoch?: string;
           deletedUsernames?: string[];
           usersJson?: string;
           gasWebAppUrl?: string;
         };
+        if (data.cleanEpoch !== CLEAN_ZERO_EPOCH) {
+          isCleanEpochReady = false;
+          void resetUsersInCloudFirestore([]);
+          return;
+        }
+        isCleanEpochReady = true;
         latestDeleted = Array.isArray(data.deletedUsernames) ? data.deletedUsernames : [];
         if (data.gasWebAppUrl) latestGasUrl = normalizeGasWebAppUrl(data.gasWebAppUrl);
         if (data.usersJson) {
@@ -963,7 +994,13 @@ export function subscribeCloudFirestoreUsers(
             const parsed = JSON.parse(data.usersJson);
             if (Array.isArray(parsed)) latestMetaUsers = parsed;
           } catch {}
+        } else {
+          latestMetaUsers = [];
         }
+      } else {
+        isCleanEpochReady = false;
+        void resetUsersInCloudFirestore([]);
+        return;
       }
       emitCombined();
     }
@@ -979,7 +1016,9 @@ export function subscribeCloudFirestoreUsers(
         if (u && u.username) list.push(u);
       });
       latestColUsers = list;
-      emitCombined();
+      if (initializedCol) {
+        emitCombined();
+      }
     }
   );
 

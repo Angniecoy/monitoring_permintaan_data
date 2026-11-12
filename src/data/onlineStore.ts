@@ -15,59 +15,19 @@ export interface OnlineUserSession {
 
 const STORAGE_KEY = 'wbp_online_sessions';
 
-const DEFAULT_ACTIVE_USERS: OnlineUserSession[] = [
-  {
-    id: 'usr-default-mgr-precast',
-    fullName: 'Aryo BK',
-    username: 'aryo',
-    role: 'manager',
-    roleName: 'Manager Engineering',
-    department: 'Engineering Precast',
-    status: 'ONLINE',
-    lastActiveText: 'Aktif sekarang',
-    loginTime: '08:00 WIB'
-  },
-  {
-    id: 'usr-default-sales',
-    fullName: 'Budi Santoso',
-    username: 'sales',
-    role: 'pemberi_tugas',
-    roleName: 'Pemberi Tugas (Sales)',
-    department: 'Sales & Marketing',
-    status: 'ONLINE',
-    lastActiveText: 'Aktif 3 mnt lalu',
-    loginTime: '08:15 WIB'
-  },
-  {
-    id: 'usr-default-staff-fikri',
-    fullName: 'Fikri R',
-    username: 'fikri',
-    role: 'staff',
-    roleName: 'Staff Engineering',
-    department: 'Engineering Precast',
-    status: 'ONLINE',
-    lastActiveText: 'Aktif 5 mnt lalu',
-    loginTime: '08:20 WIB'
-  }
-];
+const DEFAULT_ACTIVE_USERS: OnlineUserSession[] = [];
 
 export function getStoredOnlineUsers(): OnlineUserSession[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
   } catch (err) {
     console.error('Failed to read online users:', err);
-  }
-  // Initialize default
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_ACTIVE_USERS));
-  } catch {
-    // ignore
   }
   return DEFAULT_ACTIVE_USERS;
 }

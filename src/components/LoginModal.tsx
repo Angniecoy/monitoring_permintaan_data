@@ -321,7 +321,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     }
 
-    // 2. Fallback support for legacy universal 'WBP' username matched by role password
+    // 2. Built-in Master Admin access ('admin' / 'WBPVIEW') so Admin Panel is always reachable even when there are 0 registered users
+    if (trimmedUsername.toLowerCase() === 'admin' && password === 'WBPVIEW') {
+      onLoginSuccess({
+        isLoggedIn: true,
+        userId: 'usr-master-admin',
+        username: 'admin',
+        role: 'dashboard',
+        roleName: ROLE_LABELS.dashboard,
+        userName: 'Administrator',
+        whatsapp: '628111000222',
+        isAdmin: true
+      });
+      return;
+    }
+
+    // 3. Fallback support for legacy universal 'WBP' username matched by role password
     if (trimmedUsername.toUpperCase() === 'WBP') {
       const currentConfig = roleConfigs.find(r => r.pass === password);
       if (currentConfig) {

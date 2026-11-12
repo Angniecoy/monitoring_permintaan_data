@@ -85,6 +85,20 @@ function getDB(): Promise<IDBDatabase> {
 }
 
 /**
+ * Clears all stored file attachments in memory and IndexedDB so the app starts with 0 attachments
+ */
+export function clearAllStoredFiles(): void {
+  memoryFileMap.clear();
+  try {
+    if (typeof window !== 'undefined' && window.indexedDB) {
+      window.indexedDB.deleteDatabase(DB_NAME);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Parses a ticket file entry string (e.g. "TOR_Proyek.pdf::1AbCdEfGhIjKlMnOpQrStUvWxYz" or "TOR_Proyek.pdf")
  * and returns structured metadata + real Google Drive download & view URLs for the specified category
  * ('permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY, 'jawaban_atas_permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy).
