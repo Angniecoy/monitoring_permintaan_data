@@ -109,37 +109,5 @@ export const GoogleDriveStatusBanner: React.FC<GoogleDriveStatusBannerProps> = (
     );
   }
 
-  return (
-    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-      <div className="flex items-start gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-[#282974]/10 border border-[#282974]/25 flex items-center justify-center text-[#282974] shrink-0 mt-0.5">
-          <Cloud className="w-4 h-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-slate-900">
-              Integrasi Penyimpanan Google Drive {resolvedCategory ? `(${resolvedCategory.categoryLabel})` : ''}
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              <span>
-                {isConnected
-                  ? `Terhubung (${driveUser?.email || driveUser?.displayName || 'Aktif'})`
-                  : 'Sinkronisasi Cloud Aktif'}
-              </span>
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-600 mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span>{directoryTitle}</span>
-            <span className="font-mono text-[11px] font-semibold text-[#282974]">
-              Folder ID: {activeFolderId}
-            </span>
-          </div>
-          <div className="text-[10px] text-slate-500 mt-0.5 font-mono truncate" title={DEFAULT_GAS_WEB_APP_URL}>
-            Endpoint GAS Aktif: {DEFAULT_GAS_WEB_APP_URL}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 };

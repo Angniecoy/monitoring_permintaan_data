@@ -423,6 +423,169 @@ export interface DriveTicketsDatabasePayload {
   tickets: Ticket[];
 }
 
+export async function writeUserRegistrationToDrive(
+  newUser: UserAccount,
+  allUsers: UserAccount[],
+  deletedUsernames: string[] = [],
+  accessToken?: string | null
+): Promise<boolean> {
+  const token = accessToken || cachedAccessToken;
+  if (!token) return false;
+  try {
+    const files = await listDriveFolderFiles(token);
+    const singleFileName = `${DRIVE_USER_FILE_PREFIX}${newUser.username.toLowerCase()}.json`;
+    const existingSingle = files.find(
+      (f) => f.name.toLowerCase() === singleFileName.toLowerCase()
+    );
+    const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
+
+    await Promise.all([
+      saveJsonToDriveFolder(
+        singleFileName,
+        {
+          type: 'WBP_USER_REGISTRATION_RECORD',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          registeredAt: new Date().toISOString(),
+          user: newUser
+        },
+        existingSingle?.id,
+        token
+      ),
+      saveJsonToDriveFolder(
+        DRIVE_USERS_DB_FILENAME,
+        {
+          type: 'WBP_USERS_DATABASE',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames,
+          users: allUsers
+        },
+        existingDb?.id,
+        token
+      )
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function pushUsersDatabaseToDrive(
+  allUsers: UserAccount[],
+  deletedUsernames: string[] = [],
+  deletedUsernameToRemoveFile?: string,
+  accessToken?: string | null
+): Promise<boolean> {
+  const token = accessToken || cachedAccessToken;
+  if (!token) return false;
+  try {
+    const files = await listDriveFolderFiles(token);
+    const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
+    if (deletedUsernameToRemoveFile) {
+      const targetName = `${DRIVE_USER_FILE_PREFIX}${deletedUsernameToRemoveFile.toLowerCase()}.json`;
+      for (const mf of files.filter((f) => f.name.toLowerCase() === targetName)) {
+        await deleteDriveFileById(mf.id, token);
+      }
+    }
+    const res = await saveJsonToDriveFolder(
+      DRIVE_USERS_DB_FILENAME,
+      {
+        type: 'WBP_USERS_DATABASE',
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        updatedAt: new Date().toISOString(),
+        deletedUsernames,
+        users: allUsers
+      },
+      existingDb?.id,
+      token
+    );
+    return Boolean(res);
+  } catch {
+    return false;
+  }
+}
+
+export async function syncUsersFromDriveFolder(
+  localUsers: UserAccount[],
+  localDeletedUsernames: string[] = [],
+  accessToken?: string | null
+): Promise<{
+  users: UserAccount[];
+  deletedUsernames: string[];
+  syncedFromDrive: boolean;
+} | null> {
+  const token = accessToken || cachedAccessToken;
+  if (!token) return null;
+  try {
+    const files = await listDriveFolderFiles(token);
+    const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
+    let remoteDbUsers: UserAccount[] = [];
+    let remoteDeletedUsernames: string[] = [];
+
+    if (existingDb) {
+      const parsedDb = await downloadDriveJsonFile<
+        DriveUsersDatabasePayload | UserAccount[]
+      >(existingDb.id, token);
+      if (Array.isArray(parsedDb)) {
+        remoteDbUsers = parsedDb;
+      } else if (parsedDb && Array.isArray(parsedDb.users)) {
+        remoteDbUsers = parsedDb.users;
+        if (Array.isArray(parsedDb.deletedUsernames)) {
+          remoteDeletedUsernames = parsedDb.deletedUsernames;
+        }
+      }
+    }
+
+    const deletedSet = new Set<string>(
+      [...localDeletedUsernames, ...remoteDeletedUsernames].map((u) => u.toLowerCase())
+    );
+    const mergedMap = new Map<string, UserAccount>();
+    for (const u of [...remoteDbUsers, ...localUsers]) {
+      if (!u || !u.username) continue;
+      const key = u.username.toLowerCase();
+      if (!deletedSet.has(key) && !mergedMap.has(key)) {
+        mergedMap.set(key, u);
+      }
+    }
+    return {
+      users: Array.from(mergedMap.values()),
+      deletedUsernames: Array.from(deletedSet),
+      syncedFromDrive: true
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function syncTicketsWithDriveFolder(
+  localTickets: Ticket[],
+  forceOverwriteDrive = false,
+  accessToken?: string | null
+): Promise<Ticket[] | null> {
+  const token = accessToken || cachedAccessToken;
+  if (!token) return null;
+  try {
+    const files = await listDriveFolderFiles(token);
+    const existingTicketsDb = files.find((f) => f.name === DRIVE_TICKETS_DB_FILENAME);
+    if (!existingTicketsDb || forceOverwriteDrive) {
+      await saveJsonToDriveFolder(
+        DRIVE_TICKETS_DB_FILENAME,
+        {
+          type: 'WBP_TICKETS_DATABASE',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          tickets: localTickets
+        },
+        existingTicketsDb?.id,
+        token
+      );
+    }
+    return localTickets;
+  } catch {
+    return null;
+  }
+}
+
 export async function uploadFileToDriveFolder(
   file: File,
   accessToken?: string | null,

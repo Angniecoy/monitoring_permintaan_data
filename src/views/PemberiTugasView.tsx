@@ -752,9 +752,6 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               {formStep === 3 && (
                 <div className="space-y-4 animate-in fade-in duration-150">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Upload Dokumen Pendukung Permintaan (TOR, Gambar Referensi, Data Tanah)
-                    </label>
                     <div className="border-2 border-dashed border-slate-300 hover:border-[#282974] rounded-xl p-5 text-center transition-colors bg-slate-50">
                       {isUploading ? (
                         <div className="py-2 px-2 max-w-lg mx-auto space-y-2.5 text-left">
