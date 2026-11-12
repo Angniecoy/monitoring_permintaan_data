@@ -32,6 +32,10 @@ def get_drive_service():
     return build('drive', 'v3', credentials=creds)
 
 class MegaBridgeHandler(BaseHTTPRequestHandler):
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
     def do_POST(self):
         try:
             content_length = int(self.headers.get('Content-Length', 0))
@@ -51,10 +55,12 @@ class MegaBridgeHandler(BaseHTTPRequestHandler):
             self.send_response(500)
             self.end_headers()
 
-def run_server(server_class=HTTPServer, handler_class=MegaBridgeHandler, port=8080):
-    server_address = ('localhost', port)
+def run_server(server_class=HTTPServer, handler_class=MegaBridgeHandler):
+    # Mengambil port dari environment Render, atau default ke 8080 jika dijalankan lokal
+    port = int(os.environ.get("PORT", 8080))
+    server_address = ('0.0.0.0', port)  # Wajib 0.0.0.0 agar dapat diakses oleh Render
     httpd = server_class(server_address, handler_class)
-    print(f"Skrip Jembatan Google Drive berjalan di http://localhost:{port}")
+    print(f"Skrip Jembatan Google Drive berjalan di port {port}")
     httpd.serve_forever()
 
 if __name__ == '__main__':
