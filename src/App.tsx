@@ -21,11 +21,13 @@ import { DatabaseView } from './views/DatabaseView';
 import { Ticket, UserAccount, UserRole, UserSession, WhatsAppNotificationPayload } from './types';
 import { 
   getStoredTickets, saveStoredTickets, resetToDefaultTickets,
+  addStoredTicket, updateStoredTicket, deleteStoredTicket,
+  fetchCloudTickets, TICKETS_STORAGE_KEY, TICKETS_SYNC_EVENT,
   getStoredUsers, addStoredUser, updateStoredUser, deleteStoredUser,
   resetToDefaultUsers, USERS_STORAGE_KEY, isAdminSession,
   pullAndMergeUsersFromDrive, pullAndMergeTicketsFromDrive, fetchCloudUsers
 } from './data/mockData';
-import { subscribeDriveAuth, syncTicketsWithDriveFolder } from './services/googleDrive';
+import { subscribeDriveAuth } from './services/googleDrive';
 import { registerOnlineUser, unregisterOnlineUser } from './data/onlineStore';
 import { clearAllStoredFiles } from './data/fileStore';
 import { BarChart3, Database } from 'lucide-react';
@@ -71,15 +73,20 @@ export default function App() {
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<Ticket | null>(null);
   const [whatsAppPayload, setWhatsAppPayload] = useState<WhatsAppNotificationPayload | null>(null);
 
-  // Sync tickets with localStorage
+  // Sync tickets with localStorage without recursive event loop
   useEffect(() => {
-    saveStoredTickets(tickets);
+    saveStoredTickets(tickets, false);
   }, [tickets]);
 
-  // Continuously pull centralized cloud users across all devices + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+  // Continuously pull centralized cloud users and tickets across all tabs/sessions/devices
   useEffect(() => {
     void fetchCloudUsers(false).then((cloudList) => {
       setUsers(cloudList);
+    });
+    void fetchCloudTickets().then((cloudTickets) => {
+      setTickets((prev) =>
+        JSON.stringify(prev) === JSON.stringify(cloudTickets) ? prev : cloudTickets
+      );
     });
     const interval = setInterval(() => {
       void fetchCloudUsers(false).then((cloudList) => {
@@ -87,7 +94,12 @@ export default function App() {
           JSON.stringify(prev) === JSON.stringify(cloudList) ? prev : cloudList
         );
       });
-    }, 3000);
+      void fetchCloudTickets().then((cloudTickets) => {
+        setTickets((prev) =>
+          JSON.stringify(prev) === JSON.stringify(cloudTickets) ? prev : cloudTickets
+        );
+      });
+    }, 2500);
     return () => clearInterval(interval);
   }, []);
 
@@ -110,7 +122,7 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Listen for real-time user updates from cloud store events
+  // Listen for real-time user and ticket updates from cloud store & cross-tab storage events
   useEffect(() => {
     const syncUsersFromCloudStore = (e?: Event) => {
       if (e && 'key' in e) {
@@ -123,9 +135,26 @@ export default function App() {
         return latest;
       });
     };
+
+    const syncTicketsFromStore = (e?: Event) => {
+      if (e && 'key' in e) {
+        const storageEvent = e as StorageEvent;
+        if (storageEvent.key && storageEvent.key !== TICKETS_STORAGE_KEY) return;
+      }
+      const latestTickets = getStoredTickets();
+      setTickets(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(latestTickets)) return prev;
+        return latestTickets;
+      });
+    };
+
     window.addEventListener('wbp_users_updated', syncUsersFromCloudStore);
+    window.addEventListener(TICKETS_SYNC_EVENT, syncTicketsFromStore);
+    window.addEventListener('storage', syncTicketsFromStore);
     return () => {
       window.removeEventListener('wbp_users_updated', syncUsersFromCloudStore);
+      window.removeEventListener(TICKETS_SYNC_EVENT, syncTicketsFromStore);
+      window.removeEventListener('storage', syncTicketsFromStore);
     };
   }, []);
 
@@ -141,23 +170,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handlers for Ticket updates (persists to localStorage + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
+  // Handlers for Ticket updates (persists to localStorage + Cloud Firestore + /api/tickets + Google Drive)
   const handleAddTicket = (newTicket: Ticket) => {
-    setTickets(prev => {
-      const updated = [newTicket, ...prev];
-      saveStoredTickets(updated);
-      void syncTicketsWithDriveFolder(updated, false);
-      return updated;
-    });
+    const updated = addStoredTicket(newTicket);
+    setTickets(updated);
   };
 
   const handleUpdateTicket = (updatedTicket: Ticket) => {
-    setTickets(prev => {
-      const updated = prev.map(t => t.ID_Tiket === updatedTicket.ID_Tiket ? updatedTicket : t);
-      saveStoredTickets(updated);
-      void syncTicketsWithDriveFolder(updated, false);
-      return updated;
-    });
+    const updated = updateStoredTicket(updatedTicket);
+    setTickets(updated);
     if (selectedTicketDetail?.ID_Tiket === updatedTicket.ID_Tiket) {
       setSelectedTicketDetail(updatedTicket);
     }
@@ -166,12 +187,8 @@ export default function App() {
   // Strictly Admin-authorized Ticket Deletion handler
   const handleDeleteTicket = (ticketId: string) => {
     if (!isAdminSession(session)) return;
-    setTickets(prev => {
-      const updated = prev.filter(t => t.ID_Tiket !== ticketId);
-      saveStoredTickets(updated);
-      void syncTicketsWithDriveFolder(updated, true);
-      return updated;
-    });
+    const updated = deleteStoredTicket(ticketId);
+    setTickets(updated);
     if (selectedTicketDetail?.ID_Tiket === ticketId) {
       setSelectedTicketDetail(null);
     }
@@ -237,8 +254,12 @@ export default function App() {
 
   const handleLoginSuccess = (newSession: UserSession) => {
     setUsers(getStoredUsers());
+    setTickets(getStoredTickets());
     void pullAndMergeUsersFromDrive().then((merged) => {
       setUsers(merged);
+    });
+    void fetchCloudTickets().then((cloudTickets) => {
+      setTickets(cloudTickets);
     });
     setSession(newSession);
     setActiveRole(newSession.role);
@@ -266,7 +287,7 @@ export default function App() {
     });
   };
 
-  // Sync active online status and ensure session userName + whatsapp stay enriched from users list
+  // Sync active online status and ensure session userName + whatsapp + department stay enriched from users list
   useEffect(() => {
     if (session.isLoggedIn && session.username) {
       registerOnlineUser(session);
@@ -281,14 +302,16 @@ export default function App() {
       if (
         matched &&
         ((matched.fullName && session.userName !== matched.fullName) ||
-          (matched.whatsapp && session.whatsapp !== matched.whatsapp))
+          (matched.whatsapp && session.whatsapp !== matched.whatsapp) ||
+          (matched.department && session.department !== matched.department))
       ) {
         const enrichedSession: UserSession = {
           ...session,
           userId: matched.id,
           username: matched.username,
           userName: matched.fullName || session.userName,
-          whatsapp: matched.whatsapp || session.whatsapp
+          whatsapp: matched.whatsapp || session.whatsapp,
+          department: matched.department || session.department
         };
         setSession(enrichedSession);
         try {

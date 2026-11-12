@@ -25,48 +25,92 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   onOpenWhatsApp,
   onSelectTicketDetail
 }) => {
-  const [activeDept, setActiveDept] = useState<DepartmentName>(
-    session?.department || 'Engineering Precast'
-  );
+  const [activeDept, setActiveDept] = useState<'ALL' | DepartmentName>(() => {
+    if (session?.department) {
+      const deptHasOpen = tickets.some(
+        t => t.Departemen_Tujuan === session.department && t.Status_Pengerjaan === 'OPEN'
+      );
+      const anyOpen = tickets.some(t => t.Status_Pengerjaan === 'OPEN');
+      if (!deptHasOpen && anyOpen) {
+        return 'ALL';
+      }
+      return session.department;
+    }
+    return 'ALL';
+  });
+  const [hasManualDeptSelection, setHasManualDeptSelection] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
   const [selectedStaff, setSelectedStaff] = useState<string>('');
+  const [manualStaffName, setManualStaffName] = useState<string>('');
+  const [manualStaffWa, setManualStaffWa] = useState<string>('');
   const [catatanManager, setCatatanManager] = useState<string>('');
   const [activeViewTab, setActiveViewTab] = useState<'antrean' | 'histori'>('antrean');
 
-  const deptConfig = STRUKTUR_ORG[activeDept];
+  // Ensure incoming OPEN tickets are immediately visible even if created under a different department tab
+  React.useEffect(() => {
+    if (hasManualDeptSelection) return;
+    const totalOpen = tickets.filter(t => t.Status_Pengerjaan === 'OPEN');
+    if (totalOpen.length === 0) return;
+
+    if (activeDept !== 'ALL') {
+      const openInCurrent = totalOpen.filter(t => t.Departemen_Tujuan === activeDept);
+      if (openInCurrent.length === 0) {
+        setActiveDept('ALL');
+      }
+    }
+  }, [tickets, activeDept, hasManualDeptSelection]);
+
+  // Tickets filtered by selected department or ALL departments
+  const deptTickets =
+    activeDept === 'ALL'
+      ? tickets
+      : tickets.filter(t => t.Departemen_Tujuan === activeDept);
+  const openTickets = deptTickets.filter(t => t.Status_Pengerjaan === 'OPEN');
+
+  // Selected ticket for disposition
+  const currentTicket =
+    openTickets.find(t => t.ID_Tiket === selectedTicketId) || openTickets[0] || null;
+
+  // Resolve effective department context from the currently selected ticket or active tab
+  const effectiveDept: DepartmentName =
+    currentTicket?.Departemen_Tujuan ||
+    (activeDept === 'ALL' ? session?.department || 'Engineering Precast' : activeDept);
+
+  const deptConfig = STRUKTUR_ORG[effectiveDept] || STRUKTUR_ORG['Engineering Precast'];
   const dynamicManager = users.find(
-    u => u.role === 'manager' && (u.department || 'Engineering Precast') === activeDept
+    u => u.role === 'manager' && (u.department || 'Engineering Precast') === effectiveDept
   );
   const managerName =
-    session?.role === 'manager' && session?.department === activeDept && session?.userName
+    session?.role === 'manager' && session?.userName
       ? session.userName
       : dynamicManager?.fullName || deptConfig.Manager || '-';
   const managerWa =
-    session?.role === 'manager' && session?.department === activeDept && session?.whatsapp
+    session?.role === 'manager' && session?.whatsapp
       ? session.whatsapp
       : dynamicManager?.whatsapp || deptConfig.WA_Manager || '';
 
-  // Populate department staff strictly from dynamically registered staff in this department
+  // Populate department staff from dynamically registered staff (prioritizing effectiveDept, then all registered staff)
   const combinedStaffMap: Record<string, string> = { ...deptConfig.Staff };
   users
-    .filter(u => u.role === 'staff' && (u.department || 'Engineering Precast') === activeDept)
+    .filter(u => u.role === 'staff' && (u.department || 'Engineering Precast') === effectiveDept)
     .forEach(u => {
       if (u.fullName) {
         combinedStaffMap[u.fullName] = u.whatsapp || '';
       }
     });
+  // If no staff registered in effectiveDept yet, include all registered staff across divisions so Manager can still disposition
+  if (Object.keys(combinedStaffMap).length === 0) {
+    users
+      .filter(u => u.role === 'staff')
+      .forEach(u => {
+        if (u.fullName) {
+          combinedStaffMap[u.fullName] = u.whatsapp || '';
+        }
+      });
+  }
   const staffList = Object.keys(combinedStaffMap);
 
-  // Tickets for this department
-  const deptTickets = tickets.filter(t => t.Departemen_Tujuan === activeDept);
-  const openTickets = deptTickets.filter(t => t.Status_Pengerjaan === 'OPEN');
-  const activeTickets = deptTickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan));
-  const closedTickets = deptTickets.filter(t => t.Status_Pengerjaan === 'CLOSED (Selesai)');
-
-  // Selected ticket for disposition
-  const currentTicket = openTickets.find(t => t.ID_Tiket === selectedTicketId) || openTickets[0] || null;
-
-  // Calculate workload per staff in this department
+  // Calculate workload per staff
   const staffWorkload = staffList.map(staff => {
     const activeTasks = tickets.filter(
       t => t.Staff_Tujuan === staff && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)
@@ -86,13 +130,19 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
     e.preventDefault();
     if (!currentTicket) return;
 
-    const staffToAssign = selectedStaff || staffList[0];
-    const staffWa = combinedStaffMap[staffToAssign] || '';
+    const staffToAssign =
+      staffList.length > 0
+        ? selectedStaff || staffList[0]
+        : manualStaffName.trim() || 'Staf Engineering';
+    const staffWa =
+      staffList.length > 0
+        ? combinedStaffMap[staffToAssign] || ''
+        : cleanWhatsAppNumber(manualStaffWa);
 
     const updated: Ticket = {
       ...currentTicket,
       Staff_Tujuan: staffToAssign,
-      WA_Staff: staffWa,
+      WA_Staff: staffWa || '-',
       Status_Pengerjaan: 'DISPOSISI',
       Keterangan_Penerima: catatanManager 
         ? `Catatan Manager (${managerName}): ${catatanManager}`
@@ -101,6 +151,8 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
 
     onUpdateTicket(updated);
     setCatatanManager('');
+    setManualStaffName('');
+    setManualStaffWa('');
 
     // Trigger WhatsApp notification for Staff
     const pesan = `*DISPOSISI TUGAS TEKNIS BARU*\n\nHalo ${staffToAssign},\nBpk. ${managerName} telah mendelegasikan tugas proyek *${currentTicket.Proyek}* kepada Anda.\nTarget Selesai: *${currentTicket.Target_Selesai}*\nDokumen: ${currentTicket.Dokumen}\n\n${catatanManager ? `Catatan: ${catatanManager}\n\n` : ''}Silakan periksa portal Staff untuk memproses tiket ${currentTicket.ID_Tiket}.`;
@@ -113,6 +165,8 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
       target_name: staffToAssign
     });
   };
+
+  const totalOpenAllDepts = tickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
 
   return (
     <div className="space-y-6">
@@ -132,6 +186,28 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
 
         {/* Department Switcher Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setHasManualDeptSelection(true);
+              setActiveDept('ALL');
+              setSelectedTicketId('');
+              setSelectedStaff('');
+            }}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              activeDept === 'ALL'
+                ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+            }`}
+          >
+            <span>Semua Divisi</span>
+            {totalOpenAllDepts > 0 && (
+              <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center">
+                {totalOpenAllDepts}
+              </span>
+            )}
+          </button>
+
           {(Object.keys(STRUKTUR_ORG) as DepartmentName[]).map(dept => {
             const isDeptActive = activeDept === dept;
             const deptOpenCount = tickets.filter(
@@ -143,6 +219,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                 key={dept}
                 type="button"
                 onClick={() => {
+                  setHasManualDeptSelection(true);
                   setActiveDept(dept);
                   setSelectedTicketId('');
                   setSelectedStaff('');
@@ -175,7 +252,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
             </div>
             <div>
               <div className="text-[10px] text-slate-500 uppercase font-semibold">
-                Manager {activeDept}
+                Manager {activeDept === 'ALL' ? effectiveDept : activeDept}
               </div>
               <div className="text-sm font-bold text-slate-900">{managerName !== '-' ? managerName : 'Belum Ada Manager'}</div>
               <div className="text-[11px] font-mono text-emerald-700 font-medium">
@@ -196,7 +273,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-[#282974]" />
-              <span>Beban Kerja Staf Aktif ({activeDept})</span>
+              <span>Beban Kerja Staf Aktif ({activeDept === 'ALL' ? effectiveDept : activeDept})</span>
             </div>
             <span className="text-[10px] text-slate-500">
               *Tinjau sebelum mendelegasikan tugas
@@ -205,7 +282,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
 
           {staffWorkload.length === 0 ? (
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
-              Belum ada akun Staf Engineering terdaftar pada departemen {activeDept}.
+              Belum ada akun Staf Engineering terdaftar pada departemen {activeDept === 'ALL' ? effectiveDept : activeDept}.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
@@ -272,15 +349,24 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
               <div className="text-sm font-bold text-slate-900">Semua Tiket Telah Didisposisikan!</div>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
-                Tidak ada tiket berstatus OPEN yang menunggu delegasi di {activeDept}. Seluruh tim sedang fokus mengerjakan tugas aktif.
+                Tidak ada tiket berstatus OPEN yang menunggu delegasi di {activeDept === 'ALL' ? 'seluruh divisi Engineering' : activeDept}. Seluruh tim sedang fokus mengerjakan tugas aktif.
               </p>
+              {activeDept !== 'ALL' && totalOpenAllDepts > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveDept('ALL')}
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors"
+                >
+                  <span>Lihat {totalOpenAllDepts} Tiket OPEN di Divisi Lain</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: List of Open Tickets (6 cols) */}
               <div className="lg:col-span-6 space-y-3">
                 <div className="text-xs font-semibold text-slate-600">
-                  Daftar Tiket Masuk (Pilih untuk Disposisi):
+                  Daftar Tiket Masuk Berstatus OPEN (Pilih untuk Disposisi):
                 </div>
 
                 <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
@@ -296,10 +382,15 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-mono text-[11px] font-bold text-[#282974]">
-                            {ticket.ID_Tiket}
-                          </span>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[11px] font-bold text-[#282974]">
+                              {ticket.ID_Tiket}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-[#282974]/10 text-[#282974] text-[10px] font-semibold">
+                              {ticket.Departemen_Tujuan}
+                            </span>
+                          </div>
                           <span className="text-[11px] text-amber-700 font-semibold font-mono">
                             Target: {ticket.Target_Selesai}
                           </span>
@@ -326,7 +417,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
                         <div className="text-[11px] font-mono text-[#282974] font-bold">
-                          FORMULIR DISPOSISI RESMI
+                          FORMULIR DISPOSISI RESMI · {currentTicket.Departemen_Tujuan.toUpperCase()}
                         </div>
                         <h3 className="text-sm font-bold text-slate-900 mt-0.5">
                           {currentTicket.Proyek}
@@ -392,26 +483,56 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                     </div>
 
                     <form onSubmit={handleDisposisi} className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Delegasikan Tugas ini Kepada Staf: <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={selectedStaff || staffList[0]}
-                          onChange={(e) => setSelectedStaff(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] font-medium"
-                          required
-                        >
-                          {staffList.map(staf => {
-                            const load = staffWorkload.find(s => s.name === staf)?.activeTasks || 0;
-                            return (
-                              <option key={staf} value={staf}>
-                                {staf} ({load} tugas aktif saat ini)
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </div>
+                      {staffList.length > 0 ? (
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Delegasikan Tugas ini Kepada Staf: <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={selectedStaff || staffList[0]}
+                            onChange={(e) => setSelectedStaff(e.target.value)}
+                            className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] font-medium"
+                            required
+                          >
+                            {staffList.map(staf => {
+                              const load = staffWorkload.find(s => s.name === staf)?.activeTasks || 0;
+                              return (
+                                <option key={staf} value={staf}>
+                                  {staf} ({load} tugas aktif saat ini)
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                              Nama Staf Eksekutor: <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={manualStaffName}
+                              onChange={(e) => setManualStaffName(e.target.value)}
+                              placeholder="Ketik nama staf tujuan..."
+                              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974]"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                              No. WhatsApp Staf (Opsional):
+                            </label>
+                            <input
+                              type="text"
+                              value={manualStaffWa}
+                              onChange={(e) => setManualStaffWa(e.target.value)}
+                              placeholder="Contoh: 081234567890"
+                              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#282974]"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">

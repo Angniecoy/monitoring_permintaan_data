@@ -567,20 +567,40 @@ export async function syncTicketsWithDriveFolder(
   try {
     const files = await listDriveFolderFiles(token);
     const existingTicketsDb = files.find((f) => f.name === DRIVE_TICKETS_DB_FILENAME);
-    if (!existingTicketsDb || forceOverwriteDrive) {
-      await saveJsonToDriveFolder(
-        DRIVE_TICKETS_DB_FILENAME,
-        {
-          type: 'WBP_TICKETS_DATABASE',
-          folderId: GOOGLE_DRIVE_FOLDER_ID,
-          updatedAt: new Date().toISOString(),
-          tickets: localTickets
-        },
-        existingTicketsDb?.id,
-        token
-      );
+    let mergedTickets = [...localTickets];
+
+    if (existingTicketsDb && !forceOverwriteDrive) {
+      const parsed = await downloadDriveJsonFile<
+        DriveTicketsDatabasePayload | Ticket[]
+      >(existingTicketsDb.id, token);
+      const remoteTickets = Array.isArray(parsed)
+        ? parsed
+        : parsed && Array.isArray(parsed.tickets)
+        ? parsed.tickets
+        : [];
+      if (remoteTickets.length > 0) {
+        const map = new Map<string, Ticket>();
+        for (const t of [...localTickets, ...remoteTickets]) {
+          if (t && t.ID_Tiket && !map.has(t.ID_Tiket)) {
+            map.set(t.ID_Tiket, t);
+          }
+        }
+        mergedTickets = Array.from(map.values());
+      }
     }
-    return localTickets;
+
+    await saveJsonToDriveFolder(
+      DRIVE_TICKETS_DB_FILENAME,
+      {
+        type: 'WBP_TICKETS_DATABASE',
+        folderId: GOOGLE_DRIVE_FOLDER_ID,
+        updatedAt: new Date().toISOString(),
+        tickets: mergedTickets
+      },
+      existingTicketsDb?.id,
+      token
+    );
+    return mergedTickets;
   } catch {
     return null;
   }
@@ -1095,3 +1115,274 @@ export async function pullUsersFromGasEndpoint(
     return null;
   }
 }
+
+function sanitizeTicketForFirestore(t: Ticket): Record<string, unknown> {
+  return {
+    ID_Tiket: String(t.ID_Tiket || `REQ-${Date.now()}`),
+    Waktu_Request: String(t.Waktu_Request || '-'),
+    Peminta: String(t.Peminta || '-'),
+    WA_Peminta: String(t.WA_Peminta || ''),
+    SO: String(t.SO || '-'),
+    Pemasukan_Penawaran: String(t.Pemasukan_Penawaran || '-'),
+    Tujuan_Permintaan: String(t.Tujuan_Permintaan || '-'),
+    Kode_Proyek: String(t.Kode_Proyek || '-'),
+    Proyek: String(t.Proyek || '-'),
+    Lokasi: String(t.Lokasi || '-'),
+    Jenis_Produk: String(t.Jenis_Produk || '-'),
+    Dimensi: String(t.Dimensi || '-'),
+    Dokumen: String(t.Dokumen || '-'),
+    Departemen_Tujuan: t.Departemen_Tujuan || 'Engineering Precast',
+    Manager_Tujuan: String(t.Manager_Tujuan || '-'),
+    WA_Manager: String(t.WA_Manager || ''),
+    Staff_Tujuan: String(t.Staff_Tujuan || '-'),
+    WA_Staff: String(t.WA_Staff || '-'),
+    Target_Selesai: String(t.Target_Selesai || '-'),
+    Status_Pengerjaan: t.Status_Pengerjaan || 'OPEN',
+    Keterangan_Penerima: String(t.Keterangan_Penerima || '-'),
+    File_Pendukung: String(t.File_Pendukung || '-'),
+    File_Hasil: String(t.File_Hasil || '-'),
+    Aktual_Selesai: String(t.Aktual_Selesai || '-'),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+export async function upsertTicketToCloudFirestore(
+  ticket: Ticket,
+  allTickets: Ticket[],
+  deletedTicketIds: string[] = []
+): Promise<boolean> {
+  try {
+    const docKey = ticket.ID_Tiket.trim();
+    if (!docKey) return false;
+    await Promise.all([
+      setDoc(doc(firestoreDb, 'wbp_tickets', docKey), sanitizeTicketForFirestore(ticket)),
+      setDoc(
+        doc(firestoreDb, 'wbp_meta', 'tickets_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
+          updatedAt: new Date().toISOString(),
+          deletedTicketIds,
+          ticketsJson: JSON.stringify(allTickets)
+        },
+        { merge: true }
+      )
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteTicketFromCloudFirestore(
+  ticketId: string,
+  allTickets: Ticket[],
+  deletedTicketIds: string[]
+): Promise<boolean> {
+  try {
+    const docKey = ticketId.trim();
+    if (!docKey) return false;
+    await Promise.all([
+      deleteDoc(doc(firestoreDb, 'wbp_tickets', docKey)),
+      setDoc(
+        doc(firestoreDb, 'wbp_meta', 'tickets_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
+          updatedAt: new Date().toISOString(),
+          deletedTicketIds,
+          ticketsJson: JSON.stringify(allTickets)
+        },
+        { merge: true }
+      )
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function resetTicketsInCloudFirestore(
+  defaultTickets: Ticket[] = []
+): Promise<boolean> {
+  try {
+    const colSnap = await getDocs(collection(firestoreDb, 'wbp_tickets'));
+    const defaultIds = new Set(defaultTickets.map((t) => t.ID_Tiket));
+    const ops: Promise<unknown>[] = [];
+
+    colSnap.forEach((docSnap) => {
+      if (!defaultIds.has(docSnap.id)) {
+        ops.push(deleteDoc(doc(firestoreDb, 'wbp_tickets', docSnap.id)));
+      }
+    });
+
+    for (const dt of defaultTickets) {
+      ops.push(
+        setDoc(
+          doc(firestoreDb, 'wbp_tickets', dt.ID_Tiket),
+          sanitizeTicketForFirestore(dt)
+        )
+      );
+    }
+
+    ops.push(
+      setDoc(
+        doc(firestoreDb, 'wbp_meta', 'tickets_db'),
+        {
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          cleanEpoch: CLEAN_ZERO_EPOCH,
+          updatedAt: new Date().toISOString(),
+          deletedTicketIds: [],
+          ticketsJson: JSON.stringify(defaultTickets)
+        },
+        { merge: true }
+      )
+    );
+
+    await Promise.all(ops);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchTicketsFromCloudFirestore(): Promise<{
+  tickets: Ticket[];
+  deletedTicketIds: string[];
+} | null> {
+  try {
+    const [metaSnap, colSnap] = await Promise.all([
+      getDoc(doc(firestoreDb, 'wbp_meta', 'tickets_db')),
+      getDocs(collection(firestoreDb, 'wbp_tickets'))
+    ]);
+
+    let deletedTicketIds: string[] = [];
+    let metaTickets: Ticket[] = [];
+
+    if (metaSnap.exists()) {
+      const metaData = metaSnap.data() as {
+        cleanEpoch?: string;
+        deletedTicketIds?: string[];
+        ticketsJson?: string;
+      };
+      if (metaData.cleanEpoch !== CLEAN_ZERO_EPOCH) {
+        await resetTicketsInCloudFirestore([]);
+        return {
+          tickets: [],
+          deletedTicketIds: []
+        };
+      }
+      if (Array.isArray(metaData.deletedTicketIds)) {
+        deletedTicketIds = metaData.deletedTicketIds;
+      }
+      if (typeof metaData.ticketsJson === 'string' && metaData.ticketsJson.trim()) {
+        try {
+          const parsed = JSON.parse(metaData.ticketsJson);
+          if (Array.isArray(parsed)) metaTickets = parsed;
+        } catch {}
+      }
+    }
+
+    const colTickets: Ticket[] = [];
+    colSnap.forEach((docSnap) => {
+      const data = docSnap.data() as unknown as Ticket;
+      if (data && data.ID_Tiket) colTickets.push(data);
+    });
+
+    const deletedSet = new Set(deletedTicketIds);
+    const mergedMap = new Map<string, Ticket>();
+
+    for (const t of [...colTickets, ...metaTickets]) {
+      if (!t || !t.ID_Tiket) continue;
+      if (!deletedSet.has(t.ID_Tiket) && !mergedMap.has(t.ID_Tiket)) {
+        mergedMap.set(t.ID_Tiket, t);
+      }
+    }
+
+    return {
+      tickets: Array.from(mergedMap.values()),
+      deletedTicketIds: Array.from(deletedSet)
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function subscribeCloudFirestoreTickets(
+  onUpdate: (payload: {
+    tickets: Ticket[];
+    deletedTicketIds: string[];
+  }) => void
+): () => void {
+  let latestMetaTickets: Ticket[] = [];
+  let latestDeletedIds: string[] = [];
+  let latestColTickets: Ticket[] = [];
+  let initializedMeta = false;
+  let initializedCol = false;
+
+  const emitCombined = () => {
+    if (!initializedMeta && !initializedCol) return;
+    const deletedSet = new Set(latestDeletedIds);
+    const map = new Map<string, Ticket>();
+    for (const t of [...latestColTickets, ...latestMetaTickets]) {
+      if (!t || !t.ID_Tiket) continue;
+      if (!deletedSet.has(t.ID_Tiket) && !map.has(t.ID_Tiket)) {
+        map.set(t.ID_Tiket, t);
+      }
+    }
+    onUpdate({
+      tickets: Array.from(map.values()),
+      deletedTicketIds: Array.from(deletedSet)
+    });
+  };
+
+  const unsubMeta = onSnapshot(
+    doc(firestoreDb, 'wbp_meta', 'tickets_db'),
+    (snap) => {
+      initializedMeta = true;
+      if (snap.exists()) {
+        const data = snap.data() as {
+          cleanEpoch?: string;
+          deletedTicketIds?: string[];
+          ticketsJson?: string;
+        };
+        if (data.cleanEpoch && data.cleanEpoch !== CLEAN_ZERO_EPOCH) {
+          void resetTicketsInCloudFirestore([]);
+          return;
+        }
+        latestDeletedIds = Array.isArray(data.deletedTicketIds) ? data.deletedTicketIds : [];
+        if (data.ticketsJson) {
+          try {
+            const parsed = JSON.parse(data.ticketsJson);
+            if (Array.isArray(parsed)) latestMetaTickets = parsed;
+          } catch {}
+        } else {
+          latestMetaTickets = [];
+        }
+      } else {
+        latestMetaTickets = [];
+      }
+      emitCombined();
+    }
+  );
+
+  const unsubCol = onSnapshot(
+    collection(firestoreDb, 'wbp_tickets'),
+    (snap) => {
+      initializedCol = true;
+      const list: Ticket[] = [];
+      snap.forEach((d) => {
+        const t = d.data() as unknown as Ticket;
+        if (t && t.ID_Tiket) list.push(t);
+      });
+      latestColTickets = list;
+      emitCombined();
+    }
+  );
+
+  return () => {
+    unsubMeta();
+    unsubCol();
+  };
+}
+

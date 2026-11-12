@@ -33,7 +33,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
   onOpenWhatsApp,
   onSelectTicketDetail
 }) => {
-  // Extract all staff from STRUKTUR_ORG + dynamically registered staff users
+  // Extract all staff from STRUKTUR_ORG + dynamically registered staff users + any staff assigned on tickets
   const allStaff: { name: string; dept: string }[] = [];
   Object.entries(STRUKTUR_ORG).forEach(([dept, data]) => {
     Object.keys(data.Staff).forEach(staffName => {
@@ -50,10 +50,19 @@ export const StaffView: React.FC<StaffViewProps> = ({
         });
       }
     });
+  tickets.forEach(t => {
+    const assigned = (t.Staff_Tujuan || '').trim();
+    if (assigned && assigned !== '-' && !allStaff.some(s => s.name.toLowerCase() === assigned.toLowerCase())) {
+      allStaff.push({
+        name: assigned,
+        dept: t.Departemen_Tujuan || 'Engineering Precast'
+      });
+    }
+  });
 
   const defaultStaffName =
-    session?.userName && allStaff.some(s => s.name === session.userName)
-      ? session.userName
+    session?.userName && allStaff.some(s => s.name.toLowerCase() === session.userName.toLowerCase())
+      ? allStaff.find(s => s.name.toLowerCase() === session.userName.toLowerCase())!.name
       : session?.role === 'staff' && session?.userName
       ? session.userName
       : allStaff[0]?.name || '';
@@ -78,8 +87,10 @@ export const StaffView: React.FC<StaffViewProps> = ({
   const [showDoneNotice, setShowDoneNotice] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
 
-  // Tickets assigned to this staff
-  const myTickets = tickets.filter(t => t.Staff_Tujuan === activeStaff);
+  // Tickets assigned to this staff (case-insensitive match)
+  const myTickets = tickets.filter(
+    t => activeStaff && t.Staff_Tujuan.trim().toLowerCase() === activeStaff.trim().toLowerCase()
+  );
   const myActiveTasks = myTickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan));
   const myCompletedTasks = myTickets.filter(t => t.Status_Pengerjaan === 'CLOSED (Selesai)');
 

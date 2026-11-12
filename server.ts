@@ -95,6 +95,8 @@ interface CentralizedCloudDB {
   updatedAt: string;
   users: ServerUserAccount[];
   deletedUsernames: string[];
+  tickets?: Array<Record<string, unknown>>;
+  deletedTicketIds?: string[];
   gasWebAppUrl?: string;
 }
 
@@ -207,6 +209,8 @@ function readCloudDB(): CentralizedCloudDB {
       updatedAt: parsed.updatedAt || new Date().toISOString(),
       users,
       deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
+      tickets: Array.isArray(parsed.tickets) ? parsed.tickets : [],
+      deletedTicketIds: Array.isArray(parsed.deletedTicketIds) ? parsed.deletedTicketIds : [],
       gasWebAppUrl: normalizeServerGasUrl(parsed.gasWebAppUrl)
     };
   } catch (err) {
@@ -216,6 +220,8 @@ function readCloudDB(): CentralizedCloudDB {
       updatedAt: new Date().toISOString(),
       users: INITIAL_USERS,
       deletedUsernames: [],
+      tickets: [],
+      deletedTicketIds: [],
       gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL
     };
   }
@@ -1045,6 +1051,100 @@ async function startServer() {
       ok: true,
       gasWebAppUrl: finalDB.gasWebAppUrl,
       users: finalDB.users
+    });
+  });
+
+  // ==================== CENTRALIZED CLOUD TICKET DATABASE API ====================
+
+  app.get('/api/tickets', (_req, res) => {
+    const db = readCloudDB();
+    res.json({
+      ok: true,
+      folderId: GOOGLE_DRIVE_FOLDER_ID,
+      updatedAt: db.updatedAt,
+      tickets: Array.isArray(db.tickets) ? db.tickets : [],
+      deletedTicketIds: Array.isArray(db.deletedTicketIds) ? db.deletedTicketIds : []
+    });
+  });
+
+  app.post('/api/tickets', (req, res) => {
+    const body = req.body as {
+      ticket?: Record<string, unknown>;
+      tickets?: Array<Record<string, unknown>>;
+      deletedTicketIds?: string[];
+    };
+    const db = readCloudDB();
+    const currentTickets = Array.isArray(db.tickets) ? db.tickets : [];
+    const currentDeleted = Array.isArray(db.deletedTicketIds) ? db.deletedTicketIds : [];
+
+    const incomingTicket = body?.ticket;
+    const incomingList = Array.isArray(body?.tickets) ? body.tickets : [];
+    const deletedSet = new Set(
+      Array.isArray(body?.deletedTicketIds) ? body.deletedTicketIds : currentDeleted
+    );
+
+    if (incomingTicket && typeof incomingTicket.ID_Tiket === 'string') {
+      deletedSet.delete(incomingTicket.ID_Tiket);
+    }
+
+    const map = new Map<string, Record<string, unknown>>();
+    if (incomingTicket && typeof incomingTicket.ID_Tiket === 'string') {
+      map.set(incomingTicket.ID_Tiket, incomingTicket);
+    }
+    for (const t of [...incomingList, ...currentTickets]) {
+      if (t && typeof t.ID_Tiket === 'string' && !deletedSet.has(t.ID_Tiket)) {
+        if (!map.has(t.ID_Tiket)) {
+          map.set(t.ID_Tiket, t);
+        }
+      }
+    }
+
+    const updatedDB = writeCloudDB({
+      ...db,
+      tickets: Array.from(map.values()),
+      deletedTicketIds: Array.from(deletedSet)
+    });
+
+    res.json({
+      ok: true,
+      tickets: updatedDB.tickets || [],
+      deletedTicketIds: updatedDB.deletedTicketIds || []
+    });
+  });
+
+  app.delete('/api/tickets/:id', (req, res) => {
+    const ticketId = req.params.id;
+    const db = readCloudDB();
+    const currentTickets = Array.isArray(db.tickets) ? db.tickets : [];
+    const currentDeleted = Array.isArray(db.deletedTicketIds) ? db.deletedTicketIds : [];
+
+    const updatedTickets = currentTickets.filter((t) => t.ID_Tiket !== ticketId);
+    const updatedDeleted = Array.from(new Set([...currentDeleted, ticketId]));
+
+    const updatedDB = writeCloudDB({
+      ...db,
+      tickets: updatedTickets,
+      deletedTicketIds: updatedDeleted
+    });
+
+    res.json({
+      ok: true,
+      tickets: updatedDB.tickets || [],
+      deletedTicketIds: updatedDB.deletedTicketIds || []
+    });
+  });
+
+  app.post('/api/tickets/reset', (_req, res) => {
+    const db = readCloudDB();
+    const updatedDB = writeCloudDB({
+      ...db,
+      tickets: [],
+      deletedTicketIds: []
+    });
+    res.json({
+      ok: true,
+      tickets: updatedDB.tickets || [],
+      deletedTicketIds: []
     });
   });
 

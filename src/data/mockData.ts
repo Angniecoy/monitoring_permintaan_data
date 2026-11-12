@@ -17,7 +17,12 @@ import {
   fetchUsersFromCloudFirestore,
   subscribeCloudFirestoreUsers,
   pushUsersToGasEndpoint,
-  pullUsersFromGasEndpoint
+  pullUsersFromGasEndpoint,
+  upsertTicketToCloudFirestore,
+  deleteTicketFromCloudFirestore,
+  resetTicketsInCloudFirestore,
+  fetchTicketsFromCloudFirestore,
+  subscribeCloudFirestoreTickets
 } from '../services/googleDrive';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -67,6 +72,8 @@ export const STRUKTUR_ORG: Record<DepartmentName, DepartmentStructure> = {
 export const INITIAL_TICKETS: Ticket[] = [];
 
 const STORAGE_KEY = 'wbp_sim_teknis_tickets_v2_zero';
+export const TICKETS_STORAGE_KEY = STORAGE_KEY;
+export const TICKETS_SYNC_EVENT = 'wbp_tickets_updated';
 const CLEAN_INIT_KEY = 'wbp_clean_zero_v2';
 export const USERS_STORAGE_KEY = 'wbp_cloud_users_sync_event';
 
@@ -84,6 +91,7 @@ try {
         window.indexedDB.deleteDatabase('wbp_sim_file_storage');
       }
       void resetUsersInCloudFirestore([]);
+      void resetTicketsInCloudFirestore([]);
       void pushUsersToGasEndpoint({
         gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL,
         action: 'resetUsers',
@@ -100,6 +108,10 @@ try {
 let cloudUsersMemoryStore: UserAccount[] = [...INITIAL_USERS];
 let cloudDeletedUsernamesStore: string[] = [];
 let cloudGasWebAppUrlStore = DEFAULT_GAS_WEB_APP_URL;
+
+// In-memory runtime cache for tickets synchronized with localStorage + Cloud Firestore + /api/tickets
+let cloudDeletedTicketIdsStore: string[] = [];
+const recentLocalTicketMutations = new Map<string, { ticket: Ticket; expiresAt: number }>();
 
 // Protects newly registered/updated users against stale in-flight poll overwrites for 45 seconds
 const recentLocalUserMutations = new Map<string, { user: UserAccount; expiresAt: number }>();
@@ -257,6 +269,49 @@ function doPost(e) {
   })).setMimeType(ContentService.MimeType.JSON);
 }`;
 
+export function getDeletedTicketIds(): string[] {
+  return [...cloudDeletedTicketIdsStore];
+}
+
+export function saveDeletedTicketIds(ticketIds: string[]): void {
+  cloudDeletedTicketIdsStore = Array.from(new Set(ticketIds.filter(Boolean)));
+}
+
+function mergeTicketsWithRecentMutations(
+  incomingTickets: Ticket[],
+  deletedIds: string[] = []
+): Ticket[] {
+  const now = Date.now();
+  for (const [k, v] of recentLocalTicketMutations.entries()) {
+    if (v.expiresAt <= now) {
+      recentLocalTicketMutations.delete(k);
+    }
+  }
+
+  const deletedSet = new Set(deletedIds);
+  const map = new Map<string, Ticket>();
+
+  // 1. Recent local ticket creations/updates take highest priority
+  for (const [k, v] of recentLocalTicketMutations.entries()) {
+    if (!deletedSet.has(k)) {
+      map.set(k, v.ticket);
+    }
+  }
+
+  // 2. Incoming cloud / storage tickets
+  for (const t of incomingTickets) {
+    if (!t || !t.ID_Tiket) continue;
+    if (deletedSet.has(t.ID_Tiket)) continue;
+    if (!map.has(t.ID_Tiket)) {
+      map.set(t.ID_Tiket, t);
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    b.ID_Tiket.localeCompare(a.ID_Tiket)
+  );
+}
+
 export function getStoredTickets(): Ticket[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -265,19 +320,164 @@ export function getStoredTickets(): Ticket[] {
       return INITIAL_TICKETS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : INITIAL_TICKETS;
+    const list: Ticket[] = Array.isArray(parsed) ? parsed : INITIAL_TICKETS;
+    return mergeTicketsWithRecentMutations(list, getDeletedTicketIds());
   } catch (err) {
     console.error('Failed reading tickets from localStorage:', err);
     return INITIAL_TICKETS;
   }
 }
 
-export function saveStoredTickets(tickets: Ticket[]): void {
+export function saveStoredTickets(tickets: Ticket[], notifyEvent = true): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    const ordered = mergeTicketsWithRecentMutations(tickets, getDeletedTicketIds());
+    const prevRaw = localStorage.getItem(STORAGE_KEY);
+    const nextRaw = JSON.stringify(ordered);
+    if (prevRaw !== nextRaw) {
+      localStorage.setItem(STORAGE_KEY, nextRaw);
+    }
+    if (notifyEvent && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(TICKETS_SYNC_EVENT));
+    }
   } catch (err) {
     console.error('Failed saving tickets to localStorage:', err);
   }
+}
+
+export function addStoredTicket(newTicket: Ticket): Ticket[] {
+  const current = getStoredTickets();
+  recentLocalTicketMutations.set(newTicket.ID_Tiket, {
+    ticket: newTicket,
+    expiresAt: Date.now() + 45000
+  });
+  const withoutDup = current.filter((t) => t.ID_Tiket !== newTicket.ID_Tiket);
+  const updatedDeleted = getDeletedTicketIds().filter((id) => id !== newTicket.ID_Tiket);
+  saveDeletedTicketIds(updatedDeleted);
+
+  const updatedList = [newTicket, ...withoutDup];
+  saveStoredTickets(updatedList, true);
+
+  // 1. Persist immediately to Cloud Firestore so Manager view on any tab/browser/device receives it in real time
+  void upsertTicketToCloudFirestore(newTicket, updatedList, updatedDeleted);
+
+  // 2. Persist to Express backend (/api/tickets)
+  void buildAuthHeaders().then((headers) =>
+    fetch('/api/tickets', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ticket: newTicket, tickets: updatedList, deletedTicketIds: updatedDeleted })
+    }).catch(() => {})
+  );
+
+  // 3. Sync with Google Drive if connected
+  void syncTicketsWithDriveFolder(updatedList, false);
+
+  return updatedList;
+}
+
+export function updateStoredTicket(updatedTicket: Ticket): Ticket[] {
+  const current = getStoredTickets();
+  recentLocalTicketMutations.set(updatedTicket.ID_Tiket, {
+    ticket: updatedTicket,
+    expiresAt: Date.now() + 45000
+  });
+  const exists = current.some((t) => t.ID_Tiket === updatedTicket.ID_Tiket);
+  const updatedList = exists
+    ? current.map((t) => (t.ID_Tiket === updatedTicket.ID_Tiket ? updatedTicket : t))
+    : [updatedTicket, ...current];
+  saveStoredTickets(updatedList, true);
+
+  const currentDeleted = getDeletedTicketIds();
+
+  // 1. Persist update to Cloud Firestore
+  void upsertTicketToCloudFirestore(updatedTicket, updatedList, currentDeleted);
+
+  // 2. Persist update to Express backend (/api/tickets)
+  void buildAuthHeaders().then((headers) =>
+    fetch('/api/tickets', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ticket: updatedTicket, tickets: updatedList, deletedTicketIds: currentDeleted })
+    }).catch(() => {})
+  );
+
+  // 3. Sync with Google Drive if connected
+  void syncTicketsWithDriveFolder(updatedList, false);
+
+  return updatedList;
+}
+
+export function deleteStoredTicket(ticketId: string): Ticket[] {
+  const current = getStoredTickets();
+  recentLocalTicketMutations.delete(ticketId);
+  const updatedList = current.filter((t) => t.ID_Tiket !== ticketId);
+  const updatedDeleted = Array.from(new Set([...getDeletedTicketIds(), ticketId]));
+  saveDeletedTicketIds(updatedDeleted);
+  saveStoredTickets(updatedList, true);
+
+  // 1. Delete from Cloud Firestore
+  void deleteTicketFromCloudFirestore(ticketId, updatedList, updatedDeleted);
+
+  // 2. Delete from Express backend
+  void buildAuthHeaders().then((headers) =>
+    fetch(`/api/tickets/${encodeURIComponent(ticketId)}`, {
+      method: 'DELETE',
+      headers
+    }).catch(() => {})
+  );
+
+  // 3. Overwrite in Google Drive if connected
+  void syncTicketsWithDriveFolder(updatedList, true);
+
+  return updatedList;
+}
+
+export async function fetchCloudTickets(): Promise<Ticket[]> {
+  let firestoreTickets: Ticket[] = [];
+  let firestoreDeleted: string[] = [];
+  let serverTickets: Ticket[] = [];
+  let serverDeleted: string[] = [];
+
+  // 1. Fetch from shared Cloud Firestore
+  try {
+    const fsData = await fetchTicketsFromCloudFirestore();
+    if (fsData) {
+      firestoreTickets = fsData.tickets;
+      firestoreDeleted = fsData.deletedTicketIds;
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Fetch from Express backend (/api/tickets)
+  try {
+    const headers = await buildAuthHeaders();
+    const res = await fetch('/api/tickets', { method: 'GET', headers });
+    const ct = res.headers.get('content-type') || '';
+    if (res.ok && ct.includes('application/json')) {
+      const data = await res.json();
+      if (Array.isArray(data.tickets)) serverTickets = data.tickets;
+      if (Array.isArray(data.deletedTicketIds)) serverDeleted = data.deletedTicketIds;
+    }
+  } catch {
+    // ignore
+  }
+
+  const localTickets = getStoredTickets();
+  const combinedDeleted = Array.from(
+    new Set([...getDeletedTicketIds(), ...firestoreDeleted, ...serverDeleted])
+  );
+  saveDeletedTicketIds(combinedDeleted);
+
+  const merged = mergeTicketsWithRecentMutations(
+    [...firestoreTickets, ...serverTickets, ...localTickets],
+    combinedDeleted
+  );
+
+  if (JSON.stringify(merged) !== JSON.stringify(localTickets)) {
+    saveStoredTickets(merged, true);
+  }
+  return merged;
 }
 
 export function resetToDefaultTickets(): Ticket[] {
@@ -289,20 +489,32 @@ export function resetToDefaultTickets(): Ticket[] {
     console.error('Failed resetting localStorage:', err);
   }
   recentLocalUserMutations.clear();
+  recentLocalTicketMutations.clear();
   mirroredToDriveUsernames.clear();
   saveDeletedUsernames([]);
+  saveDeletedTicketIds([]);
   saveStoredUsers(INITIAL_USERS);
+  saveStoredTickets(INITIAL_TICKETS, true);
+
+  void resetTicketsInCloudFirestore(INITIAL_TICKETS);
+  void buildAuthHeaders().then((headers) =>
+    fetch('/api/tickets/reset', { method: 'POST', headers }).catch(() => {})
+  );
   return INITIAL_TICKETS;
 }
 
 export async function pullAndMergeTicketsFromDrive(): Promise<Ticket[]> {
-  const local = getStoredTickets();
-  const merged = await syncTicketsWithDriveFolder(local, false);
+  const cloud = await fetchCloudTickets();
+  const merged = await syncTicketsWithDriveFolder(cloud, false);
   if (merged && merged.length > 0) {
-    saveStoredTickets(merged);
-    return merged;
+    const finalMerged = mergeTicketsWithRecentMutations(merged, getDeletedTicketIds());
+    saveStoredTickets(finalMerged, true);
+    for (const t of finalMerged) {
+      void upsertTicketToCloudFirestore(t, finalMerged, getDeletedTicketIds());
+    }
+    return finalMerged;
   }
-  return local;
+  return cloud;
 }
 
 function normalizeUserAccount(u: Partial<UserAccount>, index: number): UserAccount {
@@ -473,6 +685,19 @@ if (typeof window !== 'undefined') {
         }
       }
     });
+  });
+
+  // Real-time Cloud Firestore listener for Tickets so new OPEN tickets from Pemberi Tugas immediately appear in Manager view
+  subscribeCloudFirestoreTickets((payload) => {
+    saveDeletedTicketIds(payload.deletedTicketIds);
+    const localCurrent = getStoredTickets();
+    const merged = mergeTicketsWithRecentMutations(
+      [...payload.tickets, ...localCurrent],
+      payload.deletedTicketIds
+    );
+    if (JSON.stringify(merged) !== JSON.stringify(localCurrent)) {
+      saveStoredTickets(merged, true);
+    }
   });
 }
 
