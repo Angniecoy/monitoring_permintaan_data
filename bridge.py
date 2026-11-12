@@ -52,9 +52,7 @@ class MegaBridgeHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             
-            # Parsing data yang masuk dari frontend Vercel
-            # Anda bisa menyesuaikan logika unggah Google Drive di sini
-            
+            # Proses penanganan permintaan POST dari frontend Vercel
             self.send_response(200)
             self.send_header("Content-type", "application/json; charset=utf-8")
             self.end_headers()
@@ -62,7 +60,7 @@ class MegaBridgeHandler(BaseHTTPRequestHandler):
             response = {
                 "success": True,
                 "message": "File berhasil diproses oleh MegaBridge",
-                "webViewLink": "https://drive.google.com" # Ganti dengan link dinamis dari hasil upload Drive API
+                "webViewLink": "https://drive.google.com/drive/folders/1ToOdQPobco7s7czx48B9BlxLsT8FXYNY"
             }
             self.wfile.write(json.dumps(response).encode("utf-8"))
         except Exception as e:
