@@ -797,44 +797,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* ==================== TAB 2: REGISTRASI AKUN BARU ==================== */}
         {activeTab === 'register' && (
           <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
-            <div className="p-3.5 rounded-xl bg-[#282974]/8 border border-[#282974]/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <UserPlus className="w-4 h-4 text-[#282974]" />
-                  <span>Registrasi Akun Pengguna Baru (Tersimpan ke Google Drive)</span>
-                </h3>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  Setiap pendaftaran menulis berkas JSON catatan akun ke Google Drive (Folder ID:{' '}
-                  <a
-                    href={GOOGLE_DRIVE_FOLDER_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono font-semibold text-[#282974] hover:underline"
-                  >
-                    {GOOGLE_DRIVE_FOLDER_ID}
-                  </a>
-                  ) sehingga langsung tampil di panel Kelola User Admin.
-                </p>
-              </div>
-              <div className="shrink-0">
-                {isDriveConnected ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Drive Terhubung</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void handleManualDriveSync()}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-[11px] font-semibold shadow-2xs transition-all cursor-pointer"
-                  >
-                    <Cloud className="w-3.5 h-3.5 text-[#282974]" />
-                    <span>Sign in with Google</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
             {regError && (
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
