@@ -35,24 +35,24 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
 
   const deptConfig = STRUKTUR_ORG[activeDept];
   const dynamicManager = users.find(
-    u => u.role === 'manager' && u.department === activeDept && !u.isDefault
+    u => u.role === 'manager' && (u.department || 'Engineering Precast') === activeDept
   );
   const managerName =
     session?.role === 'manager' && session?.department === activeDept && session?.userName
       ? session.userName
-      : dynamicManager?.fullName || deptConfig.Manager;
+      : dynamicManager?.fullName || deptConfig.Manager || '-';
   const managerWa =
     session?.role === 'manager' && session?.department === activeDept && session?.whatsapp
       ? session.whatsapp
-      : dynamicManager?.whatsapp || deptConfig.WA_Manager;
+      : dynamicManager?.whatsapp || deptConfig.WA_Manager || '';
 
-  // Merge static department staff with dynamically registered staff in this department
+  // Populate department staff strictly from dynamically registered staff in this department
   const combinedStaffMap: Record<string, string> = { ...deptConfig.Staff };
   users
     .filter(u => u.role === 'staff' && (u.department || 'Engineering Precast') === activeDept)
     .forEach(u => {
-      if (!combinedStaffMap[u.fullName]) {
-        combinedStaffMap[u.fullName] = u.whatsapp || '6281200000000';
+      if (u.fullName) {
+        combinedStaffMap[u.fullName] = u.whatsapp || '';
       }
     });
   const staffList = Object.keys(combinedStaffMap);
@@ -76,7 +76,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
     ).length;
     return {
       name: staff,
-      wa: combinedStaffMap[staff] || '6281200000000',
+      wa: combinedStaffMap[staff] || '',
       activeTasks,
       completedTasks
     };
@@ -177,9 +177,9 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               <div className="text-[10px] text-slate-500 uppercase font-semibold">
                 Manager {activeDept}
               </div>
-              <div className="text-sm font-bold text-slate-900">{managerName}</div>
+              <div className="text-sm font-bold text-slate-900">{managerName !== '-' ? managerName : 'Belum Ada Manager'}</div>
               <div className="text-[11px] font-mono text-emerald-700 font-medium">
-                +{managerWa}
+                {managerWa ? `+${managerWa}` : '-'}
               </div>
             </div>
           </div>
@@ -203,30 +203,36 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-            {staffWorkload.map(staff => (
-              <div
-                key={staff.name}
-                className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">{staff.name}</div>
-                  <div className="text-[10px] text-slate-500 font-mono">+{staff.wa.slice(0, 6)}...</div>
+          {staffWorkload.length === 0 ? (
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
+              Belum ada akun Staf Engineering terdaftar pada departemen {activeDept}.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              {staffWorkload.map(staff => (
+                <div
+                  key={staff.name}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between"
+                >
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">{staff.name}</div>
+                    <div className="text-[10px] text-slate-500 font-mono">{staff.wa ? `+${staff.wa.slice(0, 6)}...` : '-'}</div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold tabular-nums ${
+                      staff.activeTasks === 0
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : staff.activeTasks <= 2
+                        ? 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      {staff.activeTasks} Aktif
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold tabular-nums ${
-                    staff.activeTasks === 0
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : staff.activeTasks <= 2
-                      ? 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
-                    {staff.activeTasks} Aktif
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

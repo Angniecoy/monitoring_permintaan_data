@@ -54,9 +54,17 @@ export const StaffView: React.FC<StaffViewProps> = ({
   const defaultStaffName =
     session?.userName && allStaff.some(s => s.name === session.userName)
       ? session.userName
-      : 'Fikri R';
+      : session?.role === 'staff' && session?.userName
+      ? session.userName
+      : allStaff[0]?.name || '';
 
   const [activeStaff, setActiveStaff] = useState<string>(defaultStaffName);
+
+  React.useEffect(() => {
+    if (!activeStaff && defaultStaffName) {
+      setActiveStaff(defaultStaffName);
+    }
+  }, [activeStaff, defaultStaffName]);
   const [activeTab, setActiveTab] = useState<'aktif' | 'selesai' | 'semua'>('aktif');
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
   const [updateStatus, setUpdateStatus] = useState<'PROSES' | 'CLOSED (Selesai)'>('PROSES');

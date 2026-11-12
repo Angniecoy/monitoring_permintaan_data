@@ -48,31 +48,19 @@ export const INITIAL_USERS: UserAccount[] = [];
 
 export const STRUKTUR_ORG: Record<DepartmentName, DepartmentStructure> = {
   "Engineering Precast": {
-    Manager: "Aryo BK",
-    WA_Manager: "628562568659",
-    Staff: {
-      "Fikri R": "6281267044965",
-      "Ikhsan": "6282285299441",
-      "Nisa": "6281267670706"
-    }
+    Manager: "",
+    WA_Manager: "",
+    Staff: {}
   },
   "Engineering Readymix": {
-    Manager: "Choerul SB",
-    WA_Manager: "6285712655659",
-    Staff: {
-      "Fani": "6281321804321",
-      "Rafi": "6281259666040",
-      "Enuh": "6281586000110"
-    }
+    Manager: "",
+    WA_Manager: "",
+    Staff: {}
   },
   "Engineering Konstruksi": {
-    Manager: "Simon",
-    WA_Manager: "628562568659",
-    Staff: {
-      "Ricky": "6282233669400",
-      "Edu": "6287788783536",
-      "Nova": "6285277700763"
-    }
+    Manager: "",
+    WA_Manager: "",
+    Staff: {}
   }
 };
 
@@ -404,12 +392,39 @@ function mergeWithDefaultsAndRecentMutations(
   return orderUsersList(Array.from(map.values()));
 }
 
+function syncStrukturOrgFromUsers(usersList: UserAccount[]): void {
+  const depts: DepartmentName[] = [
+    'Engineering Precast',
+    'Engineering Readymix',
+    'Engineering Konstruksi'
+  ];
+  for (const dept of depts) {
+    const mgr = usersList.find(
+      (u) => u.role === 'manager' && (u.department || 'Engineering Precast') === dept
+    );
+    const staffMap: Record<string, string> = {};
+    usersList
+      .filter((u) => u.role === 'staff' && (u.department || 'Engineering Precast') === dept)
+      .forEach((u) => {
+        if (u.fullName) {
+          staffMap[u.fullName] = u.whatsapp || '';
+        }
+      });
+    STRUKTUR_ORG[dept] = {
+      Manager: mgr?.fullName || '',
+      WA_Manager: mgr?.whatsapp || '',
+      Staff: staffMap
+    };
+  }
+}
+
 export function getStoredUsers(): UserAccount[] {
   return cloudUsersMemoryStore;
 }
 
 export function saveStoredUsers(users: UserAccount[]): void {
   cloudUsersMemoryStore = orderUsersList(users);
+  syncStrukturOrgFromUsers(cloudUsersMemoryStore);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('wbp_users_updated'));
   }

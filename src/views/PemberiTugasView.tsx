@@ -126,8 +126,16 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     if (found) setEditTicketData({ ...found });
   };
 
-  const currentManager = STRUKTUR_ORG[departemenTujuan].Manager;
-  const currentWaManager = STRUKTUR_ORG[departemenTujuan].WA_Manager;
+  const { currentManager, currentWaManager } = useMemo(() => {
+    const accountList = users && users.length > 0 ? users : getStoredUsers();
+    const matchedMgr = accountList.find(
+      u => u.role === 'manager' && (u.department || 'Engineering Precast') === departemenTujuan
+    );
+    return {
+      currentManager: matchedMgr?.fullName || STRUKTUR_ORG[departemenTujuan]?.Manager || '-',
+      currentWaManager: matchedMgr?.whatsapp || STRUKTUR_ORG[departemenTujuan]?.WA_Manager || ''
+    };
+  }, [users, departemenTujuan]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -626,10 +634,10 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   <div className="p-3 bg-[#282974]/8 border border-[#282974]/25 rounded-xl flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 text-[#282974]">
                       <User className="w-4 h-4" />
-                      <span>Manager Penerima: <strong>{currentManager}</strong></span>
+                      <span>Manager Penerima: <strong>{currentManager !== '-' ? currentManager : 'Belum Terdaftar'}</strong></span>
                     </div>
                     <span className="text-slate-600 font-mono text-[11px] font-medium">
-                      WA: +{currentWaManager}
+                      WA: {currentWaManager ? `+${currentWaManager}` : '-'}
                     </span>
                   </div>
 

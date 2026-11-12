@@ -4,7 +4,7 @@ import {
   Layers, Users, Calendar, ArrowUpRight, Filter, Download
 } from 'lucide-react';
 import { DepartmentName, Ticket } from '../types';
-import { STRUKTUR_ORG } from '../data/mockData';
+import { STRUKTUR_ORG, getStoredUsers } from '../data/mockData';
 
 interface DashboardViewProps {
   tickets: Ticket[];
@@ -39,17 +39,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
 
   // Chart data: Group by week (Mingguan)
   const weeklyData = [
-    { label: 'Minggu 1', count: Math.max(1, Math.round(totalCount * 0.15)) },
-    { label: 'Minggu 2', count: Math.max(2, Math.round(totalCount * 0.25)) },
-    { label: 'Minggu 3', count: Math.max(3, Math.round(totalCount * 0.35)) },
-    { label: 'Minggu 4 (Aktif)', count: Math.max(2, Math.round(totalCount * 0.25)) },
+    { label: 'Minggu 1', count: Math.max(0, Math.round(totalCount * 0.15)) },
+    { label: 'Minggu 2', count: Math.max(0, Math.round(totalCount * 0.25)) },
+    { label: 'Minggu 3', count: Math.max(0, Math.round(totalCount * 0.35)) },
+    { label: 'Minggu 4 (Aktif)', count: Math.max(0, Math.round(totalCount * 0.25)) },
   ];
   const weeklyMax = Math.max(...weeklyData.map(w => w.count), 1);
 
   // Chart data: Group by month (Bulanan)
   const monthlyData = [
-    { label: 'Agustus 2026', count: 12 },
-    { label: 'September 2026', count: 18 },
+    { label: 'Agustus 2026', count: 0 },
+    { label: 'September 2026', count: 0 },
     { label: 'Oktober 2026 (Berjalan)', count: totalCount },
   ];
   const monthlyMax = Math.max(...monthlyData.map(m => m.count), 1);
@@ -61,15 +61,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
     return { dept, count, percentage };
   });
 
-  // Staff Workload breakdown
+  // Staff Workload breakdown (populated dynamically from inputted staff users)
   const staffLoadList: { name: string; dept: string; active: number; closed: number }[] = [];
+  const seenStaff = new Set<string>();
   Object.entries(STRUKTUR_ORG).forEach(([dept, data]) => {
     Object.keys(data.Staff).forEach(staffName => {
-      const active = tickets.filter(t => t.Staff_Tujuan === staffName && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
-      const closed = tickets.filter(t => t.Staff_Tujuan === staffName && t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
-      staffLoadList.push({ name: staffName, dept, active, closed });
+      if (!seenStaff.has(staffName.toLowerCase())) {
+        seenStaff.add(staffName.toLowerCase());
+        const active = tickets.filter(t => t.Staff_Tujuan === staffName && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
+        const closed = tickets.filter(t => t.Staff_Tujuan === staffName && t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
+        staffLoadList.push({ name: staffName, dept, active, closed });
+      }
     });
   });
+  getStoredUsers()
+    .filter(u => u.role === 'staff' && u.fullName)
+    .forEach(u => {
+      if (!seenStaff.has(u.fullName.toLowerCase())) {
+        seenStaff.add(u.fullName.toLowerCase());
+        const dept = u.department || 'Engineering Precast';
+        const active = tickets.filter(t => t.Staff_Tujuan === u.fullName && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
+        const closed = tickets.filter(t => t.Staff_Tujuan === u.fullName && t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
+        staffLoadList.push({ name: u.fullName, dept, active, closed });
+      }
+    });
 
   // Document types breakdown
   const docTypes = [
