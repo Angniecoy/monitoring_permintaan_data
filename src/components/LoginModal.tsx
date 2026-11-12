@@ -552,7 +552,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* Centered Translucent White Main Box with High-Contrast Shadow */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 w-full max-w-2xl bg-white/92 backdrop-blur-md border border-white/80 rounded-2xl shadow-[0_25px_70px_-12px_rgba(15,23,42,0.65)] ring-1 ring-slate-900/10 overflow-hidden mt-1.5 sm:my-auto"
+        className={`relative z-10 w-full ${
+          activeTab === 'manage' ? 'max-w-4xl' : 'max-w-2xl'
+        } bg-white/92 backdrop-blur-md border border-white/80 rounded-2xl shadow-[0_25px_70px_-12px_rgba(15,23,42,0.65)] ring-1 ring-slate-900/10 overflow-hidden mt-1.5 sm:my-auto transition-all duration-200`}
       >
         {/* Brand Header */}
         <div className="px-4 pt-3.5 pb-3 sm:px-6 sm:pt-5 sm:pb-4 bg-gradient-to-b from-white/95 to-slate-50/90 border-b border-slate-200/90">
@@ -959,148 +961,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* ==================== TAB 3: MANAJEMEN DAFTAR USER (PROTECTED: ADMIN ONLY) ==================== */}
         {activeTab === 'manage' && canClose && isAdmin && (
-          <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-[#282974]" />
-                    <span>Manajemen Daftar User ({effectiveUsers.length} Akun)</span>
-                  </span>
-                  {customUsersCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                      {customUsersCount} Pendaftaran Baru Tersimpan
-                    </span>
-                  )}
-                </h3>
-                <p className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap mt-0.5">
-                  <span>Basis Data Google Drive Folder ID:</span>
-                  <a
-                    href={GOOGLE_DRIVE_FOLDER_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono font-semibold text-[#282974] hover:underline"
-                  >
-                    <span>{GOOGLE_DRIVE_FOLDER_ID}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                  {driveSyncState.lastSyncedAt && (
-                    <span className="text-[10px] text-emerald-700 font-semibold">
-                      • Disinkronkan {driveSyncState.lastSyncedAt}
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => void handleManualDriveSync()}
-                  disabled={isPullingDrive || driveSyncState.isSyncing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs transition-colors cursor-pointer disabled:opacity-60"
-                  title="Tarik catatan JSON user terbaru dari Google Drive Folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF"
-                >
-                  <RefreshCw
-                    className={`w-3.5 h-3.5 text-emerald-700 ${
-                      isPullingDrive || driveSyncState.isSyncing ? 'animate-spin' : ''
-                    }`}
-                  />
-                  <span>
-                    {isDriveConnected ? 'Tarik Data Drive' : 'Hubungkan & Tarik Drive'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowGasConfig(!showGasConfig)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 border border-[#282974]/25 transition-colors cursor-pointer"
-                  title="Konfigurasi Google Apps Script Web App / Cloud JSON"
-                >
-                  <Cloud className="w-3.5 h-3.5" />
-                  <span>Apps Script / Cloud</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('register')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shadow-2xs transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>+ Tambah User</span>
-                </button>
-                {onResetUsers && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        'Apakah Anda yakin ingin mengembalikan daftar user ke pengaturan default dan memperbarui wbp_users_database.json di Cloud & Google Drive?'
-                      );
-                      if (!confirmed) return;
-                      onResetUsers();
-                      setPersistedUsers(getStoredUsers());
-                      setManageNotice('Daftar user dikembalikan ke pengaturan default.');
-                      setTimeout(() => setManageNotice(''), 3000);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
-                    title="Reset daftar user ke default"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset Default</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Expandable Panel: Google Apps Script & Cloud JSON Bridge (Folder ID: 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF) */}
-            {showGasConfig && (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <Cloud className="w-4 h-4 text-[#282974]" />
-                    <span>
-                      Backend Cloud JSON Terpusat & Google Apps Script (Folder ID: {GOOGLE_DRIVE_FOLDER_ID})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowGasConfig(false)}
-                    className="text-slate-400 hover:text-slate-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Endpoint <strong>Google Apps Script Web App</strong> aktif dan terhubung langsung ke <strong>Google Drive Folder `{GOOGLE_DRIVE_FOLDER_ID}`</strong> serta <strong>Cloud Database Terpusat</strong> untuk penyimpanan, pendaftaran, dan sinkronisasi data user secara real-time:
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="url"
-                    value={gasUrlInput}
-                    onChange={(e) => setGasUrlInput(e.target.value)}
-                    placeholder={DEFAULT_GAS_WEB_APP_URL}
-                    className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:border-[#282974]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveGasConfig()}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shrink-0 cursor-pointer"
-                  >
-                    Simpan & Sinkronkan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(GAS_BACKEND_SCRIPT_TEMPLATE);
-                      setCopiedGasScript(true);
-                      setTimeout(() => setCopiedGasScript(false), 3000);
-                    }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 shrink-0 cursor-pointer inline-flex items-center gap-1"
-                  >
-                    {copiedGasScript ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : null}
-                    <span>{copiedGasScript ? 'Kode Code.gs Disalin!' : 'Salin Kode Code.gs'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="p-4 sm:p-5 space-y-3.5 max-h-[78vh] overflow-y-auto overflow-x-hidden">
 
             {manageNotice && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
@@ -1229,9 +1090,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </form>
             )}
 
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
+            {/* Filter, Search & Quick Action Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
                 <input
                   type="text"
@@ -1241,36 +1102,68 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:bg-white"
                 />
               </div>
-              <select
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value as 'ALL' | UserRole)}
-                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-[#282974]"
-              >
-                <option value="ALL">Semua Peran ({effectiveUsers.length})</option>
-                <option value="pemberi_tugas">Pemberi Tugas / Sales</option>
-                <option value="manager">Manager Engineering</option>
-                <option value="staff">Staff Engineering</option>
-                <option value="dashboard">Dashboard & Analitik</option>
-              </select>
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value as 'ALL' | UserRole)}
+                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-[#282974]"
+                >
+                  <option value="ALL">Semua Peran ({effectiveUsers.length})</option>
+                  <option value="pemberi_tugas">Pemberi Tugas / Sales</option>
+                  <option value="manager">Manager Engineering</option>
+                  <option value="staff">Staff Engineering</option>
+                  <option value="dashboard">Dashboard & Analitik</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('register')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shadow-2xs transition-colors shrink-0 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Tambah User</span>
+                </button>
+
+                {onResetUsers && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        'Apakah Anda yakin ingin mengembalikan daftar user ke pengaturan default?'
+                      );
+                      if (!confirmed) return;
+                      onResetUsers();
+                      setPersistedUsers(getStoredUsers());
+                      setManageNotice('Daftar user dikembalikan ke pengaturan default.');
+                      setTimeout(() => setManageNotice(''), 3000);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors shrink-0 cursor-pointer"
+                    title="Reset daftar user ke default"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span className="hidden md:inline">Reset</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Real-Time Registered Users Management Table */}
             <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-              <div className="max-h-[340px] overflow-y-auto overflow-x-auto">
+              <div className="max-h-[380px] overflow-y-auto overflow-x-auto">
                 {filteredUsers.length === 0 ? (
                   <div className="p-8 text-center bg-slate-50 text-xs text-slate-500">
                     Tidak ada akun pengguna yang sesuai dengan pencarian.
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-left text-xs border-collapse table-auto">
                     <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0 z-10">
                       <tr>
-                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Nama Lengkap</th>
-                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Username</th>
-                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Password</th>
-                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Peran (Role)</th>
-                        <th className="px-3 py-2.5 font-semibold whitespace-nowrap">No. WhatsApp</th>
-                        <th className="px-3 py-2.5 font-semibold text-right whitespace-nowrap">Aksi</th>
+                        <th className="px-2.5 py-2 font-semibold">Nama Lengkap</th>
+                        <th className="px-2 py-2 font-semibold">Username</th>
+                        <th className="px-2 py-2 font-semibold">Password</th>
+                        <th className="px-2 py-2 font-semibold">Peran (Role)</th>
+                        <th className="px-2 py-2 font-semibold">No. WhatsApp</th>
+                        <th className="px-2.5 py-2 font-semibold text-right">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -1287,33 +1180,33 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 : 'hover:bg-slate-50/90'
                             }`}
                           >
-                            <td className="px-3 py-2.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-[#282974]/8 border border-[#282974]/25 text-[#282974] font-bold text-[10px] flex items-center justify-center shrink-0">
+                            <td className="px-2.5 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-lg bg-[#282974]/8 border border-[#282974]/25 text-[#282974] font-bold text-[10px] flex items-center justify-center shrink-0">
                                   {u.fullName.slice(0, 2).toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                    <span className="truncate max-w-[140px]">{u.fullName}</span>
+                                  <div className="font-bold text-slate-900 flex items-center gap-1 leading-tight">
+                                    <span className="truncate max-w-[150px] sm:max-w-[180px]">{u.fullName}</span>
                                     {!u.isDefault && (
-                                      <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 text-[9px] font-bold uppercase shrink-0">
+                                      <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 text-[9px] font-bold uppercase shrink-0">
                                         Baru
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[10px] text-slate-400 font-mono">
+                                  <div className="text-[10px] text-slate-400 font-mono leading-tight mt-0.5">
                                     {u.createdAt}
                                   </div>
                                 </div>
                               </div>
                             </td>
 
-                            <td className="px-3 py-2.5 font-mono font-semibold text-[#282974] whitespace-nowrap">
+                            <td className="px-2 py-2 font-mono font-semibold text-[#282974] text-[11px] whitespace-nowrap">
                               @{u.username}
                             </td>
 
-                            <td className="px-3 py-2.5 font-mono whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                            <td className="px-2 py-2 font-mono whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
                                 <span className="text-slate-900 font-semibold text-[11px]">
                                   {isPassShown ? u.password : '••••••'}
                                 </span>
@@ -1330,24 +1223,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                               </div>
                             </td>
 
-                            <td className="px-3 py-2.5 whitespace-nowrap">
+                            <td className="px-2 py-2">
                               <div className="flex flex-col gap-0.5">
-                                <span className={`inline-flex w-fit px-2 py-0.5 rounded-md text-[10px] font-semibold border ${roleMeta?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                <span className={`inline-flex w-fit px-1.5 py-0.5 rounded-md text-[10px] font-semibold border whitespace-nowrap ${roleMeta?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                   {roleMeta?.shortTitle || u.roleName}
                                 </span>
                                 {u.department && (
-                                  <span className="text-[10px] text-slate-500 font-medium">
+                                  <span className="text-[10px] text-slate-500 font-medium leading-tight">
                                     {u.department}
                                   </span>
                                 )}
                               </div>
                             </td>
 
-                            <td className="px-3 py-2.5 font-mono text-[11px] text-emerald-700 font-semibold whitespace-nowrap">
+                            <td className="px-2 py-2 font-mono text-[11px] text-emerald-700 font-semibold whitespace-nowrap">
                               {u.whatsapp ? `+${u.whatsapp}` : '-'}
                             </td>
 
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                            <td className="px-2.5 py-2 text-right whitespace-nowrap">
                               <div className="inline-flex items-center justify-end gap-1">
                                 <button
                                   type="button"
@@ -1357,7 +1250,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                     setErrorMsg('');
                                     setActiveTab('login');
                                   }}
-                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974] hover:text-white border border-[#282974]/25 transition-colors inline-flex items-center gap-1"
+                                  className="px-2 py-1 rounded-lg text-[10px] font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974] hover:text-white border border-[#282974]/25 transition-colors inline-flex items-center gap-1 cursor-pointer"
                                   title="Isi ke form login"
                                 >
                                   <LogIn className="w-3 h-3" />
@@ -1370,7 +1263,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                     setEditingUser({ ...u });
                                     setEditError('');
                                   }}
-                                  className="p-1.5 rounded-lg text-slate-600 hover:text-[#282974] hover:bg-slate-100 border border-slate-200 transition-colors"
+                                  className="p-1 rounded-lg text-slate-600 hover:text-[#282974] hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                                   title="Edit User"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
@@ -1381,17 +1274,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                     type="button"
                                     onClick={() => {
                                       const confirmed = window.confirm(
-                                        `Apakah Anda yakin ingin menghapus akun "${u.fullName}" (@${u.username}) dari aplikasi dan Google Drive?`
+                                        `Apakah Anda yakin ingin menghapus akun "${u.fullName}" (@${u.username})?`
                                       );
                                       if (!confirmed) return;
                                       onDeleteUser(u.id);
                                       setPersistedUsers(getStoredUsers());
                                       setManageNotice(
-                                        `Akun "${u.fullName}" telah dihapus secara permanen dari aplikasi & Google Drive.`
+                                        `Akun "${u.fullName}" telah dihapus secara permanen.`
                                       );
                                       setTimeout(() => setManageNotice(''), 3000);
                                     }}
-                                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors"
+                                    className="p-1 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
                                     title="Hapus User"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
