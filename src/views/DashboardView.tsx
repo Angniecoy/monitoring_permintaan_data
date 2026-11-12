@@ -95,14 +95,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
+        <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Eksekutif & Analitik
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-0.5">
             Dashboard Workload & Analitik Dokumen Teknis
           </h1>
           <p className="text-xs text-slate-600 mt-1">
@@ -111,12 +111,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         </div>
 
         {/* Filter Department */}
-        <div className="flex items-center gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 shrink-0">
-          <Filter className="w-3.5 h-3.5 text-slate-500 ml-2" />
+        <div className="w-full md:w-auto flex items-center gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 min-w-0 shrink-0">
+          <Filter className="w-3.5 h-3.5 text-slate-500 ml-2 shrink-0" />
           <select
             value={filterDept}
             onChange={(e) => setFilterDept(e.target.value)}
-            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none"
+            className="flex-1 md:flex-initial min-w-0 truncate px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none"
           >
             <option value="all">Semua Departemen (Global)</option>
             <option value="Engineering Precast">Engineering Precast</option>
@@ -194,11 +194,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
       </div>
 
       {/* Interactive Trends Chart Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6 pb-4 border-b border-slate-200">
           <div>
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-[#282974]" />
+              <BarChart3 className="w-4 h-4 text-[#282974] shrink-0" />
               <span>Tren Volume Permintaan Dokumen</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -206,11 +206,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
             </p>
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 self-start sm:self-auto">
+          <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setTimePeriod('harian')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors text-center truncate ${
                 timePeriod === 'harian' ? 'bg-[#282974] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -219,7 +219,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
             <button
               type="button"
               onClick={() => setTimePeriod('mingguan')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors text-center truncate ${
                 timePeriod === 'mingguan' ? 'bg-[#282974] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -228,7 +228,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
             <button
               type="button"
               onClick={() => setTimePeriod('bulanan')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors text-center truncate ${
                 timePeriod === 'bulanan' ? 'bg-[#282974] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -241,20 +241,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         <div className="pt-2">
           {timePeriod === 'harian' && (
             <div className="space-y-3">
-              <div className="h-56 flex items-end gap-3 sm:gap-6 pt-6 px-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="h-56 flex items-end gap-2 sm:gap-6 pt-6 px-2.5 sm:px-4 bg-slate-50 rounded-xl border border-slate-200 overflow-x-auto">
                 {dailyKeys.map(key => {
                   const val = dailyMap[key];
                   const heightPercent = Math.max(15, Math.round((val / dailyMax) * 85));
                   return (
-                    <div key={key} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      <span className="text-[10px] font-mono text-[#282974] font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div key={key} className="flex-1 min-w-[36px] flex flex-col items-center h-full justify-end group">
+                      <span className="text-[10px] font-mono text-[#282974] font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         {val} Tiket
                       </span>
                       <div
                         style={{ height: `${heightPercent}%` }}
                         className="w-full max-w-[48px] bg-gradient-to-t from-[#282974] to-[#3f419e] rounded-t-lg transition-all group-hover:brightness-110"
                       />
-                      <span className="text-[10px] font-mono text-slate-600 mt-2 truncate max-w-[60px]">
+                      <span className="text-[10px] font-mono text-slate-600 mt-2 truncate max-w-[54px]">
                         {key.split('/')[0]}/{key.split('/')[1]}
                       </span>
                     </div>
@@ -268,11 +268,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
           )}
 
           {timePeriod === 'mingguan' && (
-            <div className="h-56 flex items-end gap-4 sm:gap-8 pt-6 px-6 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="h-56 flex items-end gap-2.5 sm:gap-8 pt-6 px-3 sm:px-6 bg-slate-50 rounded-xl border border-slate-200 overflow-x-auto">
               {weeklyData.map(w => {
                 const heightPercent = Math.max(15, Math.round((w.count / weeklyMax) * 85));
                 return (
-                  <div key={w.label} className="flex-1 flex flex-col items-center h-full justify-end group">
+                  <div key={w.label} className="flex-1 min-w-[60px] flex flex-col items-center h-full justify-end group">
                     <span className="text-[10px] font-mono text-[#282974] font-bold mb-1">
                       {w.count}
                     </span>
@@ -280,7 +280,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                       style={{ height: `${heightPercent}%` }}
                       className="w-full max-w-[56px] bg-gradient-to-t from-[#282974] to-[#3f419e] rounded-t-lg transition-all group-hover:brightness-110"
                     />
-                    <span className="text-[11px] text-slate-700 mt-2 font-medium">
+                    <span className="text-[10px] sm:text-[11px] text-slate-700 mt-2 font-medium text-center leading-tight">
                       {w.label}
                     </span>
                   </div>
@@ -290,19 +290,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
           )}
 
           {timePeriod === 'bulanan' && (
-            <div className="h-56 flex items-end gap-6 sm:gap-12 pt-6 px-8 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="h-56 flex items-end gap-3 sm:gap-12 pt-6 px-3 sm:px-8 bg-slate-50 rounded-xl border border-slate-200 overflow-x-auto">
               {monthlyData.map(m => {
                 const heightPercent = Math.max(15, Math.round((m.count / monthlyMax) * 85));
                 return (
-                  <div key={m.label} className="flex-1 flex flex-col items-center h-full justify-end group">
-                    <span className="text-[10px] font-mono text-[#282974] mb-1 font-bold">
+                  <div key={m.label} className="flex-1 min-w-[75px] flex flex-col items-center h-full justify-end group">
+                    <span className="text-[10px] font-mono text-[#282974] mb-1 font-bold text-center">
                       {m.count} Permintaan
                     </span>
                     <div
                       style={{ height: `${heightPercent}%` }}
                       className="w-full max-w-[70px] bg-gradient-to-t from-[#282974] to-[#3f419e] rounded-t-lg transition-all group-hover:brightness-110"
                     />
-                    <span className="text-[11px] text-slate-700 mt-2 font-medium">
+                    <span className="text-[10px] sm:text-[11px] text-slate-700 mt-2 font-medium text-center leading-tight">
                       {m.label}
                     </span>
                   </div>
@@ -343,11 +343,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
             <div className="text-xs font-semibold text-slate-600 mb-2.5">
               Jenis Dokumen Diminta:
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               {docTypes.map(dt => (
-                <div key={dt.name} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div key={dt.name} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 min-w-0">
                   <span className="text-slate-700 truncate font-medium">{dt.name}</span>
-                  <span className="font-mono text-[#282974] font-bold ml-1">{dt.count}</span>
+                  <span className="font-mono text-[#282974] font-bold shrink-0">{dt.count}</span>
                 </div>
               ))}
             </div>
@@ -355,24 +355,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
         </div>
 
         {/* Staff Workload Ranking (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 overflow-hidden">
           <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
             <span>Beban Kerja Tim Staf Engineering</span>
-            <Users className="w-4 h-4 text-[#282974]" />
+            <Users className="w-4 h-4 text-[#282974] shrink-0" />
           </div>
 
           <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
             {staffLoadList.map(staf => (
               <div
                 key={staf.name}
-                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
+                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs min-w-0"
               >
-                <div>
-                  <div className="font-semibold text-slate-900">{staf.name}</div>
-                  <div className="text-[10px] text-slate-500">{staf.dept}</div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900 truncate">{staf.name}</div>
+                  <div className="text-[10px] text-slate-500 truncate">{staf.dept}</div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <span className="text-[10px] text-slate-500 block">Aktif</span>
                     <span className="font-mono font-bold text-[#282974] tabular-nums">

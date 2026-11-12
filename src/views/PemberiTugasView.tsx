@@ -314,14 +314,14 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const displayedTicket = tickets.find(t => t.ID_Tiket === selectedTicketId) || tickets[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Top Banner & Module Description */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/6 border border-slate-200 shadow-xs">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/6 border border-slate-200 shadow-xs">
+        <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Sales & Tim Proyek
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-0.5">
             Form Registrasi & Monitoring Dokumen Teknis
           </h1>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
@@ -330,85 +330,91 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
         </div>
 
         {/* Tab Navigation Controls */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 shrink-0 self-start md:self-center">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 rounded-xl border border-slate-200 w-full md:w-auto shrink-0 self-stretch md:self-center">
           <button
             type="button"
             onClick={() => setActiveTab('baru')}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all truncate ${
               activeTab === 'baru'
                 ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Buat Baru</span>
+            <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Buat Baru</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('lacak')}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all truncate ${
               activeTab === 'lacak'
                 ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
-            <Search className="w-3.5 h-3.5" />
-            <span>Lacak Status ({tickets.length})</span>
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Lacak Status ({tickets.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('edit')}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all truncate ${
               activeTab === 'edit'
                 ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Edit Tiket OPEN ({openTickets.length})</span>
+            <Edit3 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Edit Tiket OPEN ({openTickets.length})</span>
           </button>
         </div>
       </div>
 
       {/* TAB 1: BUAT PERMINTAAN BARU */}
       {activeTab === 'baru' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           {/* Form Container (8 cols) */}
-          <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+          <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs min-w-0 overflow-hidden">
             {/* Step Wizard Header */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  formStep >= 1 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  1
-                </span>
-                <span className={`text-xs font-semibold ${formStep === 1 ? 'text-slate-900' : 'text-slate-500'}`}>
-                  Data Proyek
-                </span>
-                <span className="text-slate-300 mx-1">›</span>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  formStep >= 2 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  2
-                </span>
-                <span className={`text-xs font-semibold ${formStep === 2 ? 'text-slate-900' : 'text-slate-500'}`}>
-                  Spesifikasi Teknis
-                </span>
-                <span className="text-slate-300 mx-1">›</span>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  formStep >= 3 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  3
-                </span>
-                <span className={`text-xs font-semibold ${formStep === 3 ? 'text-slate-900' : 'text-slate-500'}`}>
-                  Lampiran & Kirim
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-5 pb-3.5 border-b border-slate-200">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <div className="inline-flex items-center gap-1.5">
+                  <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0 ${
+                    formStep >= 1 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    1
+                  </span>
+                  <span className={`text-[11px] sm:text-xs font-semibold whitespace-nowrap ${formStep === 1 ? 'text-slate-900' : 'text-slate-500'}`}>
+                    Data Proyek
+                  </span>
+                </div>
+                <span className="text-slate-300 mx-0.5">›</span>
+                <div className="inline-flex items-center gap-1.5">
+                  <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0 ${
+                    formStep >= 2 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    2
+                  </span>
+                  <span className={`text-[11px] sm:text-xs font-semibold whitespace-nowrap ${formStep === 2 ? 'text-slate-900' : 'text-slate-500'}`}>
+                    Spesifikasi Teknis
+                  </span>
+                </div>
+                <span className="text-slate-300 mx-0.5">›</span>
+                <div className="inline-flex items-center gap-1.5">
+                  <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0 ${
+                    formStep >= 3 ? 'bg-[#282974] text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    3
+                  </span>
+                  <span className={`text-[11px] sm:text-xs font-semibold whitespace-nowrap ${formStep === 3 ? 'text-slate-900' : 'text-slate-500'}`}>
+                    Lampiran & Kirim
+                  </span>
+                </div>
               </div>
 
-              <div className="text-[11px] text-slate-500 font-mono">
+              <div className="text-[11px] text-slate-500 font-mono shrink-0">
                 Langkah {formStep} dari 3
               </div>
             </div>
@@ -433,14 +439,14 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <div className="space-y-4 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                         <label className="block text-xs font-semibold text-slate-700">
                           Nama Pemberi Tugas / Sales <span className="text-rose-500">*</span>
                         </label>
                         {autoPeminta && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            Otomatis dari Sesi Login
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>Otomatis dari Sesi Login</span>
                           </span>
                         )}
                       </div>
@@ -463,14 +469,14 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                         <label className="block text-xs font-semibold text-slate-700">
                           No. WhatsApp Peminta <span className="text-rose-500">*</span>
                         </label>
                         {autoWaPeminta && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            Otomatis dari Sesi Login
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>Otomatis dari Sesi Login</span>
                           </span>
                         )}
                       </div>
@@ -631,12 +637,12 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   </div>
 
                   {/* Manager Auto-Badge Info */}
-                  <div className="p-3 bg-[#282974]/8 border border-[#282974]/25 rounded-xl flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-[#282974]">
-                      <User className="w-4 h-4" />
-                      <span>Manager Penerima: <strong>{currentManager !== '-' ? currentManager : 'Belum Terdaftar'}</strong></span>
+                  <div className="p-3 bg-[#282974]/8 border border-[#282974]/25 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                    <div className="flex items-center gap-2 text-[#282974] min-w-0">
+                      <User className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Manager Penerima: <strong>{currentManager !== '-' ? currentManager : 'Belum Terdaftar'}</strong></span>
                     </div>
-                    <span className="text-slate-600 font-mono text-[11px] font-medium">
+                    <span className="text-slate-600 font-mono text-[11px] font-medium shrink-0">
                       WA: {currentWaManager ? `+${currentWaManager}` : '-'}
                     </span>
                   </div>
@@ -670,11 +676,11 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   </div>
 
                   {/* Dokumen yang Dibutuhkan */}
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
                     <label className="block text-xs font-semibold text-slate-800">
                       Dokumen yang Dibutuhkan:
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
                       <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 cursor-pointer text-xs">
                         <input
                           type="checkbox"
@@ -729,11 +735,11 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-3">
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3">
                     <button
                       type="button"
                       onClick={() => setFormStep(1)}
-                      className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors"
+                      className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors text-center"
                     >
                       Kembali ke Langkah 1
                     </button>
@@ -747,10 +753,10 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         setFormError('');
                         setFormStep(3);
                       }}
-                      className="flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors shadow-sm shadow-[#282974]/20"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors shadow-sm shadow-[#282974]/20"
                     >
                       <span>Lanjut: Lampiran & Review</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-4 h-4 shrink-0" />
                     </button>
                   </div>
                 </div>
@@ -813,7 +819,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         multiple
                         disabled={isUploading}
                         onChange={handleFileUpload}
-                        className="mt-3 text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#282974] file:text-white hover:file:bg-[#1e1f5a] cursor-pointer disabled:opacity-50"
+                        className="mt-3 w-full max-w-full text-xs text-slate-600 file:mr-2 sm:file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#282974] file:text-white hover:file:bg-[#1e1f5a] cursor-pointer disabled:opacity-50"
                       />
                     </div>
                   </div>
@@ -825,7 +831,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                         const parsed = parseTicketFileEntry(fn, 'permintaan');
                         return (
                           <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 min-w-0">
                               <span className="font-mono text-slate-800 font-semibold truncate">{parsed.name}</span>
                               {parsed.isDriveSynced ? (
                                 <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-semibold shrink-0">
@@ -837,7 +843,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                               <button
                                 type="button"
                                 onClick={() => removeUploadedFile(idx)}
@@ -855,26 +861,26 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
 
                   <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1.5">
                     <div className="font-bold text-emerald-800 flex items-center gap-1.5">
-                      <Send className="w-4 h-4 text-emerald-600" /> Pengiriman & Notifikasi Otomatis
+                      <Send className="w-4 h-4 text-emerald-600 shrink-0" /> Pengiriman & Notifikasi Otomatis
                     </div>
                     <p className="text-slate-700">
                       Setelah menekan tombol di bawah, tiket akan berstatus <strong className="text-amber-700">OPEN</strong> dan sistem akan otomatis menyiapkan notifikasi WhatsApp untuk Bpk. <strong>{currentManager}</strong> (Manager {departemenTujuan}).
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3">
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3">
                     <button
                       type="button"
                       onClick={() => setFormStep(2)}
-                      className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors"
+                      className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors text-center"
                     >
                       Kembali ke Langkah 2
                     </button>
                     <button
                       type="submit"
-                      className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm shadow-emerald-600/20 transition-all active:scale-[0.98]"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm shadow-emerald-600/20 transition-all active:scale-[0.98]"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-4 h-4 shrink-0" />
                       <span>Kirim Permintaan ke Manager</span>
                     </button>
                   </div>
@@ -952,8 +958,8 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
         <div className="space-y-6">
           {/* Search bar & Ticket selector */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-              <div className="md:col-span-5 relative">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-center">
+              <div className="md:col-span-5 relative min-w-0">
                 <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -964,12 +970,12 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 />
               </div>
 
-              <div className="md:col-span-7 flex items-center gap-3">
+              <div className="md:col-span-7 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
                 <label className="text-xs font-medium text-slate-600 shrink-0">Pilih ID Tiket:</label>
                 <select
                   value={selectedTicketId}
                   onChange={(e) => setSelectedTicketId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:bg-white"
+                  className="w-full min-w-0 truncate px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] focus:bg-white"
                 >
                   {tickets
                     .filter(t => 
@@ -989,10 +995,10 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
 
           {/* Ticket Display Card */}
           {displayedTicket ? (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs space-y-5 sm:space-y-6 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-bold text-[#282974]">{displayedTicket.ID_Tiket}</span>
                     <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold ${
                       displayedTicket.Status_Pengerjaan === 'OPEN'
@@ -1004,7 +1010,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                       {displayedTicket.Status_Pengerjaan}
                     </span>
                   </div>
-                  <h2 className="text-lg font-bold text-slate-900 mt-1">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-1 break-words">
                     {displayedTicket.Proyek}
                   </h2>
                 </div>
@@ -1012,50 +1018,50 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onSelectTicketDetail(displayedTicket)}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 rounded-xl border border-[#282974]/25 transition-colors self-start sm:self-auto"
+                  className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-[#282974] bg-[#282974]/8 hover:bg-[#282974]/15 rounded-xl border border-[#282974]/25 transition-colors w-full sm:w-auto shrink-0"
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className="w-4 h-4 shrink-0" />
                   <span>Lihat Seluruh Detail</span>
                 </button>
               </div>
 
               {/* Progress Stepper */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
                   Progress Alur Permintaan
                 </div>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 overflow-hidden">
                     <div className="font-bold text-emerald-700">1. Dibuat</div>
-                    <div className="text-[10px] text-slate-600 mt-0.5 font-mono">{displayedTicket.Waktu_Request}</div>
+                    <div className="text-[10px] text-slate-600 mt-0.5 font-mono truncate">{displayedTicket.Waktu_Request}</div>
                   </div>
-                  <div className={`p-2.5 rounded-lg ${
+                  <div className={`p-2.5 rounded-lg overflow-hidden ${
                     displayedTicket.Status_Pengerjaan !== 'OPEN'
                       ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
                       : 'bg-amber-50 border border-amber-200 text-amber-700 animate-pulse'
                   }`}>
                     <div className="font-bold">2. Disposisi</div>
-                    <div className="text-[10px] text-slate-600 mt-0.5">
+                    <div className="text-[10px] text-slate-600 mt-0.5 truncate">
                       {displayedTicket.Manager_Tujuan}
                     </div>
                   </div>
-                  <div className={`p-2.5 rounded-lg ${
+                  <div className={`p-2.5 rounded-lg overflow-hidden ${
                     displayedTicket.Status_Pengerjaan === 'PROSES' || displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
                       ? 'bg-[#282974]/8 border border-[#282974]/25 text-[#282974]'
                       : 'bg-white border border-slate-200 text-slate-400'
                   }`}>
                     <div className="font-bold">3. Pengerjaan</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
+                    <div className="text-[10px] text-slate-500 mt-0.5 truncate">
                       {displayedTicket.Staff_Tujuan !== '-' ? displayedTicket.Staff_Tujuan : 'Menunggu Staf'}
                     </div>
                   </div>
-                  <div className={`p-2.5 rounded-lg ${
+                  <div className={`p-2.5 rounded-lg overflow-hidden ${
                     displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
                       ? 'bg-emerald-50 border border-emerald-300 text-emerald-700'
                       : 'bg-white border border-slate-200 text-slate-400'
                   }`}>
                     <div className="font-bold">4. Selesai</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                    <div className="text-[10px] text-slate-500 mt-0.5 font-mono truncate">
                       {displayedTicket.Aktual_Selesai !== '-' ? displayedTicket.Aktual_Selesai : 'Target: ' + displayedTicket.Target_Selesai}
                     </div>
                   </div>
@@ -1063,12 +1069,12 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
               </div>
 
               {/* Engineering feedback */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+              <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="text-xs font-semibold text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <span>💬 Pesan Balasan Engineering:</span>
                   <span className="text-[11px] text-slate-500">Departemen: {displayedTicket.Departemen_Tujuan}</span>
                 </div>
-                <div className="text-xs text-slate-800 p-3 bg-white rounded-lg border border-slate-200 font-medium">
+                <div className="text-xs text-slate-800 p-3 bg-white rounded-lg border border-slate-200 font-medium break-words">
                   {displayedTicket.Keterangan_Penerima !== '-' 
                     ? displayedTicket.Keterangan_Penerima 
                     : 'Belum ada catatan dari tim engineering.'}
@@ -1198,15 +1204,15 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
 
       {/* TAB 3: EDIT PERMINTAAN (OPEN) */}
       {activeTab === 'edit' && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs space-y-5 overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
             <div>
               <h3 className="text-sm font-bold text-slate-900">Revisi Permintaan Berstatus OPEN</h3>
               <p className="text-xs text-slate-600 mt-0.5">
                 Perubahan hanya dapat dilakukan pada tiket yang belum didisposisikan atau belum masuk proses pengerjaan.
               </p>
             </div>
-            <span className="px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 text-xs font-mono font-semibold">
+            <span className="px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 text-xs font-mono font-semibold w-fit shrink-0">
               {openTickets.length} Tiket OPEN
             </span>
           </div>

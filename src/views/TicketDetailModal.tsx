@@ -88,47 +88,47 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[90vh] bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl max-h-[92dvh] sm:max-h-[90vh] bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="flex items-start sm:items-center justify-between gap-2 px-4 py-3.5 sm:px-6 sm:py-4 bg-slate-50 border-b border-slate-200">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span className="font-mono text-xs font-bold text-[#282974]">{ticket.ID_Tiket}</span>
               {getStatusBadge(ticket.Status_Pengerjaan)}
             </div>
-            <h3 className="text-base font-bold text-slate-900 mt-1 line-clamp-1">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 mt-1 line-clamp-1">
               {ticket.Proyek}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-700">
+        <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden space-y-4 sm:space-y-6 text-xs text-slate-700">
           {/* Stepper Timeline */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
               Tahapan Pengerjaan Dokumen
             </div>
-            <div className="grid grid-cols-4 gap-2 relative">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-2 relative">
               {/* Step 1 */}
-              <div className="flex flex-col items-center text-center">
-                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center justify-center text-xs font-bold mb-1.5">
+              <div className="flex flex-col items-center text-center min-w-0">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center justify-center text-xs font-bold mb-1.5 shrink-0">
                   ✓
                 </div>
                 <div className="text-[11px] font-semibold text-slate-900">1. Request</div>
-                <div className="text-[10px] text-slate-500 font-mono">{ticket.Waktu_Request.split(' ')[0]}</div>
+                <div className="text-[10px] text-slate-500 font-mono truncate max-w-full">{ticket.Waktu_Request.split(' ')[0]}</div>
               </div>
 
               {/* Step 2 */}
-              <div className="flex flex-col items-center text-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 ${
+              <div className="flex flex-col items-center text-center min-w-0">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 shrink-0 ${
                   isOpen 
                     ? 'bg-amber-100 text-amber-700 border border-amber-300 animate-pulse'
                     : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
@@ -136,14 +136,14 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   {isOpen ? '2' : '✓'}
                 </div>
                 <div className="text-[11px] font-semibold text-slate-900">2. Disposisi</div>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[10px] text-slate-500 truncate max-w-full">
                   {isOpen ? 'Menunggu' : ticket.Manager_Tujuan}
                 </div>
               </div>
 
               {/* Step 3 */}
-              <div className="flex flex-col items-center text-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 ${
+              <div className="flex flex-col items-center text-center min-w-0">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 shrink-0 ${
                   isOpen 
                     ? 'bg-slate-200 text-slate-500'
                     : isDisposisi || isProses
@@ -153,14 +153,14 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   {isClosed ? '✓' : '3'}
                 </div>
                 <div className="text-[11px] font-semibold text-slate-900">3. Pengerjaan</div>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[10px] text-slate-500 truncate max-w-full">
                   {ticket.Staff_Tujuan !== '-' ? ticket.Staff_Tujuan : 'Belum Ditugaskan'}
                 </div>
               </div>
 
               {/* Step 4 */}
-              <div className="flex flex-col items-center text-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 ${
+              <div className="flex flex-col items-center text-center min-w-0">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 shrink-0 ${
                   isClosed
                     ? 'bg-emerald-600 text-white font-bold'
                     : 'bg-slate-200 text-slate-500'
@@ -168,7 +168,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   {isClosed ? '✓' : '4'}
                 </div>
                 <div className="text-[11px] font-semibold text-slate-900">4. Hasil Terbit</div>
-                <div className="text-[10px] text-slate-500 font-mono">
+                <div className="text-[10px] text-slate-500 font-mono truncate max-w-full">
                   {ticket.Aktual_Selesai !== '-' ? ticket.Aktual_Selesai.split(' ')[0] : 'Target ' + ticket.Target_Selesai}
                 </div>
               </div>
@@ -397,47 +397,49 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 bg-slate-50 border-t border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2 px-4 py-3.5 sm:px-6 sm:py-4 bg-slate-50 border-t border-slate-200">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleNotifyRequester}
-              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-3.5 h-3.5 shrink-0" />
               <span>Kirim Update via WhatsApp</span>
             </button>
 
             {isAdmin && onDeleteTicket && (
               confirmDelete ? (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200">
+                <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 w-full sm:w-auto justify-between sm:justify-start">
                   <span className="text-[11px] font-semibold text-rose-800">Hapus tiket ini?</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onDeleteTicket(ticket.ID_Tiket);
-                      setConfirmDelete(false);
-                      onClose();
-                    }}
-                    className="px-2.5 py-1 text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors"
-                  >
-                    Ya, Hapus
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    className="px-2 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors"
-                  >
-                    Batal
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDeleteTicket(ticket.ID_Tiket);
+                        setConfirmDelete(false);
+                        onClose();
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors"
+                    >
+                      Ya, Hapus
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-2 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors"
+                    >
+                      Batal
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 hover:border-rose-600 transition-colors"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 hover:border-rose-600 transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Hapus Tiket</span>
                 </button>
               )
@@ -446,7 +448,7 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-300 transition-colors"
+            className="w-full sm:w-auto px-5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-xl border border-slate-300 transition-colors text-center"
           >
             Tutup
           </button>

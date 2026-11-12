@@ -678,19 +678,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
             <form onSubmit={handleManualLogin} className="space-y-4">
               {/* Horizontal Running Ticker / Marquee for Active Tickets (OPEN & PROSES) */}
-              <div className="p-3 rounded-xl bg-slate-50/95 border border-slate-200/90 space-y-2 shadow-2xs">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
+              <div className="p-3 rounded-xl bg-slate-50/95 border border-slate-200/90 space-y-2 shadow-2xs overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="relative flex h-2 w-2 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#282974] opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-[#282974]"></span>
                     </span>
-                    <Activity className="w-3.5 h-3.5 text-[#282974]" />
-                    <span className="text-[11px] font-bold text-slate-800 tracking-tight">
+                    <Activity className="w-3.5 h-3.5 text-[#282974] shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-800 tracking-tight truncate">
                       Live Status Tiket Aktif (Belum Closed)
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold shrink-0">
                     <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
                       {openTicketsCount} OPEN
                     </span>
@@ -824,7 +824,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* ==================== TAB 2: REGISTRASI AKUN BARU ==================== */}
         {activeTab === 'register' && (
-          <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
+          <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 max-h-[80dvh] sm:max-h-[78vh] overflow-y-auto overflow-x-hidden">
             {regError && (
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -1128,11 +1128,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] focus:bg-white"
                 />
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                 <select
                   value={filterRole}
                   onChange={(e) => setFilterRole(e.target.value as 'ALL' | UserRole)}
-                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-[#282974]"
+                  className="flex-1 sm:flex-initial min-w-0 truncate px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-[#282974]"
                 >
                   <option value="ALL">Semua Peran ({effectiveUsers.length})</option>
                   <option value="pemberi_tugas">Pemberi Tugas / Sales</option>
@@ -1144,9 +1144,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('register')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shadow-2xs transition-colors shrink-0 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] shadow-2xs transition-colors shrink-0 cursor-pointer"
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
+                  <UserPlus className="w-3.5 h-3.5 shrink-0" />
                   <span>+ Tambah User</span>
                 </button>
 
@@ -1165,10 +1165,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       })
                       .finally(() => setIsPullingDrive(false));
                   }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
                   title="Sinkronkan daftar user secara permanen dengan Cloud & Google Drive"
                 >
-                  <RefreshCw className={`w-3 h-3 ${isPullingDrive ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 shrink-0 ${isPullingDrive ? 'animate-spin' : ''}`} />
                   <span className="hidden md:inline">Sinkron Cloud</span>
                 </button>
               </div>
@@ -1325,7 +1325,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50/90 border-t border-slate-200/90 flex items-center justify-between text-[11px] text-slate-600 font-medium">
+        <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-slate-50/90 border-t border-slate-200/90 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 font-medium">
           <span>PT. Waskita Beton Precast, Tbk · @2026</span>
           {canClose && onClose && (
             <button

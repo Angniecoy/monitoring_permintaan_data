@@ -169,14 +169,14 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   const totalOpenAllDepts = tickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
+        <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
             Manajemen Disposisi & Delegasi
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-0.5">
             Dashboard Manager Engineering
           </h1>
           <p className="text-xs text-slate-600 mt-1">
@@ -185,7 +185,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
         </div>
 
         {/* Department Switcher Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 rounded-xl border border-slate-200 w-full md:w-auto shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -194,15 +194,15 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               setSelectedTicketId('');
               setSelectedStaff('');
             }}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all truncate ${
               activeDept === 'ALL'
                 ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white'
             }`}
           >
-            <span>Semua Divisi</span>
+            <span className="truncate">Semua Divisi</span>
             {totalOpenAllDepts > 0 && (
-              <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center">
+              <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
                 {totalOpenAllDepts}
               </span>
             )}
@@ -224,15 +224,15 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                   setSelectedTicketId('');
                   setSelectedStaff('');
                 }}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all truncate ${
                   isDeptActive
                     ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
-                <span>{dept.replace('Engineering ', '')}</span>
+                <span className="truncate">{dept.replace('Engineering ', '')}</span>
                 {deptOpenCount > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center">
+                  <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
                     {deptOpenCount}
                   </span>
                 )}
@@ -245,23 +245,23 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
       {/* Active Manager & Staff Workload Bar */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Manager Profile card (4 cols) */}
-        <div className="md:col-span-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#282974]/10 text-[#282974] border border-[#282974]/25 flex items-center justify-center font-bold text-sm">
+        <div className="md:col-span-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-3 overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#282974]/10 text-[#282974] border border-[#282974]/25 flex items-center justify-center font-bold text-sm shrink-0">
               MGR
             </div>
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase font-semibold">
+            <div className="min-w-0">
+              <div className="text-[10px] text-slate-500 uppercase font-semibold truncate">
                 Manager {activeDept === 'ALL' ? effectiveDept : activeDept}
               </div>
-              <div className="text-sm font-bold text-slate-900">{managerName !== '-' ? managerName : 'Belum Ada Manager'}</div>
-              <div className="text-[11px] font-mono text-emerald-700 font-medium">
+              <div className="text-sm font-bold text-slate-900 truncate">{managerName !== '-' ? managerName : 'Belum Ada Manager'}</div>
+              <div className="text-[11px] font-mono text-emerald-700 font-medium truncate">
                 {managerWa ? `+${managerWa}` : '-'}
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-[10px] text-slate-500">Antrean OPEN</div>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] text-slate-500 whitespace-nowrap">Antrean OPEN</div>
             <div className="text-xl font-mono font-bold text-amber-600 tabular-nums">
               {openTickets.length}
             </div>
@@ -269,11 +269,11 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
         </div>
 
         {/* Staff Workload Visualizer (8 cols) */}
-        <div className="md:col-span-8 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
+        <div className="md:col-span-8 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
             <div className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#282974]" />
-              <span>Beban Kerja Staf Aktif ({activeDept === 'ALL' ? effectiveDept : activeDept})</span>
+              <Users className="w-3.5 h-3.5 text-[#282974] shrink-0" />
+              <span className="truncate">Beban Kerja Staf Aktif ({activeDept === 'ALL' ? effectiveDept : activeDept})</span>
             </div>
             <span className="text-[10px] text-slate-500">
               *Tinjau sebelum mendelegasikan tugas
@@ -289,14 +289,14 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               {staffWorkload.map(staff => (
                 <div
                   key={staff.name}
-                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between"
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 min-w-0"
                 >
-                  <div>
-                    <div className="text-xs font-semibold text-slate-900">{staff.name}</div>
-                    <div className="text-[10px] text-slate-500 font-mono">{staff.wa ? `+${staff.wa.slice(0, 6)}...` : '-'}</div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-slate-900 truncate">{staff.name}</div>
+                    <div className="text-[10px] text-slate-500 font-mono truncate">{staff.wa ? `+${staff.wa.slice(0, 6)}...` : '-'}</div>
                   </div>
-                  <div className="text-right">
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold tabular-nums ${
+                  <div className="text-right shrink-0">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold tabular-nums whitespace-nowrap ${
                       staff.activeTasks === 0
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : staff.activeTasks <= 2
@@ -317,11 +317,11 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
       <div className="space-y-4">
         {/* Subtab Toggle */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-2xs">
+          <div className="grid grid-cols-2 sm:flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-2xs w-full sm:w-fit">
             <button
               type="button"
               onClick={() => setActiveViewTab('antrean')}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 activeViewTab === 'antrean'
                   ? 'bg-[#282974] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -332,7 +332,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
             <button
               type="button"
               onClick={() => setActiveViewTab('histori')}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 activeViewTab === 'histori'
                   ? 'bg-[#282974] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -362,9 +362,9 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
               {/* Left Column: List of Open Tickets (6 cols) */}
-              <div className="lg:col-span-6 space-y-3">
+              <div className="lg:col-span-6 space-y-3 min-w-0">
                 <div className="text-xs font-semibold text-slate-600">
                   Daftar Tiket Masuk Berstatus OPEN (Pilih untuk Disposisi):
                 </div>
@@ -376,22 +376,22 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                       <div
                         key={ticket.ID_Tiket}
                         onClick={() => setSelectedTicketId(ticket.ID_Tiket)}
-                        className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
+                        className={`p-3.5 sm:p-4 rounded-xl border text-left cursor-pointer transition-all overflow-hidden ${
                           isSelected
                             ? 'bg-[#282974]/8 border-[#282974] shadow-sm'
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                             <span className="font-mono text-[11px] font-bold text-[#282974]">
                               {ticket.ID_Tiket}
                             </span>
-                            <span className="px-2 py-0.5 rounded bg-[#282974]/10 text-[#282974] text-[10px] font-semibold">
+                            <span className="px-2 py-0.5 rounded bg-[#282974]/10 text-[#282974] text-[10px] font-semibold truncate">
                               {ticket.Departemen_Tujuan}
                             </span>
                           </div>
-                          <span className="text-[11px] text-amber-700 font-semibold font-mono">
+                          <span className="text-[11px] text-amber-700 font-semibold font-mono shrink-0">
                             Target: {ticket.Target_Selesai}
                           </span>
                         </div>
@@ -400,9 +400,9 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                           {ticket.Proyek}
                         </h4>
 
-                        <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-                          <span>Pemohon: {ticket.Peminta}</span>
-                          <span className="text-slate-500">{ticket.Dokumen}</span>
+                        <div className="text-[11px] text-slate-600 mt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="truncate">Pemohon: {ticket.Peminta}</span>
+                          <span className="text-slate-500 truncate">{ticket.Dokumen}</span>
                         </div>
                       </div>
                     );
@@ -411,49 +411,49 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               </div>
 
               {/* Right Column: Disposition Action Form (6 cols) */}
-              <div className="lg:col-span-6">
+              <div className="lg:col-span-6 min-w-0">
                 {currentTicket ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                      <div>
-                        <div className="text-[11px] font-mono text-[#282974] font-bold">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5 overflow-hidden">
+                    <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-200">
+                      <div className="min-w-0">
+                        <div className="text-[10px] sm:text-[11px] font-mono text-[#282974] font-bold break-words">
                           FORMULIR DISPOSISI RESMI · {currentTicket.Departemen_Tujuan.toUpperCase()}
                         </div>
-                        <h3 className="text-sm font-bold text-slate-900 mt-0.5">
+                        <h3 className="text-sm font-bold text-slate-900 mt-0.5 break-words">
                           {currentTicket.Proyek}
                         </h3>
                       </div>
                       <button
                         type="button"
                         onClick={() => onSelectTicketDetail(currentTicket)}
-                        className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
                         title="Lihat Detail Lengkap"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="min-w-0">
                         <span className="text-slate-500 text-[10px]">Pemohon:</span>
-                        <div className="text-slate-900 font-semibold">{currentTicket.Peminta}</div>
+                        <div className="text-slate-900 font-semibold truncate">{currentTicket.Peminta}</div>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-slate-500 text-[10px]">Target Selesai:</span>
                         <div className="text-emerald-700 font-mono font-bold">{currentTicket.Target_Selesai}</div>
                       </div>
-                      <div className="col-span-2 pt-1.5 border-t border-slate-200">
+                      <div className="sm:col-span-2 pt-1.5 border-t border-slate-200">
                         <span className="text-slate-500 text-[10px]">Dokumen yang Diminta:</span>
-                        <div className="text-slate-800 font-medium">{currentTicket.Dokumen}</div>
+                        <div className="text-slate-800 font-medium break-words">{currentTicket.Dokumen}</div>
                       </div>
                       {currentTicket.File_Pendukung && currentTicket.File_Pendukung !== '-' && (
-                        <div className="col-span-2 pt-1.5 border-t border-slate-200 space-y-1.5">
+                        <div className="sm:col-span-2 pt-1.5 border-t border-slate-200 space-y-1.5">
                           <span className="text-slate-500 text-[10px] block">Lampiran Pemohon (Google Drive):</span>
                           {currentTicket.File_Pendukung.split('||').map((rawFn, idx) => {
                             const trimmed = rawFn.trim();
                             const parsed = parseTicketFileEntry(trimmed, 'permintaan');
                             return (
-                              <div key={idx} className="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
+                              <div key={idx} className="flex flex-wrap items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                                 <button
                                   type="button"
                                   onClick={() => downloadFile(trimmed, {
@@ -461,7 +461,7 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                                     idTiket: currentTicket.ID_Tiket,
                                     dokumen: currentTicket.Dokumen
                                   })}
-                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#282974] hover:text-[#1e1f5a] font-semibold underline truncate"
+                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#282974] hover:text-[#1e1f5a] font-semibold underline truncate min-w-0"
                                 >
                                   <Download className="w-3 h-3 shrink-0" />
                                   <span className="truncate">{parsed.name}</span>

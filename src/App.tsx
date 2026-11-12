@@ -352,7 +352,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#282974] selection:text-white">
+    <div className="h-[100dvh] w-full max-w-full overflow-hidden bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#282974] selection:text-white">
       {/* Top Bar (Fixed at Top of App Shell) */}
       <Navbar
         session={session}
@@ -375,7 +375,7 @@ export default function App() {
       />
 
       {/* Main Layout Area (Fixed Sidebar + Independently Scrollable Right Content Panel) */}
-      <div className="flex-1 flex min-h-0 overflow-hidden max-w-[1600px] w-full mx-auto relative">
+      <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden max-w-[1600px] w-full mx-auto relative">
         {/* Fixed Left Sidebar Nav */}
         <Sidebar
           currentRole={session.role}
@@ -408,34 +408,34 @@ export default function App() {
         />
 
         {/* Independently Scrollable Right Content Viewport */}
-        <main className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 lg:p-8">
           {/* Dashboard Mode Selector - STRICTLY EXCLUSIVE to dashboard role */}
           {session.role === 'dashboard' && (
-            <div className="flex items-center gap-2 mb-6 p-1 bg-white border border-slate-200 rounded-xl w-fit shadow-xs">
+            <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 mb-4 sm:mb-6 p-1.5 bg-white border border-slate-200 rounded-xl w-full sm:w-fit shadow-xs">
               <button
                 type="button"
                 onClick={() => setDashboardSubTab('analytics')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all truncate ${
                   dashboardSubTab === 'analytics'
                     ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>Analitik & Grafik KPI</span>
+                <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Analitik & Grafik KPI</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setDashboardSubTab('database')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all truncate ${
                   dashboardSubTab === 'database'
                     ? 'bg-[#282974] text-white shadow-sm shadow-[#282974]/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Database className={`w-3.5 h-3.5 ${dashboardSubTab === 'database' ? 'text-white' : 'text-emerald-600'}`} />
-                <span>Basis Data & Rekapitulasi ({tickets.length})</span>
+                <Database className={`w-3.5 h-3.5 shrink-0 ${dashboardSubTab === 'database' ? 'text-white' : 'text-emerald-600'}`} />
+                <span className="truncate">Basis Data & Rekapitulasi ({tickets.length})</span>
               </button>
             </div>
           )}
