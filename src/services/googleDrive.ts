@@ -519,6 +519,10 @@ export async function syncUsersFromDriveFolder(
   try {
     const files = await listDriveFolderFiles(token);
     const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
+    const singleUserFiles = files.filter(
+      (f) => f.name.startsWith(DRIVE_USER_FILE_PREFIX) && f.name.endsWith('.json')
+    );
+
     let remoteDbUsers: UserAccount[] = [];
     let remoteDeletedUsernames: string[] = [];
 
@@ -536,20 +540,51 @@ export async function syncUsersFromDriveFolder(
       }
     }
 
+    const singleUsers: UserAccount[] = [];
+    for (const sf of singleUserFiles) {
+      const parsedSingle = await downloadDriveJsonFile<
+        DriveSingleUserRecordPayload | UserAccount
+      >(sf.id, token);
+      if (parsedSingle && 'user' in parsedSingle && parsedSingle.user?.username) {
+        singleUsers.push(parsedSingle.user);
+      } else if (parsedSingle && 'username' in parsedSingle && parsedSingle.username) {
+        singleUsers.push(parsedSingle as UserAccount);
+      }
+    }
+
     const deletedSet = new Set<string>(
       [...localDeletedUsernames, ...remoteDeletedUsernames].map((u) => u.toLowerCase())
     );
     const mergedMap = new Map<string, UserAccount>();
-    for (const u of [...remoteDbUsers, ...localUsers]) {
+    for (const u of [...localUsers, ...remoteDbUsers, ...singleUsers]) {
       if (!u || !u.username) continue;
       const key = u.username.toLowerCase();
       if (!deletedSet.has(key) && !mergedMap.has(key)) {
         mergedMap.set(key, u);
       }
     }
+
+    const finalUsers = Array.from(mergedMap.values());
+    const finalDeleted = Array.from(deletedSet);
+
+    if (finalUsers.length > 0 || existingDb) {
+      await saveJsonToDriveFolder(
+        DRIVE_USERS_DB_FILENAME,
+        {
+          type: 'WBP_USERS_DATABASE',
+          folderId: GOOGLE_DRIVE_FOLDER_ID,
+          updatedAt: new Date().toISOString(),
+          deletedUsernames: finalDeleted,
+          users: finalUsers
+        },
+        existingDb?.id,
+        token
+      );
+    }
+
     return {
-      users: Array.from(mergedMap.values()),
-      deletedUsernames: Array.from(deletedSet),
+      users: finalUsers,
+      deletedUsernames: finalDeleted,
       syncedFromDrive: true
     };
   } catch {
@@ -897,21 +932,6 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
       if (typeof metaData.gasWebAppUrl === 'string' && metaData.gasWebAppUrl) {
         gasWebAppUrl = normalizeGasWebAppUrl(metaData.gasWebAppUrl);
       }
-      // If Firestore still holds legacy pre-clean users, wipe them once and return 0 users
-      if (metaData.cleanEpoch !== CLEAN_ZERO_EPOCH) {
-        await resetUsersInCloudFirestore([]);
-        void pushUsersToGasEndpoint({
-          gasWebAppUrl,
-          action: 'resetUsers',
-          users: [],
-          deletedUsernames: []
-        });
-        return {
-          users: [],
-          deletedUsernames: [],
-          gasWebAppUrl
-        };
-      }
       if (Array.isArray(metaData.deletedUsernames)) {
         deletedUsernames = metaData.deletedUsernames;
       }
@@ -921,13 +941,6 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
           if (Array.isArray(parsed)) metaUsers = parsed;
         } catch {}
       }
-    } else {
-      await resetUsersInCloudFirestore([]);
-      return {
-        users: [],
-        deletedUsernames: [],
-        gasWebAppUrl
-      };
     }
 
     const colUsers: UserAccount[] = [];
@@ -966,14 +979,13 @@ export function subscribeCloudFirestoreUsers(
 ): () => void {
   let latestMetaUsers: UserAccount[] = [];
   let latestDeleted: string[] = [];
-  let latestGasUrl = '';
+  let latestGasUrl = DEFAULT_GAS_WEB_APP_URL;
   let latestColUsers: UserAccount[] = [];
   let initializedMeta = false;
   let initializedCol = false;
-  let isCleanEpochReady = false;
 
   const emitCombined = () => {
-    if (!initializedMeta || !isCleanEpochReady) return;
+    if (!initializedMeta && !initializedCol) return;
     const deletedSet = new Set(latestDeleted.map((u) => u.toLowerCase()));
     const map = new Map<string, UserAccount>();
     for (const u of [...latestColUsers, ...latestMetaUsers]) {
@@ -996,17 +1008,10 @@ export function subscribeCloudFirestoreUsers(
       initializedMeta = true;
       if (snap.exists()) {
         const data = snap.data() as {
-          cleanEpoch?: string;
           deletedUsernames?: string[];
           usersJson?: string;
           gasWebAppUrl?: string;
         };
-        if (data.cleanEpoch !== CLEAN_ZERO_EPOCH) {
-          isCleanEpochReady = false;
-          void resetUsersInCloudFirestore([]);
-          return;
-        }
-        isCleanEpochReady = true;
         latestDeleted = Array.isArray(data.deletedUsernames) ? data.deletedUsernames : [];
         if (data.gasWebAppUrl) latestGasUrl = normalizeGasWebAppUrl(data.gasWebAppUrl);
         if (data.usersJson) {
@@ -1018,9 +1023,7 @@ export function subscribeCloudFirestoreUsers(
           latestMetaUsers = [];
         }
       } else {
-        isCleanEpochReady = false;
-        void resetUsersInCloudFirestore([]);
-        return;
+        latestMetaUsers = [];
       }
       emitCombined();
     }
@@ -1036,9 +1039,7 @@ export function subscribeCloudFirestoreUsers(
         if (u && u.username) list.push(u);
       });
       latestColUsers = list;
-      if (initializedCol) {
-        emitCombined();
-      }
+      emitCombined();
     }
   );
 
@@ -1261,17 +1262,9 @@ export async function fetchTicketsFromCloudFirestore(): Promise<{
 
     if (metaSnap.exists()) {
       const metaData = metaSnap.data() as {
-        cleanEpoch?: string;
         deletedTicketIds?: string[];
         ticketsJson?: string;
       };
-      if (metaData.cleanEpoch !== CLEAN_ZERO_EPOCH) {
-        await resetTicketsInCloudFirestore([]);
-        return {
-          tickets: [],
-          deletedTicketIds: []
-        };
-      }
       if (Array.isArray(metaData.deletedTicketIds)) {
         deletedTicketIds = metaData.deletedTicketIds;
       }
@@ -1342,14 +1335,9 @@ export function subscribeCloudFirestoreTickets(
       initializedMeta = true;
       if (snap.exists()) {
         const data = snap.data() as {
-          cleanEpoch?: string;
           deletedTicketIds?: string[];
           ticketsJson?: string;
         };
-        if (data.cleanEpoch && data.cleanEpoch !== CLEAN_ZERO_EPOCH) {
-          void resetTicketsInCloudFirestore([]);
-          return;
-        }
         latestDeletedIds = Array.isArray(data.deletedTicketIds) ? data.deletedTicketIds : [];
         if (data.ticketsJson) {
           try {

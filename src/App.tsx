@@ -24,7 +24,7 @@ import {
   addStoredTicket, updateStoredTicket, deleteStoredTicket,
   fetchCloudTickets, TICKETS_STORAGE_KEY, TICKETS_SYNC_EVENT,
   getStoredUsers, addStoredUser, updateStoredUser, deleteStoredUser,
-  resetToDefaultUsers, USERS_STORAGE_KEY, isAdminSession,
+  resetToDefaultUsers, USERS_STORAGE_KEY, USERS_LOCAL_STORAGE_KEY, isAdminSession,
   pullAndMergeUsersFromDrive, pullAndMergeTicketsFromDrive, fetchCloudUsers
 } from './data/mockData';
 import { subscribeDriveAuth } from './services/googleDrive';
@@ -127,7 +127,13 @@ export default function App() {
     const syncUsersFromCloudStore = (e?: Event) => {
       if (e && 'key' in e) {
         const storageEvent = e as StorageEvent;
-        if (storageEvent.key && storageEvent.key !== USERS_STORAGE_KEY) return;
+        if (
+          storageEvent.key &&
+          storageEvent.key !== USERS_STORAGE_KEY &&
+          storageEvent.key !== USERS_LOCAL_STORAGE_KEY
+        ) {
+          return;
+        }
       }
       const latest = getStoredUsers();
       setUsers(prev => {
@@ -149,10 +155,12 @@ export default function App() {
     };
 
     window.addEventListener('wbp_users_updated', syncUsersFromCloudStore);
+    window.addEventListener('storage', syncUsersFromCloudStore);
     window.addEventListener(TICKETS_SYNC_EVENT, syncTicketsFromStore);
     window.addEventListener('storage', syncTicketsFromStore);
     return () => {
       window.removeEventListener('wbp_users_updated', syncUsersFromCloudStore);
+      window.removeEventListener('storage', syncUsersFromCloudStore);
       window.removeEventListener(TICKETS_SYNC_EVENT, syncTicketsFromStore);
       window.removeEventListener('storage', syncTicketsFromStore);
     };

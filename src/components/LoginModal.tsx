@@ -155,8 +155,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setPersistedUsers(getStoredUsers());
     };
     window.addEventListener('wbp_users_updated', syncStoredUsers);
+    window.addEventListener('storage', syncStoredUsers);
     return () => {
       window.removeEventListener('wbp_users_updated', syncStoredUsers);
+      window.removeEventListener('storage', syncStoredUsers);
     };
   }, []);
 
@@ -480,7 +482,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  const handleSaveEditUser = (e: React.FormEvent) => {
+  const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
     setEditError('');
@@ -501,11 +503,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    const confirmed = window.confirm(
-      `Simpan perubahan data akun "${cleanName}" (@${cleanUser}) dan perbarui catatan JSON di Google Drive?`
-    );
-    if (!confirmed) return;
-
     const needsDept = editingUser.role === 'manager' || editingUser.role === 'staff';
     const updated: UserAccount = {
       ...editingUser,
@@ -517,9 +514,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     };
 
     onUpdateUser(updated);
+    await Promise.all([
+      upsertUserToCloudFirestore(
+        updated,
+        getStoredUsers(),
+        getDeletedUsernames()
+      ),
+      pushUsersToGasEndpoint({
+        gasWebAppUrl: getGasWebAppUrl(),
+        action: 'updateUser',
+        user: updated,
+        users: getStoredUsers(),
+        deletedUsernames: getDeletedUsernames()
+      })
+    ]);
     setPersistedUsers(getStoredUsers());
     setEditingUser(null);
-    setManageNotice(`Data akun "${updated.fullName}" berhasil diperbarui di Google Drive & penyimpanan lokal.`);
+    setManageNotice(`Data akun "${updated.fullName}" berhasil disimpan secara permanen ke Cloud & Google Drive.`);
     setTimeout(() => setManageNotice(''), 3500);
   };
 
@@ -1139,26 +1150,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <span>+ Tambah User</span>
                 </button>
 
-                {onResetUsers && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        'Apakah Anda yakin ingin mengembalikan daftar user ke pengaturan default?'
-                      );
-                      if (!confirmed) return;
-                      onResetUsers();
-                      setPersistedUsers(getStoredUsers());
-                      setManageNotice('Daftar user dikembalikan ke pengaturan default.');
-                      setTimeout(() => setManageNotice(''), 3000);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors shrink-0 cursor-pointer"
-                    title="Reset daftar user ke default"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span className="hidden md:inline">Reset</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  disabled={isPullingDrive}
+                  onClick={() => {
+                    setIsPullingDrive(true);
+                    void pullAndMergeUsersFromDrive()
+                      .then((merged) => {
+                        setPersistedUsers(merged);
+                        setManageNotice(
+                          `Sinkronisasi Cloud & Google Drive berhasil (${merged.length} akun tersimpan permanen).`
+                        );
+                        setTimeout(() => setManageNotice(''), 3500);
+                      })
+                      .finally(() => setIsPullingDrive(false));
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                  title="Sinkronkan daftar user secara permanen dengan Cloud & Google Drive"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isPullingDrive ? 'animate-spin' : ''}`} />
+                  <span className="hidden md:inline">Sinkron Cloud</span>
+                </button>
               </div>
             </div>
 
@@ -1284,27 +1296,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
 
-                                {effectiveUsers.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const confirmed = window.confirm(
-                                        `Apakah Anda yakin ingin menghapus akun "${u.fullName}" (@${u.username})?`
-                                      );
-                                      if (!confirmed) return;
-                                      onDeleteUser(u.id);
-                                      setPersistedUsers(getStoredUsers());
-                                      setManageNotice(
-                                        `Akun "${u.fullName}" telah dihapus secara permanen.`
-                                      );
-                                      setTimeout(() => setManageNotice(''), 3000);
-                                    }}
-                                    className="p-1 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
-                                    title="Hapus User"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onDeleteUser(u.id);
+                                    setPersistedUsers(getStoredUsers());
+                                    setManageNotice(
+                                      `Akun "${u.fullName}" telah dihapus secara permanen dari Cloud & Google Drive.`
+                                    );
+                                    setTimeout(() => setManageNotice(''), 3000);
+                                  }}
+                                  className="p-1 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
+                                  title="Hapus User"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </td>
                           </tr>

@@ -725,56 +725,14 @@ async function startServer() {
 
   app.use(express.json({ limit: '15mb' }));
 
-  // Ensure Firestore & GAS start clean at 0 users if cleanEpoch is not yet set
+  // Hydrate server database from Cloud Firestore & Google Apps Script (wbp_users_database.json in Google Drive) on startup so deployments never lose user accounts
   try {
-    const [metaSnap, colSnap] = await Promise.all([
-      getDoc(doc(serverFirestoreDb, 'wbp_meta', 'users_db')),
-      getDocs(collection(serverFirestoreDb, 'wbp_users'))
-    ]);
-    const metaData = metaSnap.exists()
-      ? (metaSnap.data() as { cleanEpoch?: string; gasWebAppUrl?: string })
-      : null;
-    if (!metaData || metaData.cleanEpoch !== CLEAN_ZERO_EPOCH) {
-      const delOps: Promise<unknown>[] = [];
-      colSnap.forEach((d) => {
-        delOps.push(deleteDoc(doc(serverFirestoreDb, 'wbp_users', d.id)));
-      });
-      delOps.push(
-        setDoc(
-          doc(serverFirestoreDb, 'wbp_meta', 'users_db'),
-          {
-            folderId: GOOGLE_DRIVE_FOLDER_ID,
-            cleanEpoch: CLEAN_ZERO_EPOCH,
-            updatedAt: new Date().toISOString(),
-            deletedUsernames: [],
-            gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL,
-            usersJson: '[]'
-          },
-          { merge: true }
-        )
-      );
-      await Promise.all(delOps);
-      writeCloudDB({
-        folderId: GOOGLE_DRIVE_FOLDER_ID,
-        updatedAt: new Date().toISOString(),
-        users: [],
-        deletedUsernames: [],
-        gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL
-      });
-      void fetch(DEFAULT_GAS_WEB_APP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'resetUsers',
-          folderId: GOOGLE_DRIVE_FOLDER_ID,
-          users: [],
-          deletedUsernames: [],
-          updatedAt: new Date().toISOString()
-        })
-      }).catch(() => {});
+    const hydratedDB = await pullFromDriveAndGASIntoServerDB(null);
+    if (hydratedDB.users.length > 0) {
+      await pushCloudDBToDriveAndGAS(hydratedDB, null);
     }
   } catch (err) {
-    console.warn('Server clean epoch init warning:', err);
+    console.warn('Server startup cloud user hydration warning:', err);
   }
 
   // Background real-time Firestore listener on server: keeps /data/wbp_cloud_database.json & Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF in sync whenever any device registers a user
@@ -803,6 +761,15 @@ async function startServer() {
           }
         }
       });
+
+      // Preserve any existing non-deleted server users as well
+      for (const existingUser of currentDB.users) {
+        if (!existingUser || !existingUser.username) continue;
+        const key = existingUser.username.toLowerCase();
+        if (!deletedSet.has(key) && !map.has(key)) {
+          map.set(key, normalizeUserAccount(existingUser, 0));
+        }
+      }
 
       const updated = writeCloudDB({
         ...currentDB,

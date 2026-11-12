@@ -74,39 +74,47 @@ export const INITIAL_TICKETS: Ticket[] = [];
 const STORAGE_KEY = 'wbp_sim_teknis_tickets_v2_zero';
 export const TICKETS_STORAGE_KEY = STORAGE_KEY;
 export const TICKETS_SYNC_EVENT = 'wbp_tickets_updated';
-const CLEAN_INIT_KEY = 'wbp_clean_zero_v2';
 export const USERS_STORAGE_KEY = 'wbp_cloud_users_sync_event';
+export const USERS_LOCAL_STORAGE_KEY = 'wbp_sim_teknis_users_v3_permanent';
+export const DELETED_USERS_LOCAL_STORAGE_KEY = 'wbp_sim_teknis_deleted_users_v3_permanent';
 
-// One-time clean reset in browser so the application starts strictly at 0 users, 0 tickets, and 0 attachments
-try {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    window.localStorage.removeItem('wbp_sim_teknis_users_v1');
-    window.localStorage.removeItem('wbp_sim_teknis_deleted_users_v1');
-    window.localStorage.removeItem('wbp_sim_teknis_tickets_v1');
-    if (window.localStorage.getItem(CLEAN_INIT_KEY) !== '1') {
-      window.localStorage.clear();
-      window.localStorage.setItem(CLEAN_INIT_KEY, '1');
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TICKETS));
-      if (window.indexedDB) {
-        window.indexedDB.deleteDatabase('wbp_sim_file_storage');
+function readInitialUsersFromLocalStorage(): UserAccount[] {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(USERS_LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
       }
-      void resetUsersInCloudFirestore([]);
-      void resetTicketsInCloudFirestore([]);
-      void pushUsersToGasEndpoint({
-        gasWebAppUrl: DEFAULT_GAS_WEB_APP_URL,
-        action: 'resetUsers',
-        users: [],
-        deletedUsernames: []
-      });
     }
+  } catch {
+    // ignore
   }
-} catch {
-  // ignore
+  return [...INITIAL_USERS];
 }
 
-// In-memory runtime cache synchronized with Cloud Firestore + Google Apps Script + Centralized Backend (/api/users) + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
-let cloudUsersMemoryStore: UserAccount[] = [...INITIAL_USERS];
-let cloudDeletedUsernamesStore: string[] = [];
+function readInitialDeletedUsersFromLocalStorage(): string[] {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(DELETED_USERS_LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map((u) => String(u).toLowerCase());
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+// In-memory runtime cache synchronized with localStorage + Cloud Firestore + Google Apps Script + Centralized Backend (/api/users) + Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
+let cloudUsersMemoryStore: UserAccount[] = readInitialUsersFromLocalStorage();
+let cloudDeletedUsernamesStore: string[] = readInitialDeletedUsersFromLocalStorage();
 let cloudGasWebAppUrlStore = DEFAULT_GAS_WEB_APP_URL;
 
 // In-memory runtime cache for tickets synchronized with localStorage + Cloud Firestore + /api/tickets
@@ -126,6 +134,16 @@ export function saveDeletedUsernames(usernames: string[]): void {
   cloudDeletedUsernamesStore = Array.from(
     new Set(usernames.map((u) => u.toLowerCase()))
   );
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(
+        DELETED_USERS_LOCAL_STORAGE_KEY,
+        JSON.stringify(cloudDeletedUsernamesStore)
+      );
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export function getGasWebAppUrl(): string {
@@ -483,8 +501,9 @@ export async function fetchCloudTickets(): Promise<Ticket[]> {
 export function resetToDefaultTickets(): Ticket[] {
   try {
     localStorage.clear();
-    localStorage.setItem(CLEAN_INIT_KEY, '1');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TICKETS));
+    localStorage.setItem(USERS_LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(DELETED_USERS_LOCAL_STORAGE_KEY, JSON.stringify([]));
   } catch (err) {
     console.error('Failed resetting localStorage:', err);
   }
@@ -631,16 +650,40 @@ function syncStrukturOrgFromUsers(usersList: UserAccount[]): void {
 }
 
 export function getStoredUsers(): UserAccount[] {
+  if (cloudUsersMemoryStore.length === 0) {
+    const fromStorage = readInitialUsersFromLocalStorage();
+    if (fromStorage.length > 0) {
+      cloudUsersMemoryStore = orderUsersList(fromStorage);
+      syncStrukturOrgFromUsers(cloudUsersMemoryStore);
+    }
+  }
   return cloudUsersMemoryStore;
 }
 
 export function saveStoredUsers(users: UserAccount[]): void {
   cloudUsersMemoryStore = orderUsersList(users);
   syncStrukturOrgFromUsers(cloudUsersMemoryStore);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(
+        USERS_LOCAL_STORAGE_KEY,
+        JSON.stringify(cloudUsersMemoryStore)
+      );
+      window.localStorage.setItem(
+        USERS_STORAGE_KEY,
+        String(Date.now())
+      );
+    }
+  } catch {
+    // ignore
+  }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('wbp_users_updated'));
   }
 }
+
+// Synchronize initial STRUKTUR_ORG immediately from any persisted users in localStorage
+syncStrukturOrgFromUsers(cloudUsersMemoryStore);
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
@@ -659,10 +702,13 @@ if (typeof window !== 'undefined') {
     if (typeof payload.gasWebAppUrl === 'string' && payload.gasWebAppUrl) {
       cloudGasWebAppUrlStore = payload.gasWebAppUrl;
     }
-    saveDeletedUsernames(payload.deletedUsernames);
+    const combinedDeleted = Array.from(
+      new Set([...getDeletedUsernames(), ...payload.deletedUsernames].map((u) => u.toLowerCase()))
+    );
+    saveDeletedUsernames(combinedDeleted);
     const merged = mergeWithDefaultsAndRecentMutations(
-      payload.users,
-      payload.deletedUsernames
+      [...payload.users, ...cloudUsersMemoryStore],
+      combinedDeleted
     );
     if (JSON.stringify(merged) !== JSON.stringify(cloudUsersMemoryStore)) {
       saveStoredUsers(merged);
@@ -679,7 +725,7 @@ if (typeof window !== 'undefined') {
           void writeUserRegistrationToDrive(
             cu,
             merged,
-            payload.deletedUsernames,
+            combinedDeleted,
             token
           );
         }
@@ -714,7 +760,7 @@ export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]>
   let serverUsers: UserAccount[] = [];
   let serverDeleted: string[] = [];
 
-  // 1. Fetch from shared Google Cloud Firestore (works across ALL computers, ais-dev & ais-pre)
+  // 1. Fetch from shared Google Cloud Firestore (works across ALL computers, ais-dev & ais-pre & Vercel)
   try {
     const fsData = await fetchUsersFromCloudFirestore();
     if (fsData) {
@@ -728,17 +774,15 @@ export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]>
     console.warn('Firestore user fetch warning:', err);
   }
 
-  // 2. Pull from Google Apps Script Web App endpoint only when explicitly syncing Drive or when Firestore already has active users
-  if (syncDrive || firestoreUsers.length > 0) {
-    try {
-      const gasData = await pullUsersFromGasEndpoint(getGasWebAppUrl());
-      if (gasData) {
-        gasUsers = gasData.users;
-        gasDeleted = gasData.deletedUsernames;
-      }
-    } catch {
-      // ignore
+  // 2. Always pull from Google Apps Script Web App endpoint (wbp_users_database.json in Google Drive) so permanent Drive users are never lost after redeploy
+  try {
+    const gasData = await pullUsersFromGasEndpoint(getGasWebAppUrl());
+    if (gasData) {
+      gasUsers = gasData.users;
+      gasDeleted = gasData.deletedUsernames;
     }
+  } catch {
+    // ignore
   }
 
   // 3. Also fetch from local/container Express API (/api/users)
@@ -777,15 +821,44 @@ export async function fetchCloudUsers(syncDrive = false): Promise<UserAccount[]>
   );
   saveDeletedUsernames(combinedDeleted);
 
-  // Merge Firestore users + GAS Web App users + Server users + Defaults
+  const localPersistedUsers = getStoredUsers();
+
+  // Merge Firestore users + GAS Web App (Google Drive JSON) users + Server users + LocalStorage users
   const merged = mergeWithDefaultsAndRecentMutations(
-    [...firestoreUsers, ...gasUsers, ...serverUsers],
+    [...firestoreUsers, ...gasUsers, ...serverUsers, ...localPersistedUsers],
     combinedDeleted
   );
 
   if (JSON.stringify(merged) !== JSON.stringify(cloudUsersMemoryStore)) {
     saveStoredUsers(merged);
   }
+
+  // Auto-heal / backfill: if any user exists in merged (e.g. from Google Drive GAS or localStorage) but is missing from Firestore, persist to Firestore & GAS
+  if (merged.length > 0) {
+    const fsUserSet = new Set(firestoreUsers.map((u) => u.username.toLowerCase()));
+    const missingInFirestore = merged.filter(
+      (u) => !fsUserSet.has(u.username.toLowerCase())
+    );
+    if (missingInFirestore.length > 0) {
+      for (const mu of missingInFirestore) {
+        void upsertUserToCloudFirestore(mu, merged, combinedDeleted);
+      }
+    }
+
+    const gasUserSet = new Set(gasUsers.map((u) => u.username.toLowerCase()));
+    const missingInGas = merged.filter(
+      (u) => !gasUserSet.has(u.username.toLowerCase())
+    );
+    if (missingInGas.length > 0) {
+      void pushUsersToGasEndpoint({
+        gasWebAppUrl: getGasWebAppUrl(),
+        action: 'syncUsers',
+        users: merged,
+        deletedUsernames: combinedDeleted
+      });
+    }
+  }
+
   return merged;
 }
 
