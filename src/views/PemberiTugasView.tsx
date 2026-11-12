@@ -830,15 +830,6 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                               )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <a
-                                href={parsed.driveViewUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#282974]/10 text-[#282974] hover:bg-[#282974] hover:text-white text-[11px] font-semibold transition-colors"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                <span>Tautan Google Drive</span>
-                              </a>
                               <button
                                 type="button"
                                 onClick={() => removeUploadedFile(idx)}
