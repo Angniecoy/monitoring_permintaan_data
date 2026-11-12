@@ -201,7 +201,7 @@ export const googleSignIn = async (): Promise<{
     cachedGoogleUser = result.user;
 
     // Register token in centralized backend memory so cross-device user registrations can immediately write to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
-    void fetch('/api/drive/token', {
+    void fetch('https://monitoring-permintaan-data.onrender.com/api/drive/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -981,7 +981,7 @@ export async function uploadFileToDriveFolder(
 }
 
 /**
- * Uploads a file via the backend server (/api/files/upload) and Google Apps Script Web App
+ * Uploads a file via the backend server (https://monitoring-permintaan-data.onrender.com/api/files/upload) and Google Apps Script Web App
  * into the separated category folder:
  * - 'Permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
  * - 'Jawaban Atas Permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
@@ -1030,7 +1030,7 @@ export async function uploadFileViaGasAndBackend(params: {
   let handledByServerGas = false;
   let gasSynced = false;
 
-  // 1. Try backend server endpoint (/api/files/upload) which bridges both Drive API and GAS Web App
+  // 1. Try backend server endpoint on Render which bridges both Drive API and GAS Web App
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
@@ -1038,7 +1038,7 @@ export async function uploadFileViaGasAndBackend(params: {
     if (cachedAccessToken) {
       headers.Authorization = `Bearer ${cachedAccessToken}`;
     }
-    const serverRes = await fetch('/api/files/upload', {
+    const serverRes = await fetch('https://monitoring-permintaan-data.onrender.com/api/files/upload', {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
@@ -1558,5 +1558,3 @@ export async function pullUsersFromGasEndpoint(
     return null;
   }
 }
-
-
