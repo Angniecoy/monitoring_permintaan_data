@@ -678,7 +678,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-white to-transparent z-10" />
                     <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent z-10" />
 
-                    <div className="animate-ticker-marquee items-center">
+                    <div
+                      className="animate-ticker-marquee items-center"
+                      style={{ animationDuration: `${Math.max(90, activeTickets.length * 9)}s` }}
+                    >
                       {[...activeTickets, ...activeTickets].map((t, idx) => {
                         const isOpen = t.Status_Pengerjaan === 'OPEN';
                         return (

@@ -80,7 +80,7 @@ body {
 .animate-ticker-marquee {
   display: flex;
   width: max-content;
-  animation: ticker-marquee 30s linear infinite;
+  animation: ticker-marquee 95s linear infinite;
 }
 
 .animate-ticker-marquee:hover {
