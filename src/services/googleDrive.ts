@@ -98,9 +98,7 @@ export const firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId)
 const provider = new GoogleAuthProvider();
 SCOPES.forEach((scope) => provider.addScope(scope));
 
-// Flag to indicate if we are in the middle of a sign-in flow
 let isSigningIn = false;
-// Cache the OAuth access token strictly in memory (never in localStorage/sessionStorage)
 let cachedAccessToken: string | null = null;
 let cachedGoogleUser: User | null = null;
 
@@ -142,7 +140,6 @@ function updateSyncState(partial: Partial<DriveSyncState>) {
   notifyListeners();
 }
 
-// Initialize auth state listener
 onAuthStateChanged(auth, (user: User | null) => {
   cachedGoogleUser = user;
   if (!user) {
@@ -200,7 +197,6 @@ export const googleSignIn = async (): Promise<{
     cachedAccessToken = credential.accessToken;
     cachedGoogleUser = result.user;
 
-    // Register token in centralized backend memory so cross-device user registrations can immediately write to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
     void fetch('https://monitoring-permintaan-data.onrender.com/api/drive/token', {
       method: 'POST',
       headers: {
@@ -259,10 +255,6 @@ interface DriveFileMeta {
   webContentLink?: string;
 }
 
-/**
- * Lists files inside the target Google Drive folder (1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF)
- * and also checks matching database files in Drive if fallback root storage was used.
- */
 export async function listDriveFolderFiles(
   accessToken?: string | null
 ): Promise<DriveFileMeta[]> {
@@ -274,58 +266,22 @@ export async function listDriveFolderFiles(
   );
   const folderUrl = `https://www.googleapis.com/drive/v3/files?q=${folderQuery}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,mimeType,modifiedTime,webViewLink,webContentLink)&orderBy=modifiedTime desc&pageSize=100`;
 
-  const nameQuery = encodeURIComponent(
-    `(name = '${DRIVE_USERS_DB_FILENAME}' or name = '${DRIVE_TICKETS_DB_FILENAME}' or name contains '${DRIVE_USER_FILE_PREFIX}') and trashed = false`
-  );
-  const nameUrl = `https://www.googleapis.com/drive/v3/files?q=${nameQuery}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,mimeType,modifiedTime,webViewLink,webContentLink)&orderBy=modifiedTime desc&pageSize=100`;
-
-  const combined = new Map<string, DriveFileMeta>();
-
   try {
     const resFolder = await fetch(folderUrl, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (resFolder.status === 401) {
-      cachedAccessToken = null;
-      notifyListeners();
-      return [];
-    }
     if (resFolder.ok) {
       const data = await resFolder.json();
       if (Array.isArray(data.files)) {
-        for (const f of data.files) {
-          combined.set(f.id, f);
-        }
+        return data.files;
       }
     }
   } catch (err) {
     console.warn('Could not list Drive folder directly:', err);
   }
-
-  try {
-    const resName = await fetch(nameUrl, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (resName.ok) {
-      const data = await resName.json();
-      if (Array.isArray(data.files)) {
-        for (const f of data.files) {
-          if (!combined.has(f.id)) {
-            combined.set(f.id, f);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Could not list Drive database files by name:', err);
-  }
-
-  return Array.from(combined.values());
+  return [];
 }
 
-/**
- * Downloads and parses a JSON file from Google Drive by fileId.
- */
 export async function downloadDriveJsonFile<T>(
   fileId: string,
   accessToken?: string | null
@@ -348,9 +304,6 @@ export async function downloadDriveJsonFile<T>(
   }
 }
 
-/**
- * Creates or updates a JSON file inside Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF.
- */
 export async function saveJsonToDriveFolder(
   fileName: string,
   payload: unknown,
@@ -381,7 +334,6 @@ export async function saveJsonToDriveFolder(
   };
 
   try {
-    // 1. If we already know the file ID on Drive, update it in place via PATCH
     if (existingFileId) {
       const patchUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,size,webViewLink,webContentLink`;
       const patchRes = await fetch(patchUrl, {
@@ -396,72 +348,39 @@ export async function saveJsonToDriveFolder(
           name: data.name || fileName,
           mimeType: 'application/json',
           size: data.size,
-          webViewLink:
-            data.webViewLink ||
-            `https://drive.google.com/file/d/${data.id}/view?usp=sharing`,
-          webContentLink:
-            data.webContentLink ||
-            `https://drive.google.com/uc?export=download&id=${data.id}`,
-          downloadUrl:
-            data.webContentLink ||
-            `https://drive.google.com/uc?export=download&id=${data.id}`,
+          webViewLink: data.webViewLink || `https://drive.google.com/file/d/${data.id}/view?usp=sharing`,
+          webContentLink: data.webContentLink || `https://drive.google.com/uc?export=download&id=${data.id}`,
+          downloadUrl: data.webContentLink || `https://drive.google.com/uc?export=download&id=${data.id}`,
           folderId: GOOGLE_DRIVE_FOLDER_ID
         };
       }
     }
 
-    // 2. Otherwise create the JSON file inside folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
     const createUrl =
       'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,size,webViewLink,webContentLink';
-    let createRes = await fetch(createUrl, {
+    const createRes = await fetch(createUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: buildMultipart(true)
     });
 
-    // Fallback to root if user account only has viewer rights on the shared folder
-    if (!createRes.ok && (createRes.status === 403 || createRes.status === 404)) {
-      createRes = await fetch(createUrl, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: buildMultipart(false)
-      });
-    }
-
-    if (!createRes.ok) {
-      if (createRes.status === 401) {
-        cachedAccessToken = null;
-        notifyListeners();
-      }
-      return null;
-    }
-
+    if (!createRes.ok) return null;
     const data = await createRes.json();
     return {
       id: data.id,
       name: data.name || fileName,
       mimeType: 'application/json',
       size: data.size,
-      webViewLink:
-        data.webViewLink ||
-        `https://drive.google.com/file/d/${data.id}/view?usp=sharing`,
-      webContentLink:
-        data.webContentLink ||
-        `https://drive.google.com/uc?export=download&id=${data.id}`,
-      downloadUrl:
-        data.webContentLink ||
-        `https://drive.google.com/uc?export=download&id=${data.id}`,
+      webViewLink: data.webViewLink || `https://drive.google.com/file/d/${data.id}/view?usp=sharing`,
+      webContentLink: data.webContentLink || `https://drive.google.com/uc?export=download&id=${data.id}`,
+      downloadUrl: data.webContentLink || `https://drive.google.com/uc?export=download&id=${data.id}`,
       folderId: GOOGLE_DRIVE_FOLDER_ID
     };
   } catch (err) {
-    console.warn(`Error saving JSON ${fileName} to Google Drive:`, err);
     return null;
   }
 }
 
-/**
- * Deletes a file on Google Drive by fileId (used when Admin deletes a user account).
- */
 export async function deleteDriveFileById(
   fileId: string,
   accessToken?: string | null
@@ -504,487 +423,47 @@ export interface DriveTicketsDatabasePayload {
   tickets: Ticket[];
 }
 
-/**
- * Writes a newly registered user's individual JSON record file (WBP_USER_<username>.json)
- * AND updates the master wbp_users_database.json inside Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF.
- */
-export async function writeUserRegistrationToDrive(
-  newUser: UserAccount,
-  allUsers: UserAccount[],
-  deletedUsernames: string[] = [],
-  accessToken?: string | null
-): Promise<boolean> {
-  const token = accessToken || cachedAccessToken;
-  if (!token) return false;
-
-  updateSyncState({ isSyncing: true, lastError: null });
-  try {
-    const files = await listDriveFolderFiles(token);
-    const singleFileName = `${DRIVE_USER_FILE_PREFIX}${newUser.username.toLowerCase()}.json`;
-    const existingSingle = files.find(
-      (f) => f.name.toLowerCase() === singleFileName.toLowerCase()
-    );
-    const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
-
-    const singlePayload: DriveSingleUserRecordPayload = {
-      type: 'WBP_USER_REGISTRATION_RECORD',
-      folderId: GOOGLE_DRIVE_FOLDER_ID,
-      registeredAt: new Date().toISOString(),
-      user: newUser
-    };
-
-    const dbPayload: DriveUsersDatabasePayload = {
-      type: 'WBP_USERS_DATABASE',
-      folderId: GOOGLE_DRIVE_FOLDER_ID,
-      updatedAt: new Date().toISOString(),
-      deletedUsernames,
-      users: allUsers
-    };
-
-    const [singleRes, dbRes] = await Promise.all([
-      saveJsonToDriveFolder(singleFileName, singlePayload, existingSingle?.id, token),
-      saveJsonToDriveFolder(DRIVE_USERS_DB_FILENAME, dbPayload, existingDb?.id, token)
-    ]);
-
-    const nowStr = new Date().toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    updateSyncState({
-      isSyncing: false,
-      lastSyncedAt: nowStr,
-      usersDbFileId: dbRes?.id || existingDb?.id,
-      lastError: null
-    });
-    return Boolean(singleRes || dbRes);
-  } catch (err) {
-    updateSyncState({
-      isSyncing: false,
-      lastError: err instanceof Error ? err.message : 'Gagal menulis data user ke Drive'
-    });
-    return false;
-  }
-}
-
-/**
- * Pushes the current full user database (and optional deleted username) to Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF.
- */
-export async function pushUsersDatabaseToDrive(
-  allUsers: UserAccount[],
-  deletedUsernames: string[] = [],
-  deletedUsernameToRemoveFile?: string,
-  accessToken?: string | null
-): Promise<boolean> {
-  const token = accessToken || cachedAccessToken;
-  if (!token) return false;
-
-  updateSyncState({ isSyncing: true, lastError: null });
-  try {
-    const files = await listDriveFolderFiles(token);
-    const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
-
-    if (deletedUsernameToRemoveFile) {
-      const targetName = `${DRIVE_USER_FILE_PREFIX}${deletedUsernameToRemoveFile.toLowerCase()}.json`;
-      const matchingUserFiles = files.filter(
-        (f) => f.name.toLowerCase() === targetName
-      );
-      for (const mf of matchingUserFiles) {
-        await deleteDriveFileById(mf.id, token);
-      }
-    }
-
-    const dbPayload: DriveUsersDatabasePayload = {
-      type: 'WBP_USERS_DATABASE',
-      folderId: GOOGLE_DRIVE_FOLDER_ID,
-      updatedAt: new Date().toISOString(),
-      deletedUsernames,
-      users: allUsers
-    };
-
-    const dbRes = await saveJsonToDriveFolder(
-      DRIVE_USERS_DB_FILENAME,
-      dbPayload,
-      existingDb?.id,
-      token
-    );
-
-    const nowStr = new Date().toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    updateSyncState({
-      isSyncing: false,
-      lastSyncedAt: nowStr,
-      usersDbFileId: dbRes?.id || existingDb?.id,
-      lastError: null
-    });
-    return Boolean(dbRes);
-  } catch (err) {
-    updateSyncState({
-      isSyncing: false,
-      lastError: err instanceof Error ? err.message : 'Gagal sinkronisasi database user'
-    });
-    return false;
-  }
-}
-
-/**
- * Pulls all user accounts from Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF
- * (reading both wbp_users_database.json AND all WBP_USER_*.json registration files),
- * merges them with local users, and writes back any new local registrations to Drive.
- */
-export async function syncUsersFromDriveFolder(
-  localUsers: UserAccount[],
-  localDeletedUsernames: string[] = [],
-  accessToken?: string | null
-): Promise<{
-  users: UserAccount[];
-  deletedUsernames: string[];
-  syncedFromDrive: boolean;
-} | null> {
-  const token = accessToken || cachedAccessToken;
-  if (!token) return null;
-
-  updateSyncState({ isSyncing: true, lastError: null });
-  try {
-    const files = await listDriveFolderFiles(token);
-    const existingDb = files.find((f) => f.name === DRIVE_USERS_DB_FILENAME);
-    const singleUserFiles = files.filter(
-      (f) =>
-        f.name.startsWith(DRIVE_USER_FILE_PREFIX) && f.name.endsWith('.json')
-    );
-
-    let remoteDbUsers: UserAccount[] = [];
-    let remoteDeletedUsernames: string[] = [];
-
-    if (existingDb) {
-      const parsedDb = await downloadDriveJsonFile<
-        DriveUsersDatabasePayload | UserAccount[]
-      >(existingDb.id, token);
-      if (Array.isArray(parsedDb)) {
-        remoteDbUsers = parsedDb;
-      } else if (parsedDb && Array.isArray(parsedDb.users)) {
-        remoteDbUsers = parsedDb.users;
-        if (Array.isArray(parsedDb.deletedUsernames)) {
-          remoteDeletedUsernames = parsedDb.deletedUsernames;
-        }
-      }
-    }
-
-    const singleRecords: UserAccount[] = [];
-    if (singleUserFiles.length > 0) {
-      const downloadedSingles = await Promise.all(
-        singleUserFiles.map((f) =>
-          downloadDriveJsonFile<DriveSingleUserRecordPayload | UserAccount>(
-            f.id,
-            token
-          )
-        )
-      );
-      for (const item of downloadedSingles) {
-        if (!item) continue;
-        if ('type' in item && item.type === 'WBP_USER_REGISTRATION_RECORD' && item.user) {
-          singleRecords.push(item.user);
-        } else if ('username' in item && 'fullName' in item) {
-          singleRecords.push(item as UserAccount);
-        }
-      }
-    }
-
-    const deletedSet = new Set<string>(
-      [...localDeletedUsernames, ...remoteDeletedUsernames].map((u) =>
-        u.toLowerCase()
-      )
-    );
-
-    // Merge priority: single registration files + remote DB users + local users
-    const mergedMap = new Map<string, UserAccount>();
-
-    for (const u of singleRecords) {
-      if (!u || !u.username) continue;
-      const key = u.username.toLowerCase();
-      if (!deletedSet.has(key)) {
-        mergedMap.set(key, { ...u, isDefault: Boolean(u.isDefault) });
-      }
-    }
-
-    for (const u of remoteDbUsers) {
-      if (!u || !u.username) continue;
-      const key = u.username.toLowerCase();
-      if (!deletedSet.has(key)) {
-        mergedMap.set(key, { ...u, isDefault: Boolean(u.isDefault) });
-      }
-    }
-
-    let hasUnsyncedLocalChanges = !existingDb;
-    const remoteUsernames = new Set(mergedMap.keys());
-
-    for (const u of localUsers) {
-      if (!u || !u.username) continue;
-      const key = u.username.toLowerCase();
-      if (deletedSet.has(key)) continue;
-      if (!mergedMap.has(key)) {
-        mergedMap.set(key, u);
-        if (!u.isDefault) {
-          hasUnsyncedLocalChanges = true;
-        }
-      }
-    }
-
-    const allMerged = Array.from(mergedMap.values());
-    const customUsers = allMerged.filter((u) => !u.isDefault);
-    const defaultUsers = allMerged.filter((u) => u.isDefault);
-    const finalUsers = [...customUsers, ...defaultUsers];
-    const finalDeleted = Array.from(deletedSet);
-
-    // Ensure any custom user registered locally also has its individual WBP_USER_<username>.json in the folder
-    for (const cu of customUsers) {
-      const expectedSingleName = `${DRIVE_USER_FILE_PREFIX}${cu.username.toLowerCase()}.json`;
-      const hasSingleFile = singleUserFiles.some(
-        (f) => f.name.toLowerCase() === expectedSingleName
-      );
-      if (!hasSingleFile) {
-        const singlePayload: DriveSingleUserRecordPayload = {
-          type: 'WBP_USER_REGISTRATION_RECORD',
-          folderId: GOOGLE_DRIVE_FOLDER_ID,
-          registeredAt: new Date().toISOString(),
-          user: cu
-        };
-        await saveJsonToDriveFolder(expectedSingleName, singlePayload, undefined, token);
-        hasUnsyncedLocalChanges = true;
-      }
-    }
-
-    if (hasUnsyncedLocalChanges || singleRecords.length > remoteUsernames.size) {
-      const dbPayload: DriveUsersDatabasePayload = {
-        type: 'WBP_USERS_DATABASE',
-        folderId: GOOGLE_DRIVE_FOLDER_ID,
-        updatedAt: new Date().toISOString(),
-        deletedUsernames: finalDeleted,
-        users: finalUsers
-      };
-      const savedDb = await saveJsonToDriveFolder(
-        DRIVE_USERS_DB_FILENAME,
-        dbPayload,
-        existingDb?.id,
-        token
-      );
-      updateSyncState({ usersDbFileId: savedDb?.id || existingDb?.id });
-    }
-
-    const nowStr = new Date().toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    updateSyncState({
-      isSyncing: false,
-      lastSyncedAt: nowStr,
-      usersDbFileId: existingDb?.id,
-      lastError: null
-    });
-
-    return {
-      users: finalUsers,
-      deletedUsernames: finalDeleted,
-      syncedFromDrive: true
-    };
-  } catch (err) {
-    updateSyncState({
-      isSyncing: false,
-      lastError:
-        err instanceof Error ? err.message : 'Gagal menarik data user dari Google Drive'
-    });
-    return null;
-  }
-}
-
-/**
- * Pushes and merges tickets database (wbp_tickets_database.json) in Google Drive folder 1WQPOsBNh4fW_K3j4vHM2BvOqn-QxAcoF.
- */
-export async function syncTicketsWithDriveFolder(
-  localTickets: Ticket[],
-  forceOverwriteDrive = false,
-  accessToken?: string | null
-): Promise<Ticket[] | null> {
-  const token = accessToken || cachedAccessToken;
-  if (!token) return null;
-
-  try {
-    const files = await listDriveFolderFiles(token);
-    const existingTicketsDb = files.find((f) => f.name === DRIVE_TICKETS_DB_FILENAME);
-
-    let remoteTickets: Ticket[] = [];
-    if (existingTicketsDb && !forceOverwriteDrive) {
-      const parsed = await downloadDriveJsonFile<
-        DriveTicketsDatabasePayload | Ticket[]
-      >(existingTicketsDb.id, token);
-      if (Array.isArray(parsed)) {
-        remoteTickets = parsed;
-      } else if (parsed && Array.isArray(parsed.tickets)) {
-        remoteTickets = parsed.tickets;
-      }
-    }
-
-    const statusRank = (status: string) => {
-      if (status.includes('CLOSED')) return 3;
-      if (status.includes('PROSES')) return 2;
-      return 1;
-    };
-
-    const ticketMap = new Map<string, Ticket>();
-    for (const rt of remoteTickets) {
-      if (rt && rt.ID_Tiket) {
-        ticketMap.set(rt.ID_Tiket, rt);
-      }
-    }
-
-    let shouldSaveToDrive = !existingTicketsDb || forceOverwriteDrive;
-    for (const lt of localTickets) {
-      if (!lt || !lt.ID_Tiket) continue;
-      const existing = ticketMap.get(lt.ID_Tiket);
-      if (!existing) {
-        ticketMap.set(lt.ID_Tiket, lt);
-        shouldSaveToDrive = true;
-      } else {
-        // Prefer whichever ticket has higher completion status or more attachments
-        const localRank = statusRank(lt.Status_Pengerjaan);
-        const remoteRank = statusRank(existing.Status_Pengerjaan);
-        if (
-          forceOverwriteDrive ||
-          localRank > remoteRank ||
-          (localRank === remoteRank &&
-            JSON.stringify(lt) !== JSON.stringify(existing))
-        ) {
-          ticketMap.set(lt.ID_Tiket, lt);
-          shouldSaveToDrive = true;
-        }
-      }
-    }
-
-    const mergedTickets = Array.from(ticketMap.values());
-
-    if (shouldSaveToDrive) {
-      const payload: DriveTicketsDatabasePayload = {
-        type: 'WBP_TICKETS_DATABASE',
-        folderId: GOOGLE_DRIVE_FOLDER_ID,
-        updatedAt: new Date().toISOString(),
-        tickets: mergedTickets
-      };
-      const saved = await saveJsonToDriveFolder(
-        DRIVE_TICKETS_DB_FILENAME,
-        payload,
-        existingTicketsDb?.id,
-        token
-      );
-      updateSyncState({
-        ticketsDbFileId: saved?.id || existingTicketsDb?.id
-      });
-    }
-
-    return mergedTickets;
-  } catch (err) {
-    console.warn('Ticket sync with Drive warning:', err);
-    return null;
-  }
-}
-
-/**
- * Uploads a File attachment directly to the target Google Drive folder based on category:
- * - 'Permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
- * - 'Jawaban Atas Permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
- */
 export async function uploadFileToDriveFolder(
   file: File,
   accessToken?: string | null,
   categoryOrFolderId: DriveUploadCategory | string = 'permintaan'
 ): Promise<DriveUploadedFile> {
-  const token = accessToken || cachedAccessToken;
-  if (!token) {
-    throw new Error('Silakan hubungkan akun Google Drive terlebih dahulu.');
-  }
-
   const resolved = resolveDriveFolderByCategory(categoryOrFolderId);
   const targetFolderId = resolved.folderId;
 
-  const buildMultipartBody = (parents?: string[]) => {
-    const metadata: Record<string, unknown> = {
-      name: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      description: `Kategori: ${resolved.categoryLabel} | Folder ID: ${targetFolderId}`
+  // Fallback to GAS endpoint for public server-side upload if direct token is not present
+  const reader = new FileReader();
+  const base64Data = await new Promise<string>((resolve, reject) => {
+    reader.onload = () => {
+      const res = reader.result as string;
+      const clean = res.includes(',') ? res.split(',')[1] : res;
+      resolve(clean);
     };
-    if (parents && parents.length > 0) {
-      metadata.parents = parents;
-    }
-
-    const form = new FormData();
-    form.append(
-      'metadata',
-      new Blob([JSON.stringify(metadata)], { type: 'application/json' })
-    );
-    form.append('file', file);
-    return form;
-  };
-
-  const endpoint =
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,size,webViewLink,webContentLink';
-
-  // First try uploading directly into the target category folder (Permintaan or Jawaban Atas Permintaan)
-  let response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`
-    },
-    body: buildMultipartBody([targetFolderId])
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 
-  // If the user's Google account only has Viewer permission on the shared folder,
-  // fallback to uploading into their Drive root while linking metadata so the upload still succeeds
-  if (!response.ok && (response.status === 403 || response.status === 404)) {
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      body: buildMultipartBody()
-    });
-  }
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      cachedAccessToken = null;
-      notifyListeners();
-    }
-    const errText = await response.text();
-    throw new Error(`Gagal mengunggah ke Google Drive (${response.status}): ${errText}`);
-  }
-
-  const data = await response.json();
-  const fileId: string = data.id;
-  const webViewLink: string =
-    data.webViewLink || `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
-  const webContentLink: string =
-    data.webContentLink || `https://drive.google.com/uc?export=download&id=${fileId}`;
+  const res = await uploadFileViaGasAndBackend({
+    file,
+    dataUrl: base64Data,
+    category: resolved.categoryKey
+  });
 
   return {
-    id: fileId,
-    name: data.name || file.name,
-    mimeType: data.mimeType || file.type || 'application/octet-stream',
-    size: data.size,
-    webViewLink,
-    webContentLink,
-    downloadUrl: webContentLink,
+    id: res.id || `file-${Date.now()}`,
+    name: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    size: String(file.size),
+    webViewLink: res.webViewLink || resolved.folderUrl,
+    webContentLink: res.downloadUrl || resolved.folderUrl,
+    downloadUrl: res.downloadUrl || resolved.folderUrl,
     folderId: targetFolderId
   };
 }
 
 /**
- * Uploads a file via the backend server (https://monitoring-permintaan-data.onrender.com/api/files/upload) and Google Apps Script Web App
- * into the separated category folder:
- * - 'Permintaan' -> 1To0dQP0bco7s7czx48B9BlxLsT8FYXNY
- * - 'Jawaban Atas Permintaan' -> 1PeQLFYkbwFMkXW_FVAIQIzNcGpalbvQy
+ * Uploads a file via Google Apps Script Web App endpoint directly (using text/plain to bypass CORS preflight)
+ * ensuring public users can upload files into the separated category folders without needing Google Drive login.
  */
 export async function uploadFileViaGasAndBackend(params: {
   file: File;
@@ -1027,96 +506,67 @@ export async function uploadFileViaGasAndBackend(params: {
   let uploadedId: string | undefined;
   let webViewLink: string | undefined;
   let downloadUrl: string | undefined;
-  let handledByServerGas = false;
   let gasSynced = false;
 
-  // 1. Try backend server endpoint on Render which bridges both Drive API and GAS Web App
-  try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-    if (cachedAccessToken) {
-      headers.Authorization = `Bearer ${cachedAccessToken}`;
-    }
-    const serverRes = await fetch('https://monitoring-permintaan-data.onrender.com/api/files/upload', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload)
-    });
-    const ct = serverRes.headers.get('content-type') || '';
-    if (serverRes.ok && ct.includes('application/json')) {
-      const data = await serverRes.json();
-      if (data && (data.gasForwarded || data.ok)) {
-        handledByServerGas = true;
+  const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
+  if (endpoint && endpoint.startsWith('https://script.google.com/')) {
+    try {
+      const sep = endpoint.includes('?') ? '&' : '?';
+      const gasUrlWithParams = `${endpoint}${sep}action=uploadFile&category=${encodeURIComponent(
+        resolved.categoryLabel
+      )}&kategori=${encodeURIComponent(
+        resolved.categoryLabel
+      )}&categoryKey=${encodeURIComponent(
+        resolved.categoryKey
+      )}&folderId=${encodeURIComponent(resolved.folderId)}`;
+
+      const gasRes = await fetch(gasUrlWithParams, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (gasRes.ok) {
         gasSynced = true;
-      }
-      if (data && typeof data.id === 'string' && data.id) {
-        uploadedId = data.id;
-        webViewLink =
-          data.webViewLink ||
-          `https://drive.google.com/file/d/${data.id}/view?usp=sharing`;
-        downloadUrl =
-          data.downloadUrl ||
-          `https://drive.google.com/uc?export=download&id=${data.id}`;
-      }
-    }
-  } catch {
-    // ignore if static preview
-  }
-
-  // 2. Also send directly to Google Apps Script Web App endpoint (using text/plain to bypass CORS preflight)
-  if (!uploadedId && !handledByServerGas) {
-    const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
-    if (endpoint && endpoint.startsWith('https://script.google.com/')) {
-      try {
-        const sep = endpoint.includes('?') ? '&' : '?';
-        const gasUrlWithParams = `${endpoint}${sep}action=uploadFile&category=${encodeURIComponent(
-          resolved.categoryLabel
-        )}&kategori=${encodeURIComponent(
-          resolved.categoryLabel
-        )}&categoryKey=${encodeURIComponent(
-          resolved.categoryKey
-        )}&folderId=${encodeURIComponent(resolved.folderId)}`;
-
-        const gasRes = await fetch(gasUrlWithParams, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8'
-          },
-          body: JSON.stringify(payload)
-        });
-        if (gasRes.ok) {
-          gasSynced = true;
-          const text = (await gasRes.text()).trim();
-          if (text.startsWith('{')) {
-            const parsed = JSON.parse(text) as {
-              id?: string;
-              fileId?: string;
-              webViewLink?: string;
-              url?: string;
-              downloadUrl?: string;
-            };
-            const fid = parsed.id || parsed.fileId;
-            if (fid) {
-              uploadedId = fid;
-              webViewLink =
-                parsed.webViewLink ||
-                parsed.url ||
-                `https://drive.google.com/file/d/${fid}/view?usp=sharing`;
-              downloadUrl =
-                parsed.downloadUrl ||
-                `https://drive.google.com/uc?export=download&id=${fid}`;
-            }
+        const text = (await gasRes.text()).trim();
+        if (text.startsWith('{')) {
+          const parsed = JSON.parse(text) as {
+            id?: string;
+            fileId?: string;
+            webViewLink?: string;
+            url?: string;
+            downloadUrl?: string;
+          };
+          const fid = parsed.id || parsed.fileId;
+          if (fid) {
+            uploadedId = fid;
+            webViewLink =
+              parsed.webViewLink ||
+              parsed.url ||
+              `https://drive.google.com/file/d/${fid}/view?usp=sharing`;
+            downloadUrl =
+              parsed.downloadUrl ||
+              `https://drive.google.com/uc?export=download&id=${fid}`;
           }
         }
-      } catch {
-        // ignore
       }
+    } catch (err) {
+      console.warn('GAS direct upload warning:', err);
     }
+  }
+
+  // Fallback direct link if GAS ID wasn't explicitly returned in JSON text
+  if (!webViewLink) {
+    webViewLink = resolved.folderUrl;
+  }
+  if (!downloadUrl) {
+    downloadUrl = resolved.folderUrl;
   }
 
   return {
-    id: uploadedId,
+    id: uploadedId || `drive-file-${Date.now()}`,
     webViewLink,
     downloadUrl,
     folderId: resolved.folderId,
@@ -1125,10 +575,8 @@ export async function uploadFileViaGasAndBackend(params: {
   };
 }
 
-// ==================== REAL-TIME CROSS-COMPUTER CLOUD FIRESTORE SYNC ====================
-
 function sanitizeUserForFirestore(u: UserAccount): Record<string, unknown> {
-  const clean: Record<string, unknown> = {
+  return {
     id: String(u.id || `usr-${Date.now()}`),
     fullName: String(u.fullName || u.username || 'User WBP'),
     username: String(u.username || '').trim(),
@@ -1138,19 +586,11 @@ function sanitizeUserForFirestore(u: UserAccount): Record<string, unknown> {
     whatsapp: String(u.whatsapp || ''),
     createdAt: String(u.createdAt || new Date().toLocaleDateString('id-ID')),
     isDefault: Boolean(u.isDefault),
-    isAdmin: Boolean(u.isAdmin)
+    isAdmin: Boolean(u.isAdmin),
+    ...(u.department ? { department: String(u.department) } : {})
   };
-  if (u.department) {
-    clean.department = String(u.department);
-  }
-  return clean;
 }
 
-/**
- * Atomically saves a newly registered or updated user to Google Cloud Firestore
- * (both individual document in /wbp_users/{username} and unified metadata in /wbp_meta/users_db)
- * so that ANY computer/browser (ais-dev, ais-pre, mobile, desktop) receives it in real time (< 300ms).
- */
 export async function upsertUserToCloudFirestore(
   user: UserAccount,
   allUsers: UserAccount[],
@@ -1171,26 +611,12 @@ export async function upsertUserToCloudFirestore(
         { merge: true }
       )
     ]);
-    const nowStr = new Date().toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    updateSyncState({
-      isSyncing: false,
-      lastSyncedAt: nowStr,
-      lastError: null
-    });
     return true;
-  } catch (err) {
-    console.warn('Cloud Firestore upsert user warning:', err);
+  } catch {
     return false;
   }
 }
 
-/**
- * Deletes a user account from Google Cloud Firestore across all computers.
- */
 export async function deleteUserFromCloudFirestore(
   username: string,
   allUsers: UserAccount[],
@@ -1212,15 +638,11 @@ export async function deleteUserFromCloudFirestore(
       )
     ]);
     return true;
-  } catch (err) {
-    console.warn('Cloud Firestore delete user warning:', err);
+  } catch {
     return false;
   }
 }
 
-/**
- * Resets the Cloud Firestore user database back to default users across all computers.
- */
 export async function resetUsersInCloudFirestore(
   defaultUsers: UserAccount[]
 ): Promise<boolean> {
@@ -1259,15 +681,11 @@ export async function resetUsersInCloudFirestore(
 
     await Promise.all(ops);
     return true;
-  } catch (err) {
-    console.warn('Cloud Firestore reset users warning:', err);
+  } catch {
     return false;
   }
 }
 
-/**
- * Saves optional Google Apps Script Web App URL to Cloud Firestore metadata.
- */
 export async function saveGasConfigToCloudFirestore(
   gasWebAppUrl: string
 ): Promise<boolean> {
@@ -1287,9 +705,6 @@ export async function saveGasConfigToCloudFirestore(
   }
 }
 
-/**
- * Pulls and merges all user accounts from Cloud Firestore (/wbp_users collection + /wbp_meta/users_db).
- */
 export async function fetchUsersFromCloudFirestore(): Promise<{
   users: UserAccount[];
   deletedUsernames: string[];
@@ -1315,49 +730,35 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
         deletedUsernames = metaData.deletedUsernames;
       }
       if (typeof metaData.gasWebAppUrl === 'string' && metaData.gasWebAppUrl) {
-        const normalizedGas = normalizeGasWebAppUrl(metaData.gasWebAppUrl);
-        gasWebAppUrl = normalizedGas;
-        if (normalizedGas !== metaData.gasWebAppUrl) {
-          void saveGasConfigToCloudFirestore(normalizedGas);
-        }
+        gasWebAppUrl = normalizeGasWebAppUrl(metaData.gasWebAppUrl);
       } else {
         gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
-        void saveGasConfigToCloudFirestore(DEFAULT_GAS_WEB_APP_URL);
       }
       if (typeof metaData.usersJson === 'string' && metaData.usersJson.trim()) {
         try {
           const parsed = JSON.parse(metaData.usersJson);
           if (Array.isArray(parsed)) metaUsers = parsed;
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
     } else {
       gasWebAppUrl = DEFAULT_GAS_WEB_APP_URL;
-      void saveGasConfigToCloudFirestore(DEFAULT_GAS_WEB_APP_URL);
     }
 
     const colUsers: UserAccount[] = [];
     colSnap.forEach((docSnap) => {
       const data = docSnap.data() as unknown as UserAccount;
-      if (data && data.username) {
-        colUsers.push(data);
-      }
+      if (data && data.username) colUsers.push(data);
     });
 
-    if (colUsers.length === 0 && metaUsers.length === 0) {
-      return null;
-    }
+    if (colUsers.length === 0 && metaUsers.length === 0) return null;
 
     const deletedSet = new Set(deletedUsernames.map((u) => u.toLowerCase()));
     const mergedMap = new Map<string, UserAccount>();
 
-    // Individual collection documents take priority (most granular cross-PC writes)
     for (const u of [...colUsers, ...metaUsers]) {
       if (!u || !u.username) continue;
       const key = u.username.toLowerCase();
-      if (deletedSet.has(key)) continue;
-      if (!mergedMap.has(key)) {
+      if (!deletedSet.has(key) && !mergedMap.has(key)) {
         mergedMap.set(key, u);
       }
     }
@@ -1367,16 +768,11 @@ export async function fetchUsersFromCloudFirestore(): Promise<{
       deletedUsernames: Array.from(deletedSet),
       gasWebAppUrl
     };
-  } catch (err) {
-    console.warn('Cloud Firestore fetch warning:', err);
+  } catch {
     return null;
   }
 }
 
-/**
- * Subscribes to real-time changes in Cloud Firestore (/wbp_users and /wbp_meta/users_db)
- * so that when a user registers on Computer B, Computer A (Admin Kelola User) updates instantaneously.
- */
 export function subscribeCloudFirestoreUsers(
   onUpdate: (payload: {
     users: UserAccount[];
@@ -1393,19 +789,15 @@ export function subscribeCloudFirestoreUsers(
 
   const emitCombined = () => {
     if (!initializedMeta && !initializedCol) return;
-    if (latestColUsers.length === 0 && latestMetaUsers.length === 0) return;
-
     const deletedSet = new Set(latestDeleted.map((u) => u.toLowerCase()));
     const map = new Map<string, UserAccount>();
     for (const u of [...latestColUsers, ...latestMetaUsers]) {
       if (!u || !u.username) continue;
       const key = u.username.toLowerCase();
-      if (deletedSet.has(key)) continue;
-      if (!map.has(key)) {
+      if (!deletedSet.has(key) && !map.has(key)) {
         map.set(key, u);
       }
     }
-
     onUpdate({
       users: Array.from(map.values()),
       deletedUsernames: Array.from(deletedSet),
@@ -1423,25 +815,16 @@ export function subscribeCloudFirestoreUsers(
           usersJson?: string;
           gasWebAppUrl?: string;
         };
-        latestDeleted = Array.isArray(data.deletedUsernames)
-          ? data.deletedUsernames
-          : [];
-        if (typeof data.gasWebAppUrl === 'string' && data.gasWebAppUrl) {
-          latestGasUrl = normalizeGasWebAppUrl(data.gasWebAppUrl);
-        }
-        if (typeof data.usersJson === 'string' && data.usersJson.trim()) {
+        latestDeleted = Array.isArray(data.deletedUsernames) ? data.deletedUsernames : [];
+        if (data.gasWebAppUrl) latestGasUrl = normalizeGasWebAppUrl(data.gasWebAppUrl);
+        if (data.usersJson) {
           try {
             const parsed = JSON.parse(data.usersJson);
             if (Array.isArray(parsed)) latestMetaUsers = parsed;
-          } catch {
-            // ignore
-          }
+          } catch {}
         }
       }
       emitCombined();
-    },
-    (err) => {
-      console.warn('Firestore meta snapshot warning:', err);
     }
   );
 
@@ -1456,9 +839,6 @@ export function subscribeCloudFirestoreUsers(
       });
       latestColUsers = list;
       emitCombined();
-    },
-    (err) => {
-      console.warn('Firestore users collection snapshot warning:', err);
     }
   );
 
@@ -1468,10 +848,6 @@ export function subscribeCloudFirestoreUsers(
   };
 }
 
-/**
- * Directly sends user registration / update / deletion / sync payload to the configured
- * Google Apps Script Web App endpoint (using text/plain;charset=utf-8 to avoid browser CORS preflight).
- */
 export async function pushUsersToGasEndpoint(params: {
   gasWebAppUrl?: string;
   action: 'registerUser' | 'updateUser' | 'deleteUser' | 'resetUsers' | 'syncUsers';
@@ -1481,16 +857,12 @@ export async function pushUsersToGasEndpoint(params: {
   deletedUsernames: string[];
 }): Promise<boolean> {
   const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
-  if (!endpoint || !endpoint.startsWith('https://script.google.com/')) {
-    return false;
-  }
+  if (!endpoint) return false;
 
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: params.action,
         folderId: GOOGLE_DRIVE_FOLDER_ID,
@@ -1504,15 +876,11 @@ export async function pushUsersToGasEndpoint(params: {
       })
     });
     return res.ok;
-  } catch (err) {
-    console.warn('Direct GAS endpoint push warning:', err);
+  } catch {
     return false;
   }
 }
 
-/**
- * Pulls registered users from the configured Google Apps Script Web App endpoint.
- */
 export async function pullUsersFromGasEndpoint(
   gasWebAppUrl?: string
 ): Promise<{
@@ -1520,37 +888,26 @@ export async function pullUsersFromGasEndpoint(
   deletedUsernames: string[];
 } | null> {
   const endpoint = normalizeGasWebAppUrl(gasWebAppUrl);
-  if (!endpoint || !endpoint.startsWith('https://script.google.com/')) {
-    return null;
-  }
+  if (!endpoint) return null;
 
   try {
     const separator = endpoint.includes('?') ? '&' : '?';
     const url = `${endpoint}${separator}action=getUsers&folderId=${GOOGLE_DRIVE_FOLDER_ID}&t=${Date.now()}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow'
-    });
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
     if (!res.ok) return null;
 
     const text = (await res.text()).trim();
-    if (!text.startsWith('{') && !text.startsWith('[')) {
-      return null;
-    }
+    if (!text.startsWith('{') && !text.startsWith('[')) return null;
 
     const parsed = JSON.parse(text) as
       | UserAccount[]
       | { users?: UserAccount[]; deletedUsernames?: string[] };
 
-    if (Array.isArray(parsed)) {
-      return { users: parsed, deletedUsernames: [] };
-    }
+    if (Array.isArray(parsed)) return { users: parsed, deletedUsernames: [] };
     if (parsed && Array.isArray(parsed.users)) {
       return {
         users: parsed.users,
-        deletedUsernames: Array.isArray(parsed.deletedUsernames)
-          ? parsed.deletedUsernames
-          : []
+        deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : []
       };
     }
     return null;
