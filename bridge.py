@@ -20,7 +20,6 @@ def get_drive_service():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # Pastikan Anda memiliki file 'credentials.json' dari Google Cloud Console di folder yang sama
             if os.path.exists('credentials.json'):
                 flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
                 creds = flow.run_local_server(port=0)
@@ -34,34 +33,51 @@ def get_drive_service():
 class MegaBridgeHandler(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.send_response(200)
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
+
+    def do_GET(self):
+        # Menangani akses GET agar tidak muncul error 501
+        self.send_response(200)
+        self.send_header("Content-type", "application/json; charset=utf-8")
+        self.end_headers()
+        response_data = {
+            "status": "online",
+            "message": "MegaBridge Server is active and running successfully!"
+        }
+        self.wfile.write(json.dumps(response_data).encode("utf-8"))
 
     def do_POST(self):
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             
-            # Di sini kita bisa memproses data file yang masuk dari frontend web Anda
-            print("Menerima data file dari aplikasi web...")
+            # Parsing data yang masuk dari frontend Vercel
+            # Anda bisa menyesuaikan logika unggah Google Drive di sini
             
-            # Kirim respons sukses kembali ke aplikasi web
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
+            self.send_header("Content-type", "application/json; charset=utf-8")
             self.end_headers()
-            response_data = {"status": "success", "message": "File berhasil diteruskan ke Google Drive!"}
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            
+            response = {
+                "success": True,
+                "message": "File berhasil diproses oleh MegaBridge",
+                "webViewLink": "https://drive.google.com" # Ganti dengan link dinamis dari hasil upload Drive API
+            }
+            self.wfile.write(json.dumps(response).encode("utf-8"))
         except Exception as e:
-            print(f"Error saat memproses upload: {e}")
             self.send_response(500)
+            self.send_header("Content-type", "application/json; charset=utf-8")
             self.end_headers()
+            error_response = {"success": False, "error": str(e)}
+            self.wfile.write(json.dumps(error_response).encode("utf-8"))
 
-def run_server(server_class=HTTPServer, handler_class=MegaBridgeHandler):
-    # Mengambil port dari environment Render, atau default ke 8080 jika dijalankan lokal
-    port = int(os.environ.get("PORT", 8080))
-    server_address = ('0.0.0.0', port)  # Wajib 0.0.0.0 agar dapat diakses oleh Render
+def run_server(server_class=HTTPServer, handler_class=MegaBridgeHandler, port=10000):
+    server_address = ('0.0.0.0', port)
     httpd = server_class(server_address, handler_class)
-    print(f"Skrip Jembatan Google Drive berjalan di port {port}")
+    print(f"MegaBridge server aktif pada port {port}...")
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    run_server()
+    port = int(os.environ.get('PORT', 10000))
+    run_server(port=port)
