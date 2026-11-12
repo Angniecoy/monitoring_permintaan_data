@@ -163,10 +163,20 @@ export default function App() {
   };
 
   const handleResetData = () => {
-    if (window.confirm('Apakah Anda yakin ingin mereset seluruh data kembali ke tiket demo awal (termasuk memperbarui wbp_tickets_database.json di Google Drive)?')) {
-      const reset = resetToDefaultTickets();
-      setTickets(reset);
+    try {
+      localStorage.clear();
+      if (typeof window !== 'undefined' && window.indexedDB) {
+        window.indexedDB.deleteDatabase('wbp_sim_file_storage');
+      }
+    } catch {
+      // ignore storage errors
     }
+    const resetTickets = resetToDefaultTickets();
+    setTickets(resetTickets);
+    setUsers(getStoredUsers());
+    setSelectedTicketDetail(null);
+    setWhatsAppPayload(null);
+    window.location.reload();
   };
 
   // Handlers for Dynamic User Registration & Management (Google Drive + localStorage Persistence)

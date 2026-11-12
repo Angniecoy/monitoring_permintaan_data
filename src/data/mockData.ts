@@ -579,8 +579,16 @@ export function saveStoredTickets(tickets: Ticket[]): void {
 }
 
 export function resetToDefaultTickets(): Ticket[] {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TICKETS));
-  void syncTicketsWithDriveFolder(INITIAL_TICKETS, true);
+  try {
+    localStorage.clear();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TICKETS));
+  } catch (err) {
+    console.error('Failed resetting localStorage:', err);
+  }
+  recentLocalUserMutations.clear();
+  mirroredToDriveUsernames.clear();
+  saveDeletedUsernames([]);
+  saveStoredUsers(INITIAL_USERS);
   return INITIAL_TICKETS;
 }
 
