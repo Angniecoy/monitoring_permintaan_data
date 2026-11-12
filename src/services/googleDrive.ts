@@ -431,7 +431,6 @@ export async function uploadFileToDriveFolder(
   const resolved = resolveDriveFolderByCategory(categoryOrFolderId);
   const targetFolderId = resolved.folderId;
 
-  // Fallback to GAS endpoint for public server-side upload if direct token is not present
   const reader = new FileReader();
   const base64Data = await new Promise<string>((resolve, reject) => {
     reader.onload = () => {
@@ -462,8 +461,8 @@ export async function uploadFileToDriveFolder(
 }
 
 /**
- * Uploads a file via Google Apps Script Web App endpoint directly (using text/plain to bypass CORS preflight)
- * ensuring public users can upload files into the separated category folders without needing Google Drive login.
+ * Uploads a file via Google Apps Script Web App endpoint directly, ensuring public users 
+ * can upload files into the separated category folders without needing Google Drive login.
  */
 export async function uploadFileViaGasAndBackend(params: {
   file: File;
@@ -484,13 +483,13 @@ export async function uploadFileViaGasAndBackend(params: {
     ? params.dataUrl.split(',')[1]
     : params.dataUrl;
 
+  const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
+
   const payload = {
     action: 'uploadFile',
     category: resolved.categoryLabel,
     kategori: resolved.categoryLabel,
     categoryKey: resolved.categoryKey,
-    jenis: resolved.categoryLabel,
-    type: resolved.categoryKey,
     folderId: resolved.folderId,
     targetFolderId: resolved.folderId,
     ticketId: params.ticketId || '',
@@ -508,19 +507,9 @@ export async function uploadFileViaGasAndBackend(params: {
   let downloadUrl: string | undefined;
   let gasSynced = false;
 
-  const endpoint = normalizeGasWebAppUrl(params.gasWebAppUrl);
   if (endpoint && endpoint.startsWith('https://script.google.com/')) {
     try {
-      const sep = endpoint.includes('?') ? '&' : '?';
-      const gasUrlWithParams = `${endpoint}${sep}action=uploadFile&category=${encodeURIComponent(
-        resolved.categoryLabel
-      )}&kategori=${encodeURIComponent(
-        resolved.categoryLabel
-      )}&categoryKey=${encodeURIComponent(
-        resolved.categoryKey
-      )}&folderId=${encodeURIComponent(resolved.folderId)}`;
-
-      const gasRes = await fetch(gasUrlWithParams, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
@@ -528,50 +517,39 @@ export async function uploadFileViaGasAndBackend(params: {
         body: JSON.stringify(payload)
       });
 
-      if (gasRes.ok) {
-        gasSynced = true;
-        const text = (await gasRes.text()).trim();
-        if (text.startsWith('{')) {
-          const parsed = JSON.parse(text) as {
-            id?: string;
-            fileId?: string;
-            webViewLink?: string;
-            url?: string;
-            downloadUrl?: string;
-          };
-          const fid = parsed.id || parsed.fileId;
-          if (fid) {
-            uploadedId = fid;
-            webViewLink =
-              parsed.webViewLink ||
-              parsed.url ||
-              `https://drive.google.com/file/d/${fid}/view?usp=sharing`;
-            downloadUrl =
-              parsed.downloadUrl ||
-              `https://drive.google.com/uc?export=download&id=${fid}`;
-          }
+      const text = await res.text();
+      try {
+        const parsed = JSON.parse(text) as {
+          id?: string;
+          fileId?: string;
+          webViewLink?: string;
+          url?: string;
+          downloadUrl?: string;
+          success?: boolean;
+        };
+        if (parsed && (parsed.id || parsed.fileId || parsed.success)) {
+          uploadedId = parsed.id || parsed.fileId;
+          webViewLink = parsed.webViewLink || parsed.url;
+          downloadUrl = parsed.downloadUrl;
+          gasSynced = true;
+        }
+      } catch {
+        if (res.ok) {
+          gasSynced = true;
         }
       }
     } catch (err) {
-      console.warn('GAS direct upload warning:', err);
+      console.warn('GAS upload error:', err);
     }
-  }
-
-  // Fallback direct link if GAS ID wasn't explicitly returned in JSON text
-  if (!webViewLink) {
-    webViewLink = resolved.folderUrl;
-  }
-  if (!downloadUrl) {
-    downloadUrl = resolved.folderUrl;
   }
 
   return {
     id: uploadedId || `drive-file-${Date.now()}`,
-    webViewLink,
-    downloadUrl,
+    webViewLink: webViewLink || resolved.folderUrl,
+    downloadUrl: downloadUrl || resolved.folderUrl,
     folderId: resolved.folderId,
     categoryLabel: resolved.categoryLabel,
-    gasSynced: Boolean(uploadedId || gasSynced)
+    gasSynced: gasSynced || Boolean(uploadedId)
   };
 }
 
