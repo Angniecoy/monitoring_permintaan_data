@@ -11,6 +11,7 @@ import { GoogleDriveStatusBanner } from '../components/GoogleDriveStatusBanner';
 import {
   getAccessToken,
   googleSignIn,
+  uploadFileToDriveFolder,
   DRIVE_PERMINTAAN_FOLDER_ID,
   DRIVE_PERMINTAAN_FOLDER_URL,
   DRIVE_JAWABAN_FOLDER_ID,
@@ -98,7 +99,7 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const [docOthers, setDocOthers] = useState(false);
   const [detailOthers, setDetailOthers] = useState('');
 
-  // Uploaded files (stored as "filename.ext::DRIVE_FILE_ID" when synced to Google Drive)
+  // Uploaded files (stored as formatted entry with direct Google Drive view links)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -135,12 +136,17 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
       const filesArray = Array.from(e.target.files);
       const totalFiles = filesArray.length;
       setIsUploading(true);
-      setUploadProgress(0);
+      setUploadProgress(10);
       setUploadNotice('');
       setUploadCurrentFile(filesArray[0]?.name || '');
-      setUploadStageText(`Menyiapkan unggahan ke Google Drive (${DRIVE_PERMINTAAN_FOLDER_ID})...`);
+      setUploadStageText('Menghubungkan ke Google Drive API...');
 
       try {
+        const token = await getAccessToken();
+        if (!token) {
+          throw new Error('Silakan hubungkan akun Google Drive terlebih dahulu menggunakan tombol login Google Drive.');
+        }
+
         const newEntries: string[] = [];
         let syncedCount = 0;
 
@@ -148,37 +154,27 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
           const file = filesArray[i];
           const fileLabel = totalFiles > 1 ? `(${i + 1}/${totalFiles}) ${file.name}` : file.name;
           setUploadCurrentFile(fileLabel);
+          setUploadStageText(`Mengunggah ${file.name} ke Folder Permintaan...`);
+          setUploadProgress(Math.round(((i + 0.5) / totalFiles) * 100));
 
-          const record = await saveFileToStorage(
-            file,
-            'permintaan',
-            undefined,
-            (filePct, stageMsg) => {
-              const overallPct = Math.min(
-                100,
-                Math.round(((i * 100 + filePct) / totalFiles))
-              );
-              setUploadProgress(overallPct);
-              if (stageMsg) {
-                setUploadStageText(stageMsg);
-              }
-            }
-          );
+          const uploaded = await uploadFileToDriveFolder(file, token, 'permintaan');
+          const formattedEntry = `${file.name}::${uploaded.id}::${uploaded.webViewLink}`;
+          newEntries.push(formattedEntry);
+          syncedCount++;
 
-          newEntries.push(record.formattedEntry);
-          if (record.driveFileId || record.isDriveSynced) syncedCount++;
+          setUploadProgress(Math.round(((i + 1) / totalFiles) * 100));
         }
 
         setUploadProgress(100);
-        setUploadStageText('Unggahan ke Google Drive selesai (100%)!');
-        await new Promise(resolve => setTimeout(resolve, 350));
+        setUploadStageText('Unggahan ke Google Drive selesai!');
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         setUploadedFiles(prev => [...prev, ...newEntries]);
         if (syncedCount > 0) {
-          setUploadNotice(`${syncedCount} berkas Permintaan berhasil disimpan ke Folder Drive (${DRIVE_PERMINTAAN_FOLDER_ID})!`);
-        } else {
-          setUploadNotice(`Berkas Permintaan dilampirkan untuk Folder Drive (${DRIVE_PERMINTAAN_FOLDER_ID}).`);
+          setUploadNotice(`${syncedCount} berkas berhasil diunggah langsung ke Folder Google Drive (${DRIVE_PERMINTAAN_FOLDER_ID})!`);
         }
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'Gagal mengunggah berkas ke Google Drive.');
       } finally {
         setIsUploading(false);
         setUploadProgress(0);
@@ -225,7 +221,6 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     const newId = generateTicketId();
     const waktuReq = formatCurrentDateTime();
 
-    // Format targetSelesai from input (YYYY-MM-DD -> DD/MM/YYYY)
     let formattedTarget = targetSelesai;
     if (targetSelesai.includes('-')) {
       const [yyyy, mm, dd] = targetSelesai.split('-');
@@ -268,7 +263,6 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     onAddTicket(newTicket);
     setFormSuccess(`Tiket ${newId} berhasil didaftarkan ke sistem!`);
 
-    // Reset form while preserving auto-filled requester session identity
     setPeminta(autoPeminta);
     setWaPeminta(autoWaPeminta);
     setNamaProyek('');
@@ -281,7 +275,6 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     setUploadedFiles([]);
     setFormStep(1);
 
-    // Trigger WhatsApp notification for Manager
     const pesan = `*PERMINTAAN TUGAS BARU*\n\nHalo Bpk. ${currentManager},\nAda request dokumen teknis baru dari *${finalPeminta}* untuk proyek *${namaProyek}*.\nMohon segera didisposisikan ke tim ${departemenTujuan}.\n\nID Tiket: ${newId}\nTarget: ${formattedTarget}`;
     onOpenWhatsApp({
       id: newId,
@@ -303,7 +296,6 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
     setTimeout(() => setEditSavedNotice(''), 3000);
   };
 
-  // Selected ticket for Lacak
   const displayedTicket = tickets.find(t => t.ID_Tiket === selectedTicketId) || tickets[0];
 
   return (
