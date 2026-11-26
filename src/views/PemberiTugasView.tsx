@@ -26,6 +26,16 @@ interface PemberiTugasViewProps {
   onSelectTicketDetail: (ticket: Ticket) => void;
 }
 
+export const TUJUAN_PERMINTAAN_OPTIONS = [
+  'Tender',
+  'For Approval (Contract)',
+  'Approval Drawing (Contract)',
+  'Approval Proposal Stressing',
+  'Dokumen Standar',
+  'Review JMF',
+  'Justifikasi Teknis'
+] as const;
+
 export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   tickets,
   session,
@@ -118,6 +128,19 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
   const openTickets = tickets.filter(t => t.Status_Pengerjaan === 'OPEN');
   const [editTicketId, setEditTicketId] = useState<string>(openTickets[0]?.ID_Tiket || '');
   const [editTicketData, setEditTicketData] = useState<Ticket | null>(openTickets[0] || null);
+
+  useEffect(() => {
+    if (openTickets.length === 0) {
+      setEditTicketId('');
+      setEditTicketData(null);
+      return;
+    }
+    const currentExists = openTickets.find(t => t.ID_Tiket === editTicketId);
+    if (!currentExists) {
+      setEditTicketId(openTickets[0].ID_Tiket);
+      setEditTicketData({ ...openTickets[0] });
+    }
+  }, [tickets, editTicketId]);
 
   // Synchronize edit form when editTicketId changes
   const handleSelectEditTicket = (id: string) => {
@@ -572,13 +595,23 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Tujuan Permintaan
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={tujuanPermintaan}
                         onChange={(e) => setTujuanPermintaan(e.target.value)}
-                        placeholder="e.g. Perhitungan Struktur & Metode Kerja Tender"
-                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#282974] transition-colors"
-                      />
+                        className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] transition-colors font-medium"
+                      >
+                        <option value="">-- Pilih Tujuan Permintaan --</option>
+                        {tujuanPermintaan &&
+                          tujuanPermintaan !== '-' &&
+                          !TUJUAN_PERMINTAAN_OPTIONS.includes(tujuanPermintaan as typeof TUJUAN_PERMINTAAN_OPTIONS[number]) && (
+                            <option value={tujuanPermintaan}>{tujuanPermintaan}</option>
+                          )}
+                        {TUJUAN_PERMINTAAN_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -1318,14 +1351,46 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Dokumen Diminta</label>
-                    <input
-                      type="text"
-                      value={editTicketData.Dokumen}
-                      onChange={(e) => setEditTicketData({ ...editTicketData, Dokumen: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Tujuan Permintaan</label>
+                      <select
+                        value={editTicketData.Tujuan_Permintaan === '-' ? '' : (editTicketData.Tujuan_Permintaan || '')}
+                        onChange={(e) =>
+                          setEditTicketData({
+                            ...editTicketData,
+                            Tujuan_Permintaan: e.target.value || '-'
+                          })
+                        }
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-[#282974] font-medium"
+                      >
+                        <option value="">-- Pilih Tujuan Permintaan --</option>
+                        {editTicketData.Tujuan_Permintaan &&
+                          editTicketData.Tujuan_Permintaan !== '-' &&
+                          !TUJUAN_PERMINTAAN_OPTIONS.includes(
+                            editTicketData.Tujuan_Permintaan as typeof TUJUAN_PERMINTAAN_OPTIONS[number]
+                          ) && (
+                            <option value={editTicketData.Tujuan_Permintaan}>
+                              {editTicketData.Tujuan_Permintaan} (Teks Sebelumnya)
+                            </option>
+                          )}
+                        {TUJUAN_PERMINTAAN_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Dokumen Diminta</label>
+                      <input
+                        type="text"
+                        value={editTicketData.Dokumen}
+                        onChange={(e) => setEditTicketData({ ...editTicketData, Dokumen: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl text-slate-900"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-3">
