@@ -30,6 +30,8 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   if (!ticket) return null;
 
   const isClosed = ticket.Status_Pengerjaan === 'CLOSED (Selesai)';
+  const isReviewManager = ticket.Status_Pengerjaan === 'REVIEW MANAGER';
+  const isRevisiStaf = ticket.Status_Pengerjaan === 'REVISI STAF';
   const isProses = ticket.Status_Pengerjaan === 'PROSES';
   const isDisposisi = ticket.Status_Pengerjaan === 'DISPOSISI';
   const isOpen = ticket.Status_Pengerjaan === 'OPEN';
@@ -62,10 +64,22 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             <Clock className="w-3.5 h-3.5" /> Sedang Dikerjakan Staff
           </span>
         );
+      case 'REVISI STAF':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            <AlertTriangle className="w-3.5 h-3.5" /> Dikembalikan untuk Revisi (REVISI STAF)
+          </span>
+        );
+      case 'REVIEW MANAGER':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-[#282974] border border-indigo-300">
+            <Clock className="w-3.5 h-3.5" /> Menunggu Review & TTD Manager (REVIEW MANAGER)
+          </span>
+        );
       case 'CLOSED (Selesai)':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Selesai (CLOSED)
+            <CheckCircle2 className="w-3.5 h-3.5" /> Approved & Selesai (CLOSED)
           </span>
         );
       default:
@@ -146,13 +160,17 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 shrink-0 ${
                   isOpen 
                     ? 'bg-slate-200 text-slate-500'
+                    : isRevisiStaf
+                    ? 'bg-rose-100 text-rose-700 border border-rose-300 animate-pulse'
                     : isDisposisi || isProses
                     ? 'bg-[#282974]/15 text-[#282974] border border-[#282974]/30 animate-pulse'
                     : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                 }`}>
-                  {isClosed ? '✓' : '3'}
+                  {isClosed || isReviewManager ? '✓' : '3'}
                 </div>
-                <div className="text-[11px] font-semibold text-slate-900">3. Pengerjaan</div>
+                <div className="text-[11px] font-semibold text-slate-900">
+                  {isRevisiStaf ? '3. Revisi Staf' : '3. Pengerjaan'}
+                </div>
                 <div className="text-[10px] text-slate-500 truncate max-w-full">
                   {ticket.Staff_Tujuan !== '-' ? ticket.Staff_Tujuan : 'Belum Ditugaskan'}
                 </div>
@@ -163,11 +181,15 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 shrink-0 ${
                   isClosed
                     ? 'bg-emerald-600 text-white font-bold'
+                    : isReviewManager
+                    ? 'bg-indigo-100 text-[#282974] border border-indigo-300 animate-pulse'
                     : 'bg-slate-200 text-slate-500'
                 }`}>
                   {isClosed ? '✓' : '4'}
                 </div>
-                <div className="text-[11px] font-semibold text-slate-900">4. Hasil Terbit</div>
+                <div className="text-[11px] font-semibold text-slate-900">
+                  {isReviewManager ? '4. Review Manager' : '4. Approve & Sign'}
+                </div>
                 <div className="text-[10px] text-slate-500 font-mono truncate max-w-full">
                   {ticket.Aktual_Selesai !== '-' ? ticket.Aktual_Selesai.split(' ')[0] : 'Target ' + ticket.Target_Selesai}
                 </div>
@@ -276,12 +298,19 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Feedback Notes */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <div className="text-xs font-bold text-slate-900 mb-2">
-              💬 Catatan & Pesan Balasan Engineering:
+          {/* Feedback Notes & Approval Stamp */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs font-bold text-slate-900">
+                💬 Catatan & Riwayat Review / Persetujuan Engineering:
+              </div>
+              {(ticket.Approved_By || ticket.Tanggal_Persetujuan) && (
+                <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
+                  ✓ Approved & Signed by: {ticket.Approved_By || ticket.Manager_Tujuan} ({ticket.Tanggal_Persetujuan || ticket.Aktual_Selesai})
+                </span>
+              )}
             </div>
-            <div className="p-3 bg-white rounded-lg border border-slate-200 text-slate-800 font-medium">
+            <div className="p-3 bg-white rounded-lg border border-slate-200 text-slate-800 font-medium break-words">
               {ticket.Keterangan_Penerima && ticket.Keterangan_Penerima !== '-' 
                 ? ticket.Keterangan_Penerima 
                 : 'Belum ada catatan tambahan dari tim engineering.'}

@@ -1,6 +1,12 @@
 export type DepartmentName = 'Engineering Precast' | 'Engineering Readymix' | 'Engineering Konstruksi';
 
-export type TicketStatus = 'OPEN' | 'DISPOSISI' | 'PROSES' | 'CLOSED (Selesai)';
+export type TicketStatus =
+  | 'OPEN'
+  | 'DISPOSISI'
+  | 'PROSES'
+  | 'REVIEW MANAGER'
+  | 'REVISI STAF'
+  | 'CLOSED (Selesai)';
 
 export interface StaffInfo {
   name: string;
@@ -45,6 +51,9 @@ export interface Ticket {
   File_Pendukung: string; // e.g. "nama_file.pdf::id" or filename
   File_Hasil: string;
   Aktual_Selesai: string;
+  Approved_By?: string;
+  Tanggal_Persetujuan?: string;
+  Catatan_Revisi?: string;
 }
 
 export type UserRole = 

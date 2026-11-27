@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  Building2, UserCheck, Send, Clock, CheckCircle2, 
-  ArrowRight, MessageSquare, AlertCircle, Eye, ShieldCheck, 
-  Layers, Users, Check, Download, ExternalLink
+  UserCheck, Send, CheckCircle2, 
+  Eye, Users, Download, ExternalLink, PenTool, RotateCcw, FileCheck
 } from 'lucide-react';
 import { DepartmentName, Ticket, UserAccount, UserSession, WhatsAppNotificationPayload } from '../types';
 import { STRUKTUR_ORG, cleanWhatsAppNumber } from '../data/mockData';
 import { downloadFile, parseTicketFileEntry } from '../data/fileStore';
+import { ManagerDocumentReviewPanel } from '../components/ManagerDocumentReviewPanel';
 
 interface ManagerViewProps {
   tickets: Ticket[];
@@ -27,11 +27,15 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
 }) => {
   const [activeDept, setActiveDept] = useState<'ALL' | DepartmentName>(() => {
     if (session?.department) {
-      const deptHasOpen = tickets.some(
-        t => t.Departemen_Tujuan === session.department && t.Status_Pengerjaan === 'OPEN'
+      const deptHasActionable = tickets.some(
+        t =>
+          t.Departemen_Tujuan === session.department &&
+          (t.Status_Pengerjaan === 'OPEN' || t.Status_Pengerjaan === 'REVIEW MANAGER')
       );
-      const anyOpen = tickets.some(t => t.Status_Pengerjaan === 'OPEN');
-      if (!deptHasOpen && anyOpen) {
+      const anyActionable = tickets.some(
+        t => t.Status_Pengerjaan === 'OPEN' || t.Status_Pengerjaan === 'REVIEW MANAGER'
+      );
+      if (!deptHasActionable && anyActionable) {
         return 'ALL';
       }
       return session.department;
@@ -40,21 +44,29 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   });
   const [hasManualDeptSelection, setHasManualDeptSelection] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
+  const [selectedReviewTicketId, setSelectedReviewTicketId] = useState<string>('');
   const [selectedStaff, setSelectedStaff] = useState<string>('');
   const [manualStaffName, setManualStaffName] = useState<string>('');
   const [manualStaffWa, setManualStaffWa] = useState<string>('');
   const [catatanManager, setCatatanManager] = useState<string>('');
-  const [activeViewTab, setActiveViewTab] = useState<'antrean' | 'histori'>('antrean');
+  const [activeViewTab, setActiveViewTab] = useState<'antrean' | 'review' | 'histori'>(() => {
+    const hasOpen = tickets.some(t => t.Status_Pengerjaan === 'OPEN');
+    const hasReview = tickets.some(t => t.Status_Pengerjaan === 'REVIEW MANAGER');
+    if (!hasOpen && hasReview) return 'review';
+    return 'antrean';
+  });
 
-  // Ensure incoming OPEN tickets are immediately visible even if created under a different department tab
+  // Ensure incoming OPEN or REVIEW MANAGER tickets are immediately visible
   React.useEffect(() => {
     if (hasManualDeptSelection) return;
-    const totalOpen = tickets.filter(t => t.Status_Pengerjaan === 'OPEN');
-    if (totalOpen.length === 0) return;
+    const totalActionable = tickets.filter(
+      t => t.Status_Pengerjaan === 'OPEN' || t.Status_Pengerjaan === 'REVIEW MANAGER'
+    );
+    if (totalActionable.length === 0) return;
 
     if (activeDept !== 'ALL') {
-      const openInCurrent = totalOpen.filter(t => t.Departemen_Tujuan === activeDept);
-      if (openInCurrent.length === 0) {
+      const actionableInCurrent = totalActionable.filter(t => t.Departemen_Tujuan === activeDept);
+      if (actionableInCurrent.length === 0) {
         setActiveDept('ALL');
       }
     }
@@ -65,15 +77,27 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
     activeDept === 'ALL'
       ? tickets
       : tickets.filter(t => t.Departemen_Tujuan === activeDept);
+
   const openTickets = deptTickets.filter(t => t.Status_Pengerjaan === 'OPEN');
+  const reviewTickets = deptTickets.filter(t => t.Status_Pengerjaan === 'REVIEW MANAGER');
 
   // Selected ticket for disposition
   const currentTicket =
     openTickets.find(t => t.ID_Tiket === selectedTicketId) || openTickets[0] || null;
 
+  // Selected ticket for Manager Document Review & PNG Signature Approval
+  const currentReviewTicket =
+    reviewTickets.find(t => t.ID_Tiket === selectedReviewTicketId) ||
+    deptTickets.find(t => t.ID_Tiket === selectedReviewTicketId) ||
+    reviewTickets[0] ||
+    null;
+
   // Resolve effective department context from the currently selected ticket or active tab
+  const activeContextTicket =
+    activeViewTab === 'review' ? currentReviewTicket : currentTicket;
+
   const effectiveDept: DepartmentName =
-    currentTicket?.Departemen_Tujuan ||
+    activeContextTicket?.Departemen_Tujuan ||
     (activeDept === 'ALL' ? session?.department || 'Engineering Precast' : activeDept);
 
   const deptConfig = STRUKTUR_ORG[effectiveDept] || STRUKTUR_ORG['Engineering Precast'];
@@ -83,13 +107,13 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   const managerName =
     session?.role === 'manager' && session?.userName
       ? session.userName
-      : dynamicManager?.fullName || deptConfig.Manager || '-';
+      : dynamicManager?.fullName || deptConfig.Manager || 'Manager Engineering';
   const managerWa =
     session?.role === 'manager' && session?.whatsapp
       ? session.whatsapp
       : dynamicManager?.whatsapp || deptConfig.WA_Manager || '';
 
-  // Populate department staff from dynamically registered staff (prioritizing effectiveDept, then all registered staff)
+  // Populate department staff from dynamically registered staff
   const combinedStaffMap: Record<string, string> = { ...deptConfig.Staff };
   users
     .filter(u => u.role === 'staff' && (u.department || 'Engineering Precast') === effectiveDept)
@@ -98,7 +122,6 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
         combinedStaffMap[u.fullName] = u.whatsapp || '';
       }
     });
-  // If no staff registered in effectiveDept yet, include all registered staff across divisions so Manager can still disposition
   if (Object.keys(combinedStaffMap).length === 0) {
     users
       .filter(u => u.role === 'staff')
@@ -113,7 +136,9 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   // Calculate workload per staff
   const staffWorkload = staffList.map(staff => {
     const activeTasks = tickets.filter(
-      t => t.Staff_Tujuan === staff && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)
+      t =>
+        t.Staff_Tujuan === staff &&
+        ['DISPOSISI', 'PROSES', 'REVISI STAF', 'REVIEW MANAGER'].includes(t.Status_Pengerjaan)
     ).length;
     const completedTasks = tickets.filter(
       t => t.Staff_Tujuan === staff && t.Status_Pengerjaan === 'CLOSED (Selesai)'
@@ -167,6 +192,22 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
   };
 
   const totalOpenAllDepts = tickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
+  const totalReviewAllDepts = tickets.filter(t => t.Status_Pengerjaan === 'REVIEW MANAGER').length;
+
+  const renderStatusBadge = (status: Ticket['Status_Pengerjaan']) => {
+    switch (status) {
+      case 'OPEN':
+        return 'bg-amber-50 text-amber-700 border border-amber-200';
+      case 'REVIEW MANAGER':
+        return 'bg-indigo-50 text-[#282974] border border-indigo-300';
+      case 'REVISI STAF':
+        return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'CLOSED (Selesai)':
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+      default:
+        return 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25';
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
@@ -174,13 +215,13 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-white via-white to-[#282974]/8 border border-slate-200 shadow-xs">
         <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#282974]">
-            Manajemen Disposisi & Delegasi
+            Manajemen Disposisi, Review & Approval Dokumen
           </div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-0.5">
             Dashboard Manager Engineering
           </h1>
           <p className="text-xs text-slate-600 mt-1">
-            Tinjau permintaan dokumen teknis yang masuk, monitor beban kerja personel, dan disposisikan tugas secara merata dengan notifikasi WhatsApp otomatis.
+            Disposisikan tiket masuk ke Staf, periksa hasil pekerjaan berstatus <strong>REVIEW MANAGER</strong>, kembalikan untuk revisi (<strong>REVISI STAF</strong>), atau tempel spesimen tanda tangan PNG (<strong>Approve & Sign</strong>).
           </p>
         </div>
 
@@ -201,17 +242,19 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
             }`}
           >
             <span className="truncate">Semua Divisi</span>
-            {totalOpenAllDepts > 0 && (
+            {totalOpenAllDepts + totalReviewAllDepts > 0 && (
               <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
-                {totalOpenAllDepts}
+                {totalOpenAllDepts + totalReviewAllDepts}
               </span>
             )}
           </button>
 
           {(Object.keys(STRUKTUR_ORG) as DepartmentName[]).map(dept => {
             const isDeptActive = activeDept === dept;
-            const deptOpenCount = tickets.filter(
-              t => t.Departemen_Tujuan === dept && t.Status_Pengerjaan === 'OPEN'
+            const deptActionCount = tickets.filter(
+              t =>
+                t.Departemen_Tujuan === dept &&
+                (t.Status_Pengerjaan === 'OPEN' || t.Status_Pengerjaan === 'REVIEW MANAGER')
             ).length;
 
             return (
@@ -231,9 +274,9 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                 }`}
               >
                 <span className="truncate">{dept.replace('Engineering ', '')}</span>
-                {deptOpenCount > 0 && (
+                {deptActionCount > 0 && (
                   <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
-                    {deptOpenCount}
+                    {deptActionCount}
                   </span>
                 )}
               </button>
@@ -260,10 +303,19 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               </div>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-[10px] text-slate-500 whitespace-nowrap">Antrean OPEN</div>
-            <div className="text-xl font-mono font-bold text-amber-600 tabular-nums">
-              {openTickets.length}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-right">
+              <div className="text-[10px] text-slate-500 whitespace-nowrap">OPEN</div>
+              <div className="text-lg font-mono font-bold text-amber-600 tabular-nums">
+                {openTickets.length}
+              </div>
+            </div>
+            <div className="h-7 w-px bg-slate-200" />
+            <div className="text-right">
+              <div className="text-[10px] text-slate-500 whitespace-nowrap">REVIEW</div>
+              <div className="text-lg font-mono font-bold text-[#282974] tabular-nums">
+                {reviewTickets.length}
+              </div>
             </div>
           </div>
         </div>
@@ -313,53 +365,84 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
         </div>
       </div>
 
-      {/* Main Content: Split View (Queue + Action) or History */}
+      {/* Main Content: Subtab Switcher (Disposisi OPEN / Review & Sign / Histori) */}
       <div className="space-y-4">
-        {/* Subtab Toggle */}
         <div className="flex items-center justify-between">
-          <div className="grid grid-cols-2 sm:flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-2xs w-full sm:w-fit">
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-1.5 p-1.5 bg-white border border-slate-200 rounded-xl shadow-2xs w-full sm:w-fit">
             <button
               type="button"
               onClick={() => setActiveViewTab('antrean')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+              className={`flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 activeViewTab === 'antrean'
                   ? 'bg-[#282974] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              Antrean Perlu Disposisi ({openTickets.length})
+              <span>Antrean Perlu Disposisi ({openTickets.length})</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveViewTab('review')}
+              className={`flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+                activeViewTab === 'review'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <PenTool className="w-3.5 h-3.5 shrink-0" />
+              <span>Review & Approve / Sign PNG ({reviewTickets.length})</span>
+              {reviewTickets.length > 0 && activeViewTab !== 'review' && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white font-mono text-[10px] font-bold">
+                  {reviewTickets.length}
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveViewTab('histori')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+              className={`flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 activeViewTab === 'histori'
                   ? 'bg-[#282974] text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              Histori Departemen ({deptTickets.length})
+              <span>Histori Departemen ({deptTickets.length})</span>
             </button>
           </div>
         </div>
 
-        {activeViewTab === 'antrean' ? (
+        {/* SUBTAB 1: ANTREAN DISPOSISI (OPEN) */}
+        {activeViewTab === 'antrean' && (
           openTickets.length === 0 ? (
-            <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+            <div className="p-10 sm:p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
               <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-              <div className="text-sm font-bold text-slate-900">Semua Tiket Telah Didisposisikan!</div>
+              <div className="text-sm font-bold text-slate-900">Semua Tiket Masuk Telah Didisposisikan!</div>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
-                Tidak ada tiket berstatus OPEN yang menunggu delegasi di {activeDept === 'ALL' ? 'seluruh divisi Engineering' : activeDept}. Seluruh tim sedang fokus mengerjakan tugas aktif.
+                Tidak ada tiket berstatus OPEN yang menunggu delegasi di {activeDept === 'ALL' ? 'seluruh divisi Engineering' : activeDept}.
               </p>
-              {activeDept !== 'ALL' && totalOpenAllDepts > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setActiveDept('ALL')}
-                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors"
-                >
-                  <span>Lihat {totalOpenAllDepts} Tiket OPEN di Divisi Lain</span>
-                </button>
-              )}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                {reviewTickets.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveViewTab('review')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-sm"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                    <span>Periksa {reviewTickets.length} Dokumen Menunggu Review & TTD Manager</span>
+                  </button>
+                )}
+                {activeDept !== 'ALL' && totalOpenAllDepts > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveDept('ALL')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#282974] hover:bg-[#1e1f5a] rounded-xl transition-colors"
+                  >
+                    <span>Lihat {totalOpenAllDepts} Tiket OPEN di Divisi Lain</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
@@ -567,8 +650,98 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
               </div>
             </div>
           )
-        ) : (
-          /* Subtab Histori Departemen */
+        )}
+
+        {/* SUBTAB 2: REVIEW & APPROVAL DOKUMEN (REVIEW MANAGER -> REVISI STAF / APPROVE & SIGN PNG) */}
+        {activeViewTab === 'review' && (
+          !currentReviewTicket ? (
+            <div className="p-10 sm:p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+              <FileCheck className="w-10 h-10 text-emerald-600 mx-auto" />
+              <div className="text-sm font-bold text-slate-900">
+                Belum Ada Dokumen Berstatus REVIEW MANAGER
+              </div>
+              <p className="text-xs text-slate-600 max-w-md mx-auto">
+                Saat Staf Engineering selesai mengunggah dokumen hasil pekerjaan dan mengajukan review, tiket akan otomatis masuk ke daftar ini dengan status <strong>REVIEW MANAGER</strong> untuk diperiksa dan ditandatangani dengan spesimen PNG.
+              </p>
+              {activeDept !== 'ALL' && totalReviewAllDepts > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveDept('ALL')}
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors"
+                >
+                  <span>Lihat {totalReviewAllDepts} Dokumen REVIEW MANAGER di Divisi Lain</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+              {/* Left Column: Queue of REVIEW MANAGER tickets (4 cols) */}
+              <div className="lg:col-span-4 space-y-3 min-w-0">
+                <div className="text-xs font-semibold text-slate-600 flex items-center justify-between">
+                  <span>Antrean Review Manager ({reviewTickets.length}):</span>
+                  <span className="text-[10px] text-slate-500">Pilih untuk periksa & TTD</span>
+                </div>
+
+                <div className="space-y-2.5 max-h-[680px] overflow-y-auto pr-1">
+                  {(reviewTickets.length > 0 ? reviewTickets : [currentReviewTicket]).map(ticket => {
+                    const isSelected = currentReviewTicket?.ID_Tiket === ticket.ID_Tiket;
+                    return (
+                      <div
+                        key={ticket.ID_Tiket}
+                        onClick={() => setSelectedReviewTicketId(ticket.ID_Tiket)}
+                        className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all overflow-hidden ${
+                          isSelected
+                            ? 'bg-emerald-50/70 border-emerald-600 ring-1 ring-emerald-500/20 shadow-xs'
+                            : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                          <span className="font-mono text-[11px] font-bold text-[#282974]">
+                            {ticket.ID_Tiket}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${renderStatusBadge(ticket.Status_Pengerjaan)}`}>
+                            {ticket.Status_Pengerjaan}
+                          </span>
+                        </div>
+
+                        <h4 className="text-xs font-bold text-slate-900 line-clamp-2">
+                          {ticket.Proyek}
+                        </h4>
+
+                        <div className="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <span>Staf PIC:</span>
+                            <span className="font-semibold text-slate-800">{ticket.Staff_Tujuan}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Pemohon:</span>
+                            <span className="truncate max-w-[140px]">{ticket.Peminta}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Interactive Document Review, Revision & PNG Signature Stamping Workspace (8 cols) */}
+              <div className="lg:col-span-8 min-w-0">
+                <ManagerDocumentReviewPanel
+                  key={currentReviewTicket.ID_Tiket}
+                  ticket={currentReviewTicket}
+                  managerName={managerName}
+                  managerWa={managerWa}
+                  onUpdateTicket={onUpdateTicket}
+                  onOpenWhatsApp={onOpenWhatsApp}
+                  onSelectTicketDetail={onSelectTicketDetail}
+                />
+              </div>
+            </div>
+          )
+        )}
+
+        {/* SUBTAB 3: HISTORI DEPARTEMEN */}
+        {activeViewTab === 'histori' && (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -586,32 +759,42 @@ export const ManagerView: React.FC<ManagerViewProps> = ({
                 <tbody className="divide-y divide-slate-200">
                   {deptTickets.map(ticket => (
                     <tr key={ticket.ID_Tiket} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold text-[#282974]">{ticket.ID_Tiket}</td>
+                      <td className="px-4 py-3 font-mono font-bold text-[#282974] whitespace-nowrap">{ticket.ID_Tiket}</td>
                       <td className="px-4 py-3 font-semibold text-slate-900 max-w-xs truncate">{ticket.Proyek}</td>
-                      <td className="px-4 py-3 text-slate-700">{ticket.Peminta}</td>
-                      <td className="px-4 py-3 text-slate-800 font-medium">
+                      <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{ticket.Peminta}</td>
+                      <td className="px-4 py-3 text-slate-800 font-medium whitespace-nowrap">
                         {ticket.Staff_Tujuan !== '-' ? ticket.Staff_Tujuan : <span className="text-slate-400">-</span>}
                       </td>
-                      <td className="px-4 py-3 font-mono text-slate-600">{ticket.Target_Selesai}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          ticket.Status_Pengerjaan === 'OPEN'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : ticket.Status_Pengerjaan === 'CLOSED (Selesai)'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
-                        }`}>
+                      <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{ticket.Target_Selesai}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${renderStatusBadge(ticket.Status_Pengerjaan)}`}>
                           {ticket.Status_Pengerjaan}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => onSelectTicketDetail(ticket)}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-[#282974] hover:text-white bg-[#282974]/10 hover:bg-[#282974] border border-[#282974]/25 hover:border-[#282974] rounded-lg transition-colors"
-                        >
-                          Detail
-                        </button>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          {(ticket.Status_Pengerjaan === 'REVIEW MANAGER' ||
+                            (ticket.File_Hasil && ticket.File_Hasil !== '-')) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedReviewTicketId(ticket.ID_Tiket);
+                                setActiveViewTab('review');
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors inline-flex items-center gap-1"
+                            >
+                              <PenTool className="w-3 h-3" />
+                              <span>Review & Sign</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => onSelectTicketDetail(ticket)}
+                            className="px-2.5 py-1 text-[11px] font-semibold text-[#282974] hover:text-white bg-[#282974]/10 hover:bg-[#282974] border border-[#282974]/25 hover:border-[#282974] rounded-lg transition-colors"
+                          >
+                            Detail
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

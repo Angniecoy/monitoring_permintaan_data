@@ -31,7 +31,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenUserManagement
 }) => {
   const openCount = tickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
-  const inProgressCount = tickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
+  const reviewCount = tickets.filter(t => t.Status_Pengerjaan === 'REVIEW MANAGER').length;
+  const inProgressCount = tickets.filter(t =>
+    ['DISPOSISI', 'PROSES', 'REVISI STAF', 'REVIEW MANAGER'].includes(t.Status_Pengerjaan)
+  ).length;
   const closedCount = tickets.filter(t => t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
 
   const allNavItems: {
@@ -51,9 +54,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'manager',
       label: 'Manager Disposisi',
-      sublabel: 'Delegasi & Penugasan',
+      sublabel: 'Disposisi & Review TTD',
       icon: Briefcase,
-      badgeCount: openCount,
+      badgeCount: openCount + reviewCount,
       badgeColor: 'bg-amber-500 text-slate-950',
     },
     {

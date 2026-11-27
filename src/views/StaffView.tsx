@@ -76,7 +76,7 @@ export const StaffView: React.FC<StaffViewProps> = ({
   }, [activeStaff, defaultStaffName]);
   const [activeTab, setActiveTab] = useState<'aktif' | 'selesai' | 'semua'>('aktif');
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
-  const [updateStatus, setUpdateStatus] = useState<'PROSES' | 'CLOSED (Selesai)'>('PROSES');
+  const [updateStatus, setUpdateStatus] = useState<'PROSES' | 'REVIEW MANAGER'>('REVIEW MANAGER');
   const [keteranganBalasan, setKeteranganBalasan] = useState('');
   const [hasilFiles, setHasilFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -91,7 +91,10 @@ export const StaffView: React.FC<StaffViewProps> = ({
   const myTickets = tickets.filter(
     t => activeStaff && t.Staff_Tujuan.trim().toLowerCase() === activeStaff.trim().toLowerCase()
   );
-  const myActiveTasks = myTickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan));
+  const myActiveTasks = myTickets.filter(t =>
+    ['DISPOSISI', 'PROSES', 'REVISI STAF'].includes(t.Status_Pengerjaan)
+  );
+  const myReviewTasks = myTickets.filter(t => t.Status_Pengerjaan === 'REVIEW MANAGER');
   const myCompletedTasks = myTickets.filter(t => t.Status_Pengerjaan === 'CLOSED (Selesai)');
 
   const currentTask = myActiveTasks.find(t => t.ID_Tiket === selectedTicketId) || myActiveTasks[0] || null;
@@ -138,10 +141,11 @@ export const StaffView: React.FC<StaffViewProps> = ({
         await new Promise(resolve => setTimeout(resolve, 350));
 
         setHasilFiles(prev => [...prev, ...newEntries]);
+        setUpdateStatus('REVIEW MANAGER');
         if (syncedCount > 0) {
-          setUploadNotice(`${syncedCount} dokumen Jawaban Atas Permintaan berhasil disimpan ke Folder Drive (${DRIVE_JAWABAN_FOLDER_ID})!`);
+          setUploadNotice(`${syncedCount} dokumen Jawaban Atas Permintaan berhasil disimpan ke Folder Drive (${DRIVE_JAWABAN_FOLDER_ID})! Status siap diajukan ke REVIEW MANAGER.`);
         } else {
-          setUploadNotice(`Dokumen Jawaban Atas Permintaan dilampirkan untuk Folder Drive (${DRIVE_JAWABAN_FOLDER_ID}).`);
+          setUploadNotice(`Dokumen Jawaban Atas Permintaan dilampirkan untuk Folder Drive (${DRIVE_JAWABAN_FOLDER_ID}). Status siap diajukan ke REVIEW MANAGER.`);
         }
       } finally {
         setIsUploading(false);
@@ -169,44 +173,48 @@ export const StaffView: React.FC<StaffViewProps> = ({
         : `${currentTask.File_Hasil} || ${newFilesJoined}`;
     }
 
-    const isNowClosed = updateStatus === 'CLOSED (Selesai)';
-    const aktualTimestamp = isNowClosed ? formatCurrentDateTime() : currentTask.Aktual_Selesai;
+    const isSentToManagerReview = updateStatus === 'REVIEW MANAGER';
 
     const updated: Ticket = {
       ...currentTask,
       Status_Pengerjaan: updateStatus,
-      Keterangan_Penerima: keteranganBalasan.trim() 
-        ? `[Update Staff ${activeStaff}]: ${keteranganBalasan.trim()}`
+      Keterangan_Penerima: keteranganBalasan.trim()
+        ? `[Update Staff ${activeStaff} - ${updateStatus}]: ${keteranganBalasan.trim()}`
+        : isSentToManagerReview
+        ? `[Update Staff ${activeStaff}]: Dokumen hasil pengerjaan telah diunggah dan diajukan untuk REVIEW MANAGER.`
         : currentTask.Keterangan_Penerima,
-      File_Hasil: updatedFilesStr,
-      Aktual_Selesai: aktualTimestamp
+      File_Hasil: updatedFilesStr
     };
 
     onUpdateTicket(updated);
     setHasilFiles([]);
     setKeteranganBalasan('');
     setShowDoneNotice(true);
-    setTimeout(() => setShowDoneNotice(false), 3000);
+    setTimeout(() => setShowDoneNotice(false), 3500);
 
-    // If marked closed, switch view or keep updated
-    if (isNowClosed) {
-      // Allow user to see completed tab if all active tasks done
-      if (myActiveTasks.length <= 1) {
-        setTimeout(() => setActiveTab('selesai'), 1200);
-      }
+    if (isSentToManagerReview) {
+      const cleanWaManager = cleanWhatsAppNumber(currentTask.WA_Manager);
+      const pesanReview = `*PENGAJUAN REVIEW & TTD DOKUMEN (${currentTask.ID_Tiket})*\n\nHalo Bpk. ${currentTask.Manager_Tujuan},\nStaf Eksekutor (*${activeStaff}*) telah mengunggah dokumen hasil pekerjaan untuk proyek *${currentTask.Proyek}*.\n\nStatus Tiket: *REVIEW MANAGER*\nCatatan Staf: ${keteranganBalasan.trim() || 'Dokumen hasil telah siap diperiksa dan ditandatangani.'}\n\nMohon periksa pratinjau dokumen di Dashboard Manager untuk *Approve & Sign (Tempel Spesimen PNG)* atau *Kembalikan untuk Revisi*.`;
+
+      onOpenWhatsApp({
+        id: currentTask.ID_Tiket,
+        wa: cleanWaManager,
+        pesan: pesanReview,
+        target_role: 'Manager Engineering (Review & Sign)',
+        target_name: currentTask.Manager_Tujuan
+      });
+    } else {
+      const cleanWaPeminta = cleanWhatsAppNumber(currentTask.WA_Peminta);
+      const pesanBalik = `*UPDATE TIKET ${currentTask.ID_Tiket}*\n\nHalo ${currentTask.Peminta},\nDokumen teknis untuk proyek *${currentTask.Proyek}* saat ini berstatus *${updateStatus}*.\n\nStaf Eksekutor: ${activeStaff}\nCatatan: ${keteranganBalasan.trim() || 'Pengerjaan sedang diproses di portal.'}`;
+
+      onOpenWhatsApp({
+        id: currentTask.ID_Tiket,
+        wa: cleanWaPeminta,
+        pesan: pesanBalik,
+        target_role: 'Pemberi Tugas (Sales / Proyek)',
+        target_name: currentTask.Peminta
+      });
     }
-
-    // If closed or updated, send WhatsApp notification to Peminta (Sales / Proyek)
-    const cleanWaPeminta = cleanWhatsAppNumber(currentTask.WA_Peminta);
-    const pesanBalik = `*UPDATE TIKET ${currentTask.ID_Tiket}*\n\nHalo ${currentTask.Peminta},\nDokumen teknis untuk proyek *${currentTask.Proyek}* saat ini berstatus *${updateStatus}*.\n\nStaf Eksekutor: ${activeStaff}\nCatatan: ${keteranganBalasan.trim() || 'Pengerjaan diperbarui di portal.'}\n${isNowClosed ? 'File hasil telah siap diunduh di sistem.' : ''}`;
-
-    onOpenWhatsApp({
-      id: currentTask.ID_Tiket,
-      wa: cleanWaPeminta,
-      pesan: pesanBalik,
-      target_role: 'Pemberi Tugas (Sales / Proyek)',
-      target_name: currentTask.Peminta
-    });
   };
 
   // Filter completed tasks by search query
@@ -246,7 +254,9 @@ export const StaffView: React.FC<StaffViewProps> = ({
           >
             {allStaff.map(staf => {
               const activeCount = tickets.filter(
-                t => t.Staff_Tujuan === staf.name && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)
+                t =>
+                  t.Staff_Tujuan === staf.name &&
+                  ['DISPOSISI', 'PROSES', 'REVISI STAF'].includes(t.Status_Pengerjaan)
               ).length;
               const closedCount = tickets.filter(
                 t => t.Staff_Tujuan === staf.name && t.Status_Pengerjaan === 'CLOSED (Selesai)'
@@ -274,11 +284,13 @@ export const StaffView: React.FC<StaffViewProps> = ({
           }`}
         >
           <div>
-            <div className="text-[11px] text-slate-600 font-medium">Tugas Aktif (Perlu Dikerjakan)</div>
+            <div className="text-[11px] text-slate-600 font-medium">Tugas Aktif & Revisi</div>
             <div className="text-2xl font-mono font-bold text-[#282974] mt-1">
               {myActiveTasks.length}
             </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">Status: DISPOSISI & PROSES</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">
+              DISPOSISI, PROSES & REVISI STAF {myReviewTasks.length > 0 ? `(· ${myReviewTasks.length} Review Manager)` : ''}
+            </div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#282974]/10 text-[#282974] flex items-center justify-center font-bold">
             <Clock className="w-5 h-5" />
@@ -424,7 +436,11 @@ export const StaffView: React.FC<StaffViewProps> = ({
                           <span className="font-mono text-[11px] font-bold text-[#282974]">
                             {ticket.ID_Tiket}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#282974]/10 text-[#282974] border border-[#282974]/25">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            ticket.Status_Pengerjaan === 'REVISI STAF'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
+                          }`}>
                             {ticket.Status_Pengerjaan}
                           </span>
                         </div>
@@ -432,6 +448,12 @@ export const StaffView: React.FC<StaffViewProps> = ({
                         <h4 className="text-xs font-bold text-slate-900 line-clamp-2">
                           {ticket.Proyek}
                         </h4>
+
+                        {ticket.Status_Pengerjaan === 'REVISI STAF' && (
+                          <div className="mt-1.5 px-2 py-1 rounded bg-rose-50 border border-rose-200 text-[10px] text-rose-700 font-medium line-clamp-2">
+                            Revisi Manager: {ticket.Catatan_Revisi || ticket.Keterangan_Penerima}
+                          </div>
+                        )}
 
                         <div className="text-[11px] text-slate-600 mt-2 space-y-1">
                           <div className="flex justify-between">
@@ -486,9 +508,20 @@ export const StaffView: React.FC<StaffViewProps> = ({
                         <span className="text-slate-800 font-medium sm:text-right break-words">{currentTask.Peminta} (+{currentTask.WA_Peminta})</span>
                       </div>
                       <div className="pt-2 border-t border-slate-200">
-                        <span className="text-slate-500 block mb-1">Catatan Manager:</span>
-                        <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-medium text-[11px] break-words">
-                          {currentTask.Keterangan_Penerima !== '-' ? currentTask.Keterangan_Penerima : 'Tidak ada catatan khusus.'}
+                        <span className="text-slate-500 block mb-1">
+                          {currentTask.Status_Pengerjaan === 'REVISI STAF'
+                            ? '⚠️ Catatan Koreksi / Revisi dari Manager (Wajib Diperbaiki):'
+                            : 'Catatan Manager:'}
+                        </span>
+                        <div className={`p-2.5 border rounded-lg font-medium text-[11px] break-words ${
+                          currentTask.Status_Pengerjaan === 'REVISI STAF'
+                            ? 'bg-rose-50 border-rose-300 text-rose-900 font-semibold'
+                            : 'bg-white border-slate-200 text-slate-800'
+                        }`}>
+                          {currentTask.Catatan_Revisi ||
+                            (currentTask.Keterangan_Penerima !== '-'
+                              ? currentTask.Keterangan_Penerima
+                              : 'Tidak ada catatan khusus.')}
                         </div>
                       </div>
                       <div className="pt-1">
@@ -566,15 +599,15 @@ export const StaffView: React.FC<StaffViewProps> = ({
 
                           <button
                             type="button"
-                            onClick={() => setUpdateStatus('CLOSED (Selesai)')}
+                            onClick={() => setUpdateStatus('REVIEW MANAGER')}
                             className={`p-3 rounded-xl border text-left transition-all ${
-                              updateStatus === 'CLOSED (Selesai)'
+                              updateStatus === 'REVIEW MANAGER'
                                 ? 'bg-emerald-50 border-emerald-500 text-slate-900 shadow-2xs'
                                 : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                             }`}
                           >
-                            <div className="text-xs font-bold text-emerald-700">CLOSED (Selesai)</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">Dokumen lengkap & simpan riwayat</div>
+                            <div className="text-xs font-bold text-emerald-700">REVIEW MANAGER</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">Unggah hasil & ajukan Review / TTD PNG ke Manager</div>
                           </button>
                         </div>
                       </div>
@@ -895,6 +928,10 @@ export const StaffView: React.FC<StaffViewProps> = ({
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         ticket.Status_Pengerjaan === 'OPEN'
                           ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : ticket.Status_Pengerjaan === 'REVISI STAF'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : ticket.Status_Pengerjaan === 'REVIEW MANAGER'
+                          ? 'bg-indigo-50 text-[#282974] border border-indigo-300'
                           : ticket.Status_Pengerjaan === 'CLOSED (Selesai)'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'

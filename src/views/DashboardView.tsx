@@ -22,7 +22,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
   // Key KPI calculations
   const totalCount = filteredTickets.length;
   const openCount = filteredTickets.filter(t => t.Status_Pengerjaan === 'OPEN').length;
-  const inProgressCount = filteredTickets.filter(t => ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
+  const inProgressCount = filteredTickets.filter(t =>
+    ['DISPOSISI', 'PROSES', 'REVISI STAF', 'REVIEW MANAGER'].includes(t.Status_Pengerjaan)
+  ).length;
   const closedCount = filteredTickets.filter(t => t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
 
   const completionRate = totalCount > 0 ? Math.round((closedCount / totalCount) * 100) : 0;
@@ -68,7 +70,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
     Object.keys(data.Staff).forEach(staffName => {
       if (!seenStaff.has(staffName.toLowerCase())) {
         seenStaff.add(staffName.toLowerCase());
-        const active = tickets.filter(t => t.Staff_Tujuan === staffName && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
+        const active = tickets.filter(t => t.Staff_Tujuan === staffName && ['DISPOSISI', 'PROSES', 'REVISI STAF', 'REVIEW MANAGER'].includes(t.Status_Pengerjaan)).length;
         const closed = tickets.filter(t => t.Staff_Tujuan === staffName && t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
         staffLoadList.push({ name: staffName, dept, active, closed });
       }
@@ -80,7 +82,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
       if (!seenStaff.has(u.fullName.toLowerCase())) {
         seenStaff.add(u.fullName.toLowerCase());
         const dept = u.department || 'Engineering Precast';
-        const active = tickets.filter(t => t.Staff_Tujuan === u.fullName && ['DISPOSISI', 'PROSES'].includes(t.Status_Pengerjaan)).length;
+        const active = tickets.filter(t => t.Staff_Tujuan === u.fullName && ['DISPOSISI', 'PROSES', 'REVISI STAF', 'REVIEW MANAGER'].includes(t.Status_Pengerjaan)).length;
         const closed = tickets.filter(t => t.Staff_Tujuan === u.fullName && t.Status_Pengerjaan === 'CLOSED (Selesai)').length;
         staffLoadList.push({ name: u.fullName, dept, active, closed });
       }
@@ -426,6 +428,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ tickets, onSelectT
                     <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                       t.Status_Pengerjaan === 'OPEN'
                         ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : t.Status_Pengerjaan === 'REVISI STAF'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : t.Status_Pengerjaan === 'REVIEW MANAGER'
+                        ? 'bg-indigo-50 text-[#282974] border border-indigo-300'
                         : t.Status_Pengerjaan === 'CLOSED (Selesai)'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'

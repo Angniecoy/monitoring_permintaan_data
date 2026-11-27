@@ -168,6 +168,8 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({
               <option value="OPEN">Status: OPEN</option>
               <option value="DISPOSISI">Status: DISPOSISI</option>
               <option value="PROSES">Status: PROSES</option>
+              <option value="REVIEW MANAGER">Status: REVIEW MANAGER</option>
+              <option value="REVISI STAF">Status: REVISI STAF</option>
               <option value="CLOSED (Selesai)">Status: CLOSED (Selesai)</option>
             </select>
           </div>
@@ -248,6 +250,10 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         t.Status_Pengerjaan === 'OPEN'
                           ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : t.Status_Pengerjaan === 'REVISI STAF'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : t.Status_Pengerjaan === 'REVIEW MANAGER'
+                          ? 'bg-indigo-50 text-[#282974] border border-indigo-300'
                           : t.Status_Pengerjaan === 'CLOSED (Selesai)'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'

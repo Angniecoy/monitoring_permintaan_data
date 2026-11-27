@@ -1036,12 +1036,21 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold ${
                       displayedTicket.Status_Pengerjaan === 'OPEN'
                         ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : displayedTicket.Status_Pengerjaan === 'REVISI STAF'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : displayedTicket.Status_Pengerjaan === 'REVIEW MANAGER'
+                        ? 'bg-indigo-50 text-[#282974] border border-indigo-300'
                         : displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-[#282974]/10 text-[#282974] border border-[#282974]/25'
                     }`}>
                       {displayedTicket.Status_Pengerjaan}
                     </span>
+                    {(displayedTicket.Approved_By || displayedTicket.Tanggal_Persetujuan) && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
+                        ✓ Approved by: {displayedTicket.Approved_By || displayedTicket.Manager_Tujuan}
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-1 break-words">
                     {displayedTicket.Proyek}
@@ -1079,11 +1088,15 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                     </div>
                   </div>
                   <div className={`p-2.5 rounded-lg overflow-hidden ${
-                    displayedTicket.Status_Pengerjaan === 'PROSES' || displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
+                    displayedTicket.Status_Pengerjaan === 'REVISI STAF'
+                      ? 'bg-rose-50 border border-rose-200 text-rose-700 animate-pulse'
+                      : ['PROSES', 'REVIEW MANAGER', 'CLOSED (Selesai)'].includes(displayedTicket.Status_Pengerjaan)
                       ? 'bg-[#282974]/8 border border-[#282974]/25 text-[#282974]'
                       : 'bg-white border border-slate-200 text-slate-400'
                   }`}>
-                    <div className="font-bold">3. Pengerjaan</div>
+                    <div className="font-bold">
+                      {displayedTicket.Status_Pengerjaan === 'REVISI STAF' ? '3. Revisi Staf' : '3. Pengerjaan'}
+                    </div>
                     <div className="text-[10px] text-slate-500 mt-0.5 truncate">
                       {displayedTicket.Staff_Tujuan !== '-' ? displayedTicket.Staff_Tujuan : 'Menunggu Staf'}
                     </div>
@@ -1091,9 +1104,13 @@ export const PemberiTugasView: React.FC<PemberiTugasViewProps> = ({
                   <div className={`p-2.5 rounded-lg overflow-hidden ${
                     displayedTicket.Status_Pengerjaan === 'CLOSED (Selesai)'
                       ? 'bg-emerald-50 border border-emerald-300 text-emerald-700'
+                      : displayedTicket.Status_Pengerjaan === 'REVIEW MANAGER'
+                      ? 'bg-indigo-50 border border-indigo-300 text-[#282974] animate-pulse'
                       : 'bg-white border border-slate-200 text-slate-400'
                   }`}>
-                    <div className="font-bold">4. Selesai</div>
+                    <div className="font-bold">
+                      {displayedTicket.Status_Pengerjaan === 'REVIEW MANAGER' ? '4. Review Manager' : '4. Approve & Sign'}
+                    </div>
                     <div className="text-[10px] text-slate-500 mt-0.5 font-mono truncate">
                       {displayedTicket.Aktual_Selesai !== '-' ? displayedTicket.Aktual_Selesai : 'Target: ' + displayedTicket.Target_Selesai}
                     </div>
